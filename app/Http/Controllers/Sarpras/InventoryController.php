@@ -1,0 +1,161 @@
+<?php
+
+namespace App\Http\Controllers\Sarpras;
+
+use App\Http\Controllers\Controller;
+use App\Models\ConditionHistory;
+use App\Models\Item;
+use App\Models\Location;
+use App\Models\LocationHistory;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\View\View;
+
+class InventoryController extends Controller
+{
+    public function index(Request $request): View
+    {
+        $query = Item::with(['location']);
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('code', 'like', "%{$search}%")
+                  ->orWhere('category', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('department')) {
+            $query->where('department', $request->department);
+        }
+
+        $items = $query->latest()->paginate(15);
+        $locations = Location::all();
+
+        return view('sarpras.inventory.index', compact('items', 'locations'));
+    }
+
+    public function create(): View
+    {
+        $locations = Location::all();
+        return view('sarpras.inventory.create', compact('locations'));
+    }
+
+    public function store(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'code' => ['required', 'string', 'max:50', 'unique:items,code'],
+            'name' => ['required', 'string', 'max:255'],
+            'category' => ['required', 'string'],
+            'unit' => ['required', 'string', 'max:30'],
+            'stock' => ['required', 'integer', 'min:0'],
+            'source' => ['required', 'in:pembelian,bantuan'],
+            'department' => ['nullable', 'string'],
+            'location_id' => ['nullable', 'exists:locations,id'],
+            'current_condition' => ['required', 'in:baik,rusak_ringan,rusak_berat'],
+            'description' => ['nullable', 'string'],
+        ]);
+
+        DB::transaction(function () use ($validated, $request) {
+            $item = Item::create($validated);
+
+            // Jika ada lokasi awal, buat histori mutasi lokasi perdana
+            if (!empty($validated['location_id'])) {
+                LocationHistory::create([
+                    'item_id' => $item->id,
+                    'from_location_id' => null,
+                    'to_location_id' => $validated['location_id'],
+                    'user_id' => $request->user()->id,
+                    'notes' => 'Pencatatan inventaris awal',
+                    'moved_at' => now(),
+                ]);
+            }
+
+            // Buat entri awal riwayat kondisi fisik
+            ConditionHistory::create([
+                'item_id' => $item->id,
+                'from_condition' => $validated['current_condition'],
+                'to_condition' => $validated['current_condition'],
+                'user_id' => $request->user()->id,
+                'notes' => 'Kondisi fisik saat registrasi aset',
+                'recorded_at' => now(),
+            ]);
+        });
+
+        return redirect()->route('sarpras.inventory.index')
+            ->with('success', 'Master data barang inventaris berhasil ditambahkan.');
+    }
+
+    public function show(Item $item): View
+    {
+        $item->load([
+            'location',
+            'locationHistories.fromLocation',
+            'locationHistories.toLocation',
+            'locationHistories.user',
+            'conditionHistories.user',
+            'incomingItems.user',
+            'outgoingItems.user',
+            'distributions.toLocation',
+        ]);
+        $locations = Location::all();
+
+        return view('sarpras.inventory.show', compact('item', 'locations'));
+    }
+
+    public function updateLocation(Request $request, Item $item): RedirectResponse
+    {
+        $validated = $request->validate([
+            'to_location_id' => ['required', 'exists:locations,id'],
+            'notes' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        if ($item->location_id == $validated['to_location_id']) {
+            return back()->withErrors(['msg' => 'Lokasi tujuan sama dengan lokasi saat ini.']);
+        }
+
+        DB::transaction(function () use ($item, $validated, $request) {
+            LocationHistory::create([
+                'item_id' => $item->id,
+                'from_location_id' => $item->location_id,
+                'to_location_id' => $validated['to_location_id'],
+                'user_id' => $request->user()->id,
+                'notes' => $validated['notes'] ?? 'Pemindahan lokasi barang',
+                'moved_at' => now(),
+            ]);
+
+            $item->update(['location_id' => $validated['to_location_id']]);
+        });
+
+        return back()->with('success', 'Lokasi barang berhasil diperbarui dan histori mutasi tercatat.');
+    }
+
+    public function updateCondition(Request $request, Item $item): RedirectResponse
+    {
+        $validated = $request->validate([
+            'to_condition' => ['required', 'in:baik,rusak_ringan,rusak_berat'],
+            'notes' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        if ($item->current_condition === $validated['to_condition']) {
+            return back()->withErrors(['msg' => 'Status kondisi fisik sama dengan kondisi saat ini.']);
+        }
+
+        DB::transaction(function () use ($item, $validated, $request) {
+            ConditionHistory::create([
+                'item_id' => $item->id,
+                'from_condition' => $item->current_condition,
+                'to_condition' => $validated['to_condition'],
+                'user_id' => $request->user()->id,
+                'notes' => $validated['notes'] ?? 'Pembaruan kondisi fisik barang',
+                'recorded_at' => now(),
+            ]);
+
+            $item->update(['current_condition' => $validated['to_condition']]);
+        });
+
+        return back()->with('success', 'Riwayat perubahan kondisi berhasil dicatat.');
+    }
+}
