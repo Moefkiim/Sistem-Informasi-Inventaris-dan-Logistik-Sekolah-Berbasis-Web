@@ -131,11 +131,7 @@ class AuthenticationAndRoleAccessTest extends TestCase
 
         $this->actingAs($kajur)
             ->get('/kajur/area')
-            ->assertStatus(200)
-            ->assertJson([
-                'status' => 'success',
-                'department' => 'RPL',
-            ]);
+            ->assertRedirect(route('kajur.submissions.index'));
 
         $this->actingAs($kajur)
             ->get('/sarpras/area')
@@ -156,10 +152,7 @@ class AuthenticationAndRoleAccessTest extends TestCase
 
         $this->actingAs($sarpras)
             ->get('/sarpras/area')
-            ->assertStatus(200)
-            ->assertJson([
-                'status' => 'success',
-            ]);
+            ->assertRedirect(route('sarpras.inventory.index'));
 
         $this->actingAs($sarpras)
             ->get('/kajur/area')
@@ -180,10 +173,7 @@ class AuthenticationAndRoleAccessTest extends TestCase
 
         $this->actingAs($kepsek)
             ->get('/kepala-sekolah/area')
-            ->assertStatus(200)
-            ->assertJson([
-                'status' => 'success',
-            ]);
+            ->assertRedirect(route('kepala_sekolah.approval.index'));
 
         $this->actingAs($kepsek)
             ->get('/kajur/area')

@@ -92,6 +92,71 @@ class SubmissionController extends Controller
     }
 
     /**
+     * Form edit pengajuan (Hanya jika status masih draft).
+     */
+    public function edit(Submission $submission): View|RedirectResponse
+    {
+        $this->authorizeKajur($submission);
+
+        if ($submission->status !== 'draft') {
+            return redirect()->route('kajur.submissions.show', $submission)
+                ->withErrors(['msg' => 'Hanya pengajuan berstatus draft yang dapat diubah.']);
+        }
+
+        $submission->load('items');
+        return view('kajur.submissions.edit', compact('submission'));
+    }
+
+    /**
+     * Update pengajuan draft.
+     */
+    public function update(Request $request, Submission $submission): RedirectResponse
+    {
+        $this->authorizeKajur($submission);
+
+        if ($submission->status !== 'draft') {
+            return back()->withErrors(['msg' => 'Hanya pengajuan berstatus draft yang dapat diubah.']);
+        }
+
+        $validated = $request->validate([
+            'title' => ['required', 'string', 'max:255'],
+            'purpose' => ['nullable', 'string'],
+            'action' => ['required', 'in:draft,submit'],
+            'items' => ['required', 'array', 'min:1'],
+            'items.*.item_name' => ['required', 'string', 'max:255'],
+            'items.*.quantity' => ['required', 'integer', 'min:1'],
+            'items.*.unit' => ['required', 'string', 'max:50'],
+            'items.*.estimated_price' => ['nullable', 'numeric', 'min:0'],
+            'items.*.specification' => ['nullable', 'string'],
+        ]);
+
+        DB::transaction(function () use ($submission, $validated) {
+            $status = $validated['action'] === 'submit' ? 'submitted' : 'draft';
+
+            $submission->update([
+                'title' => $validated['title'],
+                'purpose' => $validated['purpose'] ?? null,
+                'status' => $status,
+            ]);
+
+            $submission->items()->delete();
+
+            foreach ($validated['items'] as $itemData) {
+                $submission->items()->create([
+                    'item_name' => $itemData['item_name'],
+                    'quantity' => $itemData['quantity'],
+                    'unit' => $itemData['unit'],
+                    'estimated_price' => $itemData['estimated_price'] ?? 0,
+                    'specification' => $itemData['specification'] ?? null,
+                ]);
+            }
+        });
+
+        return redirect()->route('kajur.submissions.show', $submission)
+            ->with('success', 'Pengajuan draft berhasil diperbarui.');
+    }
+
+    /**
      * Batalkan pengajuan (Kajur hanya bisa membatalkan saat masih draft).
      */
     public function cancel(Submission $submission): RedirectResponse

@@ -30,13 +30,15 @@ class ReportController extends Controller
 
         $data = null;
 
+        $isPrint = $request->get('export') === 'print';
+
         switch ($type) {
             case 'incoming':
                 $query = IncomingItem::with(['item', 'user'])->latest('entry_date');
                 if ($startDate && $endDate) {
                     $query->whereBetween('entry_date', [$startDate, $endDate]);
                 }
-                $data = $query->paginate(20);
+                $data = $isPrint ? $query->get() : $query->paginate(20);
                 break;
 
             case 'outgoing':
@@ -44,7 +46,7 @@ class ReportController extends Controller
                 if ($startDate && $endDate) {
                     $query->whereBetween('exit_date', [$startDate, $endDate]);
                 }
-                $data = $query->paginate(20);
+                $data = $isPrint ? $query->get() : $query->paginate(20);
                 break;
 
             case 'distribution':
@@ -55,7 +57,7 @@ class ReportController extends Controller
                 if ($department) {
                     $query->where('recipient_department', $department);
                 }
-                $data = $query->paginate(20);
+                $data = $isPrint ? $query->get() : $query->paginate(20);
                 break;
 
             case 'submission':
@@ -66,7 +68,7 @@ class ReportController extends Controller
                 if ($department) {
                     $query->where('department', $department);
                 }
-                $data = $query->paginate(20);
+                $data = $isPrint ? $query->get() : $query->paginate(20);
                 break;
 
             case 'inventory':
@@ -75,8 +77,12 @@ class ReportController extends Controller
                 if ($department) {
                     $query->where('department', $department);
                 }
-                $data = $query->paginate(20);
+                $data = $isPrint ? $query->get() : $query->paginate(20);
                 break;
+        }
+
+        if ($isPrint) {
+            return view('reports.print', compact('data', 'type', 'startDate', 'endDate', 'department'));
         }
 
         return view('reports.index', compact('data', 'type', 'startDate', 'endDate', 'department'));

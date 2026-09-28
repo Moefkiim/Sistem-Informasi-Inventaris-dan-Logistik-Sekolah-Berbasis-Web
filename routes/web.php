@@ -46,6 +46,12 @@ Route::middleware(['auth', 'role'])->group(function () {
     // Modul Laporan (Dapat diakses seluruh role dengan filter otomatis sesuai wewenang)
     Route::get('/reports', [\App\Http\Controllers\ReportController::class, 'index'])->name('reports.index');
 
+    // Modul Dokumen (Dapat diakses seluruh role sesuai hak akses)
+    Route::get('/documents', [\App\Http\Controllers\DocumentController::class, 'index'])->name('documents.index');
+    Route::post('/documents', [\App\Http\Controllers\DocumentController::class, 'store'])->name('documents.store');
+    Route::get('/documents/{document}/download', [\App\Http\Controllers\DocumentController::class, 'download'])->name('documents.download');
+    Route::delete('/documents/{document}', [\App\Http\Controllers\DocumentController::class, 'destroy'])->name('documents.destroy');
+
     // ==========================================
     // AREA KAJUR (Kepala Kejuruan)
     // ==========================================
@@ -55,6 +61,8 @@ Route::middleware(['auth', 'role'])->group(function () {
         Route::get('/submissions/create', [\App\Http\Controllers\Kajur\SubmissionController::class, 'create'])->name('submissions.create');
         Route::post('/submissions', [\App\Http\Controllers\Kajur\SubmissionController::class, 'store'])->name('submissions.store');
         Route::get('/submissions/{submission}', [\App\Http\Controllers\Kajur\SubmissionController::class, 'show'])->name('submissions.show');
+        Route::get('/submissions/{submission}/edit', [\App\Http\Controllers\Kajur\SubmissionController::class, 'edit'])->name('submissions.edit');
+        Route::put('/submissions/{submission}', [\App\Http\Controllers\Kajur\SubmissionController::class, 'update'])->name('submissions.update');
         Route::post('/submissions/{submission}/cancel', [\App\Http\Controllers\Kajur\SubmissionController::class, 'cancel'])->name('submissions.cancel');
         Route::post('/submissions/{submission}/submit', [\App\Http\Controllers\Kajur\SubmissionController::class, 'submitDraft'])->name('submissions.submitDraft');
 

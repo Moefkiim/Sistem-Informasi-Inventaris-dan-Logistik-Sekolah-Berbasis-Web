@@ -38,9 +38,9 @@
                 <button type="submit" class="btn btn-primary w-100">
                     <i class="bi bi-filter me-1"></i> Filter
                 </button>
-                <button type="button" class="btn btn-light-success" onclick="window.print()">
-                    <i class="bi bi-printer"></i>
-                </button>
+                <a href="{{ route('reports.index', array_merge(request()->all(), ['export' => 'print'])) }}" target="_blank" class="btn btn-light-success flex-shrink-0" title="Cetak / Export Laporan">
+                    <i class="bi bi-printer me-1"></i> Cetak
+                </a>
             </div>
         </form>
     </div>

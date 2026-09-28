@@ -94,6 +94,9 @@
 
         @if($submission->isDraft())
             <div class="d-flex gap-2">
+                <a href="{{ route('kajur.submissions.edit', $submission) }}" class="btn btn-light-warning">
+                    <i class="bi bi-pencil me-1"></i> Edit Draft
+                </a>
                 <form action="{{ route('kajur.submissions.cancel', $submission) }}" method="POST">
                     @csrf
                     <button type="submit" class="btn btn-light-danger" onclick="return confirm('Yakin ingin membatalkan draf pengajuan?')">

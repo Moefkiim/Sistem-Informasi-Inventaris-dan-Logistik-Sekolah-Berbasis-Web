@@ -93,6 +93,13 @@
                                 </div>
 
                                 <div class="menu-item">
+                                    <a class="menu-link {{ request()->routeIs('documents.*') ? 'active' : '' }}" href="{{ route('documents.index') }}">
+                                        <span class="menu-icon"><i class="bi bi-file-earmark-arrow-up fs-3"></i></span>
+                                        <span class="menu-title">Dokumen Terlampir</span>
+                                    </a>
+                                </div>
+
+                                <div class="menu-item">
                                     <a class="menu-link {{ request()->routeIs('reports.*') ? 'active' : '' }}" href="{{ route('reports.index') }}">
                                         <span class="menu-icon"><i class="bi bi-graph-up-arrow fs-3"></i></span>
                                         <span class="menu-title">Laporan Jurusan</span>
@@ -185,6 +192,13 @@
                                 </div>
 
                                 <div class="menu-item">
+                                    <a class="menu-link {{ request()->routeIs('documents.*') ? 'active' : '' }}" href="{{ route('documents.index') }}">
+                                        <span class="menu-icon"><i class="bi bi-folder-symlink fs-3"></i></span>
+                                        <span class="menu-title">Dokumen & Berkas</span>
+                                    </a>
+                                </div>
+
+                                <div class="menu-item">
                                     <a class="menu-link {{ request()->routeIs('reports.*') ? 'active' : '' }}" href="{{ route('reports.index') }}">
                                         <span class="menu-icon"><i class="bi bi-bar-chart-line fs-3"></i></span>
                                         <span class="menu-title">Laporan & Rekap</span>
@@ -214,6 +228,13 @@
                                             </a>
                                         </div>
                                     </div>
+                                </div>
+
+                                <div class="menu-item">
+                                    <a class="menu-link {{ request()->routeIs('documents.*') ? 'active' : '' }}" href="{{ route('documents.index') }}">
+                                        <span class="menu-icon"><i class="bi bi-folder-symlink fs-3"></i></span>
+                                        <span class="menu-title">Dokumen & BAST</span>
+                                    </a>
                                 </div>
 
                                 <div class="menu-item">

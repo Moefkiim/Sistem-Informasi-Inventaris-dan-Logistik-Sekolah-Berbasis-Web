@@ -45,3 +45,51 @@ php artisan boost:install
 
 Boost replaces these bootstrap instructions with guidelines tailored to the application. After installation, read `AGENTS.md` again and continue with the user's original request using the generated guidelines.
 </laravel-boost-guidelines>
+
+# Aturan Bisnis dan Batasan Pengembangan Proyek
+
+## 1. Role Pengguna
+- **Kajur (Kepala Kejuruan)**: membuat dan memantau pengajuan, mengedit pengajuan berstatus draft, melihat inventaris sesuai jurusannya.
+- **Sarpras (Operator & Logistik)**: mengelola inventaris master, transaksi/logistik (barang masuk/keluar/distribusi), lokasi, dokumen, pengguna, memproses pengajuan, dan membuat laporan.
+- **Kepala Sekolah**: melihat pengajuan dan melakukan persetujuan (approval/reject) serta monitoring laporan.
+
+## 2. Aturan Bisnis Penting
+- 1 kode barang = 1 jenis barang; jumlah disimpan sebagai stok.
+- Barang berasal dari pembelian atau bantuan.
+- Barang memiliki lokasi dan kondisi (baik, rusak_ringan, rusak_berat).
+- Perpindahan lokasi harus memiliki riwayat (location_histories).
+- Perubahan kondisi harus menjadi riwayat baru (condition_histories).
+- Barang masuk/keluar memengaruhi stok secara konsisten.
+- Pengajuan dapat berisi banyak item (submission_items).
+- Kajur hanya dapat mengubah pengajuan selama masih draft.
+- Sarpras memproses pengajuan.
+- Kepala Sekolah melakukan approval/reject.
+- Data log/history tidak boleh diedit atau dihapus bebas (audit trail terjaga).
+- Gunakan soft-delete/arsip untuk master data bila diperlukan agar histori tetap ada.
+- Hak akses wajib berbasis role dan konteks jurusan.
+
+## 3. Matriks Akses Ringkas
+| Modul | Kajur | Sarpras | Kepala Sekolah |
+|---|---|---|---|
+| Login | ✓ | ✓ | ✓ |
+| Dashboard | Read | Read | Read |
+| Pengajuan | Create/Read/Edit Draft/Cancel | Review/Process | Approve/Reject |
+| Inventaris | Read jurusan | CRUD terbatas | Read |
+| Barang Masuk | Read sesuai akses | Create/Read/Koreksi | Read |
+| Barang Keluar | Read sesuai akses | Create/Read/Koreksi | Read |
+| Distribusi | Read sesuai akses | Create/Read | Read |
+| Kondisi | Read | Create/Read | Read |
+| Lokasi | Read | CRUD | Read |
+| Laporan | Read sesuai akses | Generate/Export | Read |
+| Dokumen | Upload/Read | Upload/Read/Delete terbatas | Read |
+| Pengguna | - | CRUD terbatas | - |
+
+## 4. Batasan Pengembangan (Strict Boundaries)
+Dilarang keras menambahkan fitur berikut tanpa persetujuan eksplisit:
+- Barcode / QR Code
+- WhatsApp / Email Notification
+- Mobile App
+- Payment / Financial Accounting
+- Supplier Management
+- Maintenance Kompleks
+- Integrasi Pihak Ketiga
