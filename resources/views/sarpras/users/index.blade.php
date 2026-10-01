@@ -100,13 +100,15 @@
                                         @endif
                                     </td>
                                     <td class="text-end">
-                                        @if($u->id !== auth()->id())
+                                        @if($u->id !== auth()->id() && !in_array($u->role, ['kepala_sekolah', 'sarpras']))
                                             <form action="{{ route('sarpras.users.toggle', $u) }}" method="POST" class="d-inline">
                                                 @csrf
                                                 <button type="submit" class="btn btn-sm btn-light-{{ $u->is_active ? 'warning' : 'success' }}" onclick="return confirm('Ubah status aktif pengguna ini?')">
                                                     {{ $u->is_active ? 'Nonaktifkan' : 'Aktifkan' }}
                                                 </button>
                                             </form>
+                                        @else
+                                            <span class="text-muted fs-8">Terkunci</span>
                                         @endif
                                     </td>
                                 </tr>

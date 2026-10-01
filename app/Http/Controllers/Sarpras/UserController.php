@@ -57,6 +57,10 @@ class UserController extends Controller
             return back()->withErrors(['msg' => 'Anda tidak dapat menonaktifkan akun sendiri.']);
         }
 
+        if (in_array($user->role, ['kepala_sekolah', 'sarpras'])) {
+            return back()->withErrors(['msg' => 'Anda tidak memiliki wewenang untuk mengubah status akun Kepala Sekolah atau Sarpras.']);
+        }
+
         $user->update(['is_active' => ! $user->is_active]);
 
         $statusText = $user->is_active ? 'diaktifkan' : 'dinonaktifkan';
