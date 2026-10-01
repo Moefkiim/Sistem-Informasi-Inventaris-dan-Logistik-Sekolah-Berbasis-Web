@@ -73,7 +73,7 @@
             <div class="separator separator-dashed my-6"></div>
             <div class="bg-light-success p-6 rounded border border-success">
                 <h4 class="fw-bolder text-success mb-3">Keputusan Kepala Sekolah</h4>
-                <form action="{{ route('principal.approval.decide', $submission) }}" method="POST">
+                <form action="{{ route('kepala_sekolah.approval.decide', $submission) }}" method="POST">
                     @csrf
                     <div class="mb-4">
                         <label class="form-label fw-bold">Catatan / Arahan Kepala Sekolah</label>
@@ -100,7 +100,7 @@
         @endif
     </div>
     <div class="card-footer">
-        <a href="{{ route('principal.approval.index') }}" class="btn btn-light">
+        <a href="{{ route('kepala_sekolah.approval.index') }}" class="btn btn-light">
             <i class="bi bi-arrow-left me-1"></i> Kembali ke Daftar
         </a>
     </div>

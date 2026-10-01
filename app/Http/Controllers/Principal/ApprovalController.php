@@ -64,7 +64,7 @@ class ApprovalController extends Controller
 
         $statusLabel = $status === 'approved' ? 'disetujui' : 'ditolak';
 
-        return redirect()->route('principal.approval.index')
+        return redirect()->route('kepala_sekolah.approval.index')
             ->with('success', "Pengajuan No. {$submission->submission_number} telah berhasil {$statusLabel}.");
     }
 }
