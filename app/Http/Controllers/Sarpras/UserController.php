@@ -24,8 +24,18 @@ class UserController extends Controller
             'username' => ['required', 'string', 'max:50', 'unique:users,username'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:6'],
-            'role' => ['required', 'in:kajur,sarpras,kepala_sekolah'],
-            'department' => ['nullable', 'string', 'max:100'],
+            'role' => ['required', 'in:kajur,sarpras'],
+            'department' => [
+                'required_if:role,kajur',
+                'nullable',
+                'string',
+                'max:100',
+                function ($attribute, $value, $fail) use ($request) {
+                    if ($request->input('role') === 'kajur' && empty(trim((string) $value))) {
+                        $fail('Jurusan wajib diisi jika peran pengguna adalah Kajur.');
+                    }
+                },
+            ],
         ]);
 
         User::create([

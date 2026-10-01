@@ -44,7 +44,6 @@
                         <select name="role" class="form-select form-select-solid" required>
                             <option value="kajur">Kajur (Kepala Kejuruan)</option>
                             <option value="sarpras">Sarpras (Operator & Logistik)</option>
-                            <option value="kepala_sekolah">Kepala Sekolah (Approval)</option>
                         </select>
                     </div>
 
