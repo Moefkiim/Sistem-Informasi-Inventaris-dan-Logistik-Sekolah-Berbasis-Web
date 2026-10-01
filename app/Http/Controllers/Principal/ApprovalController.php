@@ -55,12 +55,12 @@ class ApprovalController extends Controller
 
         $status = $validated['action'] === 'approve' ? 'approved' : 'rejected';
 
-        $submission->update([
-            'status' => $status,
-            'principal_notes' => $validated['principal_notes'] ?? null,
-            'principal_user_id' => $request->user()->id,
-            'decided_at' => now(),
-        ]);
+        // Fields ini dikecualikan dari $fillable — set secara eksplisit
+        $submission->status           = $status;
+        $submission->principal_notes  = $validated['principal_notes'] ?? null;
+        $submission->principal_user_id = $request->user()->id;
+        $submission->decided_at       = now();
+        $submission->save();
 
         $statusLabel = $status === 'approved' ? 'disetujui' : 'ditolak';
 

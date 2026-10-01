@@ -38,15 +38,16 @@ class UserController extends Controller
             ],
         ]);
 
-        User::create([
-            'name' => $validated['name'],
-            'username' => $validated['username'],
-            'email' => $validated['email'],
-            'password' => $validated['password'],
-            'role' => $validated['role'],
-            'department' => $validated['department'] ?? null,
-            'is_active' => true,
-        ]);
+        // role & is_active dikecualikan dari $fillable — set secara eksplisit
+        $user = new User();
+        $user->name       = $validated['name'];
+        $user->username   = $validated['username'];
+        $user->email      = $validated['email'];
+        $user->password   = $validated['password'];
+        $user->role       = $validated['role'];
+        $user->department = $validated['department'] ?? null;
+        $user->is_active  = true;
+        $user->save();
 
         return back()->with('success', 'Pengguna baru berhasil ditambahkan.');
     }
@@ -61,7 +62,9 @@ class UserController extends Controller
             return back()->withErrors(['msg' => 'Anda tidak memiliki wewenang untuk mengubah status akun Kepala Sekolah atau Sarpras.']);
         }
 
-        $user->update(['is_active' => ! $user->is_active]);
+        // is_active dikecualikan dari $fillable — set secara eksplisit
+        $user->is_active = ! $user->is_active;
+        $user->save();
 
         $statusText = $user->is_active ? 'diaktifkan' : 'dinonaktifkan';
 

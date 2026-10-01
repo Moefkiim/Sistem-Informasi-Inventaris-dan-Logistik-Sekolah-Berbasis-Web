@@ -56,14 +56,14 @@ class SubmissionController extends Controller
             $submissionNumber = 'REQ-' . date('Ymd') . '-' . strtoupper(substr(uniqid(), -4));
             $status = $validated['action'] === 'submit' ? 'submitted' : 'draft';
 
-            $submission = Submission::create([
-                'submission_number' => $submissionNumber,
-                'user_id' => $user->id,
-                'department' => $user->department ?? 'Umum',
-                'title' => $validated['title'],
-                'purpose' => $validated['purpose'] ?? null,
-                'status' => $status,
-            ]);
+            $submission = new Submission();
+            $submission->submission_number = $submissionNumber;
+            $submission->user_id    = $user->id;
+            $submission->department = $user->department ?? 'Umum';
+            $submission->title      = $validated['title'];
+            $submission->purpose    = $validated['purpose'] ?? null;
+            $submission->status     = $status; // dikecualikan dari $fillable — set eksplisit
+            $submission->save();
 
             foreach ($validated['items'] as $itemData) {
                 $submission->items()->create([
@@ -133,11 +133,11 @@ class SubmissionController extends Controller
         DB::transaction(function () use ($submission, $validated) {
             $status = $validated['action'] === 'submit' ? 'submitted' : 'draft';
 
-            $submission->update([
-                'title' => $validated['title'],
-                'purpose' => $validated['purpose'] ?? null,
-                'status' => $status,
-            ]);
+            // status dikecualikan dari $fillable — set properti secara eksplisit
+            $submission->title   = $validated['title'];
+            $submission->purpose = $validated['purpose'] ?? null;
+            $submission->status  = $status;
+            $submission->save();
 
             $submission->items()->delete();
 
@@ -167,7 +167,9 @@ class SubmissionController extends Controller
             return back()->withErrors(['msg' => 'Hanya pengajuan berstatus draft yang dapat dibatalkan.']);
         }
 
-        $submission->update(['status' => 'cancelled']);
+        // status dikecualikan dari $fillable — set properti secara eksplisit
+        $submission->status = 'cancelled';
+        $submission->save();
 
         return redirect()->route('kajur.submissions.index')
             ->with('success', 'Pengajuan draft telah berhasil dibatalkan.');
@@ -184,7 +186,9 @@ class SubmissionController extends Controller
             return back()->withErrors(['msg' => 'Pengajuan ini sudah pernah diajukan.']);
         }
 
-        $submission->update(['status' => 'submitted']);
+        // status dikecualikan dari $fillable — set properti secara eksplisit
+        $submission->status = 'submitted';
+        $submission->save();
 
         return redirect()->route('kajur.submissions.index')
             ->with('success', 'Pengajuan berhasil dikirimkan ke pihak Sarpras untuk ditinjau.');

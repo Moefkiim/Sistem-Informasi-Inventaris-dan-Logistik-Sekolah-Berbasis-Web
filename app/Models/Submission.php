@@ -12,19 +12,18 @@ class Submission extends Model
 {
     use HasFactory;
 
+    /**
+     * Hanya field yang boleh diisi via mass-assignment dari form biasa.
+     * Field state-transition (status, sarpras_*, principal_*, *_at) dikecualikan —
+     * field tersebut hanya boleh diubah secara eksplisit melalui method controller
+     * yang menangani transisi status, bukan dari input form sembarang.
+     */
     protected $fillable = [
         'submission_number',
         'user_id',
         'department',
         'title',
         'purpose',
-        'status',
-        'sarpras_notes',
-        'sarpras_user_id',
-        'principal_notes',
-        'principal_user_id',
-        'reviewed_at',
-        'decided_at',
     ];
 
     protected function casts(): array

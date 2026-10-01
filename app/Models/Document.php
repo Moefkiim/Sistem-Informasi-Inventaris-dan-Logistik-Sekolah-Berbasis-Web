@@ -11,6 +11,11 @@ class Document extends Model
 {
     use SoftDeletes;
 
+    /**
+     * documentable_type / documentable_id dikecualikan dari mass-assignment —
+     * set via relasi Eloquent (morphMany/associate) agar kepemilikan morph
+     * selalu diverifikasi secara eksplisit.
+     */
     protected $fillable = [
         'title',
         'file_path',
@@ -20,8 +25,6 @@ class Document extends Model
         'category',
         'department',
         'user_id',
-        'documentable_type',
-        'documentable_id',
     ];
 
     public function user(): BelongsTo

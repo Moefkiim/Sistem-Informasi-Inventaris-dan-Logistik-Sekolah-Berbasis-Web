@@ -53,12 +53,12 @@ class SubmissionController extends Controller
 
         $status = $validated['action'] === 'review' ? 'reviewed_sarpras' : 'rejected';
 
-        $submission->update([
-            'status' => $status,
-            'sarpras_notes' => $validated['sarpras_notes'],
-            'sarpras_user_id' => $request->user()->id,
-            'reviewed_at' => now(),
-        ]);
+        // Fields ini dikecualikan dari $fillable — set secara eksplisit
+        $submission->status         = $status;
+        $submission->sarpras_notes  = $validated['sarpras_notes'];
+        $submission->sarpras_user_id = $request->user()->id;
+        $submission->reviewed_at    = now();
+        $submission->save();
 
         $msg = $status === 'reviewed_sarpras'
             ? 'Pengajuan berhasil diproses dan diteruskan ke Kepala Sekolah untuk approval.'
