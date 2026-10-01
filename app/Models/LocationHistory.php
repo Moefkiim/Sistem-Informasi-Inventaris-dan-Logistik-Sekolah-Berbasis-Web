@@ -16,6 +16,17 @@ class LocationHistory extends Model
         'moved_at',
     ];
 
+    protected static function booted(): void
+    {
+        static::updating(function () {
+            throw new \RuntimeException('Riwayat lokasi bersifat append-only dan tidak boleh diubah.');
+        });
+
+        static::deleting(function () {
+            throw new \RuntimeException('Riwayat lokasi bersifat append-only dan tidak boleh dihapus.');
+        });
+    }
+
     protected function casts(): array
     {
         return [
