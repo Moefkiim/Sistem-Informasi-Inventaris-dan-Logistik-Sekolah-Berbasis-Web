@@ -15,6 +15,10 @@ class InventoryController extends Controller
     public function index(Request $request): View
     {
         $user = $request->user();
+        if (empty($user->department)) {
+            abort(403, 'Jurusan akun Kajur belum diatur.');
+        }
+
         $department = $user->department;
 
         $items = Item::where('department', $department)
@@ -31,8 +35,11 @@ class InventoryController extends Controller
     public function show(Item $item): View
     {
         $user = auth()->user();
+        if (empty($user->department)) {
+            abort(403, 'Jurusan akun Kajur belum diatur.');
+        }
 
-        if ($item->department !== $user->department) {
+        if (empty($item->department) || $item->department !== $user->department) {
             abort(403, 'Akses ditolak: Anda hanya berhak melihat inventaris jurusan Anda sendiri.');
         }
 

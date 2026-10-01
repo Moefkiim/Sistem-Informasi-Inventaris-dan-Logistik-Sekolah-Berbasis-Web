@@ -25,6 +25,9 @@ class ReportController extends Controller
 
         // Jika user adalah Kajur, filter departemen otomatis terkunci ke jurusannya
         if ($user->isKajur()) {
+            if (empty($user->department)) {
+                abort(403, 'Akses ditolak: Jurusan akun Kajur belum diatur.');
+            }
             $department = $user->department;
         }
 
@@ -38,6 +41,9 @@ class ReportController extends Controller
                 if ($startDate && $endDate) {
                     $query->whereBetween('entry_date', [$startDate, $endDate]);
                 }
+                if ($department) {
+                    $query->whereHas('item', fn($q) => $q->where('department', $department));
+                }
                 $data = $isPrint ? $query->get() : $query->paginate(20);
                 break;
 
@@ -45,6 +51,9 @@ class ReportController extends Controller
                 $query = OutgoingItem::with(['item', 'user'])->latest('exit_date');
                 if ($startDate && $endDate) {
                     $query->whereBetween('exit_date', [$startDate, $endDate]);
+                }
+                if ($department) {
+                    $query->whereHas('item', fn($q) => $q->where('department', $department));
                 }
                 $data = $isPrint ? $query->get() : $query->paginate(20);
                 break;
