@@ -75,20 +75,34 @@ class LogisticsController extends Controller
     public function storeOutgoing(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'item_id' => ['required', 'exists:items,id'],
+            'item_id' => ['required', Rule::exists('items', 'id')->whereNull('deleted_at')],
             'quantity' => ['required', 'integer', 'min:1'],
             'exit_date' => ['required', 'date'],
             'reason' => ['required', 'string', 'max:255'],
             'notes' => ['nullable', 'string'],
         ]);
 
-        $item = Item::findOrFail($validated['item_id']);
+        DB::transaction(function () use ($validated, $request) {
+            $item = Item::where('id', $validated['item_id'])
+                ->lockForUpdate()
+                ->firstOrFail();
 
-        if ($item->stock < $validated['quantity']) {
-            return back()->withErrors(['quantity' => 'Stok tidak mencukupi. Stok saat ini: ' . $item->stock]);
-        }
+            if ($item->stock < $validated['quantity']) {
+                throw ValidationException::withMessages([
+                    'quantity' => 'Stok tidak mencukupi. Stok saat ini: ' . $item->stock,
+                ]);
+            }
 
-        DB::transaction(function () use ($validated, $item, $request) {
+            $affected = Item::where('id', $validated['item_id'])
+                ->where('stock', '>=', $validated['quantity'])
+                ->decrement('stock', $validated['quantity']);
+
+            if ($affected === 0) {
+                throw ValidationException::withMessages([
+                    'quantity' => 'Stok tidak mencukupi.',
+                ]);
+            }
+
             $transactionNumber = 'OUT-' . date('Ymd') . '-' . strtoupper(substr(uniqid(), -4));
 
             OutgoingItem::create([
@@ -100,8 +114,6 @@ class LogisticsController extends Controller
                 'user_id' => $request->user()->id,
                 'notes' => $validated['notes'] ?? null,
             ]);
-
-            $item->decrement('stock', $validated['quantity']);
         });
 
         return back()->with('success', 'Transaksi barang keluar berhasil dicatat dan stok telah dikurangi.');
