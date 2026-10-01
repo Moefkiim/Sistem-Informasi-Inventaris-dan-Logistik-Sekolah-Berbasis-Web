@@ -106,7 +106,7 @@
                         </tbody>
                     </table>
                 </div>
-                <div class="mt-4">{{ $incomingLogs->links() }}</div>
+                <div class="mt-4">{{ $incomingLogs->withQueryString()->links() }}</div>
             </div>
         </div>
     </div>

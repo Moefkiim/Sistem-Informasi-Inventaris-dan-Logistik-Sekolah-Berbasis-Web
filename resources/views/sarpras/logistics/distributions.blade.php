@@ -113,7 +113,7 @@
                         </tbody>
                     </table>
                 </div>
-                <div class="mt-4">{{ $distributions->links() }}</div>
+                <div class="mt-4">{{ $distributions->withQueryString()->links() }}</div>
             </div>
         </div>
     </div>

@@ -92,7 +92,7 @@
             </table>
         </div>
         <div class="mt-4">
-            {{ $submissions->links() }}
+            {{ $submissions->withQueryString()->links() }}
         </div>
     </div>
 </div>

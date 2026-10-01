@@ -72,7 +72,7 @@
                 </tbody>
             </table>
         </div>
-        <div class="mt-4">{{ $submissions->links() }}</div>
+        <div class="mt-4">{{ $submissions->withQueryString()->links() }}</div>
     </div>
 </div>
 @endsection

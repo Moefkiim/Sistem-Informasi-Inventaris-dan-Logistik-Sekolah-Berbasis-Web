@@ -73,7 +73,7 @@
             </table>
         </div>
         <div class="mt-4">
-            {{ $items->links() }}
+            {{ $items->withQueryString()->links() }}
         </div>
     </div>
 </div>

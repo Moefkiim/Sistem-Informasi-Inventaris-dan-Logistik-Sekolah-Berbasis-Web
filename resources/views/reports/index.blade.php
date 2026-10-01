@@ -155,7 +155,7 @@
                 </table>
             @endif
         </div>
-        <div class="mt-4">{{ $data->links() }}</div>
+        <div class="mt-4">{{ $data->withQueryString()->links() }}</div>
     </div>
 </div>
 @endsection
