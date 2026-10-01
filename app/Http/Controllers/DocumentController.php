@@ -21,6 +21,9 @@ class DocumentController extends Controller
 
         // Kajur hanya dapat melihat dokumen umum atau dokumen sesuai jurusannya
         if ($user->isKajur()) {
+            if (empty($user->department)) {
+                abort(403, 'Akses ditolak: Jurusan akun Kajur belum diatur.');
+            }
             $query->where(function ($q) use ($user) {
                 $q->whereNull('department')
                   ->orWhere('department', $user->department);
@@ -47,6 +50,10 @@ class DocumentController extends Controller
             abort(403, 'Kepala Sekolah tidak memiliki akses mengunggah dokumen.');
         }
 
+        if ($user->isKajur() && empty($user->department)) {
+            abort(403, 'Akses ditolak: Jurusan akun Kajur belum diatur.');
+        }
+
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'category' => ['required', 'string', 'in:Nota,BAST,Surat Bantuan,Foto,Umum'],
@@ -59,8 +66,8 @@ class DocumentController extends Controller
         $extension = $file->getClientOriginalExtension();
         $fileSize = $file->getSize();
 
-        // Simpan file ke storage
-        $path = $file->store('documents', 'public');
+        // Simpan file ke storage privat (local disk)
+        $path = $file->store('documents', 'local');
 
         Document::create([
             'title' => $validated['title'],
@@ -85,15 +92,22 @@ class DocumentController extends Controller
         $user = auth()->user();
 
         // Filter akses jurusan untuk Kajur
-        if ($user->isKajur() && $document->department && $document->department !== $user->department) {
-            abort(403, 'Akses ditolak.');
+        if ($user->isKajur()) {
+            if (empty($user->department)) {
+                abort(403, 'Akses ditolak: Jurusan akun Kajur belum diatur.');
+            }
+            if (!empty($document->department) && $document->department !== $user->department) {
+                abort(403, 'Akses ditolak: Dokumen bukan milik jurusan Anda.');
+            }
         }
 
-        if (!Storage::disk('public')->exists($document->file_path)) {
+        $disk = Storage::disk('local')->exists($document->file_path) ? 'local' : (Storage::disk('public')->exists($document->file_path) ? 'public' : null);
+
+        if (! $disk) {
             return back()->withErrors(['msg' => 'File dokumen tidak ditemukan di penyimpanan server.']);
         }
 
-        return Storage::disk('public')->download($document->file_path, $document->file_name);
+        return Storage::disk($disk)->download($document->file_path, $document->file_name);
     }
 
     /**
@@ -103,11 +117,13 @@ class DocumentController extends Controller
     {
         $user = auth()->user();
 
-        if (!$user->isSarpras()) {
+        if (! $user->isSarpras()) {
             abort(403, 'Hanya pihak Sarpras yang berhak menghapus dokumen.');
         }
 
-        if (Storage::disk('public')->exists($document->file_path)) {
+        if (Storage::disk('local')->exists($document->file_path)) {
+            Storage::disk('local')->delete($document->file_path);
+        } elseif (Storage::disk('public')->exists($document->file_path)) {
             Storage::disk('public')->delete($document->file_path);
         }
 
