@@ -112,7 +112,7 @@
                 <h5 class="modal-title fw-bolder" id="uploadModalLabel">Unggah Dokumen Baru</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form action="{{ route('documents.store') }}" method="POST" enctype="multipart/form-data">
+            <form action="{{ route('documents.store') }}" method="POST" enctype="multipart/form-data" data-disable-on-submit>
                 @csrf
                 <div class="modal-body">
                     <div class="mb-4">

@@ -10,7 +10,7 @@
             <div class="card-header pt-6">
                 <h4 class="fw-bolder">Tambah Lokasi Baru</h4>
             </div>
-            <form action="{{ route('sarpras.locations.store') }}" method="POST">
+            <form action="{{ route('sarpras.locations.store') }}" method="POST" data-disable-on-submit>
                 @csrf
                 <div class="card-body">
                     @if($errors->any())

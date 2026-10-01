@@ -8,7 +8,7 @@
     <div class="card-header border-0 pt-6">
         <h3 class="fw-bolder">Edit Draft Permohonan: {{ $submission->submission_number }}</h3>
     </div>
-    <form action="{{ route('kajur.submissions.update', $submission) }}" method="POST">
+    <form action="{{ route('kajur.submissions.update', $submission) }}" method="POST" data-disable-on-submit>
         @csrf
         @method('PUT')
         <div class="card-body pt-0">
@@ -85,43 +85,3 @@
     </form>
 </div>
 @endsection
-
-@push('scripts')
-<script>
-    let itemIndex = {{ $submission->items->count() }};
-    document.getElementById('btn-add-item').addEventListener('click', function() {
-        const container = document.getElementById('items-container');
-        const html = `
-            <div class="item-row border rounded p-4 mb-4 bg-light position-relative">
-                <button type="button" class="btn btn-sm btn-icon btn-light-danger position-absolute top-0 end-0 m-2" onclick="this.closest('.item-row').remove()">
-                    <i class="bi bi-x-lg"></i>
-                </button>
-                <div class="row g-3">
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold required">Nama Barang</label>
-                        <input type="text" name="items[${itemIndex}][item_name]" class="form-control form-control-solid" placeholder="Nama barang" required>
-                    </div>
-                    <div class="col-md-2">
-                        <label class="form-label fw-bold required">Jumlah</label>
-                        <input type="number" name="items[${itemIndex}][quantity]" class="form-control form-control-solid" min="1" value="1" required>
-                    </div>
-                    <div class="col-md-2">
-                        <label class="form-label fw-bold required">Satuan</label>
-                        <input type="text" name="items[${itemIndex}][unit]" class="form-control form-control-solid" value="Unit" required>
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold">Estimasi Harga Satuan (Rp)</label>
-                        <input type="number" name="items[${itemIndex}][estimated_price]" class="form-control form-control-solid" placeholder="0">
-                    </div>
-                    <div class="col-md-12 mt-2">
-                        <label class="form-label fw-bold">Spesifikasi Detail</label>
-                        <input type="text" name="items[${itemIndex}][specification]" class="form-control form-control-solid" placeholder="Spesifikasi barang">
-                    </div>
-                </div>
-            </div>
-        `;
-        container.insertAdjacentHTML('beforeend', html);
-        itemIndex++;
-    });
-</script>
-@endpush

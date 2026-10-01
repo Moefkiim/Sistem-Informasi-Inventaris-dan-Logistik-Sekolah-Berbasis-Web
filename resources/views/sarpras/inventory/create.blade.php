@@ -8,7 +8,7 @@
     <div class="card-header pt-6">
         <h3 class="fw-bolder">Master Registrasi Barang Inventaris</h3>
     </div>
-    <form action="{{ route('sarpras.inventory.store') }}" method="POST">
+    <form action="{{ route('sarpras.inventory.store') }}" method="POST" data-disable-on-submit>
         @csrf
         <div class="card-body">
             @if($errors->any())

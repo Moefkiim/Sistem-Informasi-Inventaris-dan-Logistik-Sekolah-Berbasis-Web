@@ -10,7 +10,7 @@
             <div class="card-header pt-6">
                 <h4 class="fw-bolder">Catat Transaksi Masuk</h4>
             </div>
-            <form action="{{ route('sarpras.logistics.incoming.store') }}" method="POST">
+            <form action="{{ route('sarpras.logistics.incoming.store') }}" method="POST" data-disable-on-submit>
                 @csrf
                 <div class="card-body">
                     @if($errors->any())

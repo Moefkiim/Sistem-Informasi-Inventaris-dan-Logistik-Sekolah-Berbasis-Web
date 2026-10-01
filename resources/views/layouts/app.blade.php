@@ -12,8 +12,6 @@
     <link href="{{ asset('assets/plugins/global/plugins.bundle.css') }}" rel="stylesheet" type="text/css" />
     <link href="{{ asset('assets/css/style.bundle.css') }}" rel="stylesheet" type="text/css" />
     <style>
-        .menu-item .menu-sub { display: none; }
-        .menu-item.open > .menu-sub { display: block; }
         .aside-dark .menu-section-label { color: #4b5675 !important; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08rem; padding: 0.5rem 1.4rem; text-transform: uppercase; display: block; }
         .aside-dark .menu-sub .menu-link { padding-left: 3.2rem !important; }
         .badge-role { background: linear-gradient(135deg, #009ef7, #0066cc); color: #fff; padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; }
@@ -45,7 +43,7 @@
                 <!-- Aside Menu Berbasis Role -->
                 <div class="aside-menu flex-column-fluid">
                     <div class="hover-scroll-overlay-y my-5 my-lg-5" id="kt_aside_menu_wrapper" data-kt-scroll="true" data-kt-scroll-activate="{default: false, lg: true}" data-kt-scroll-height="auto" data-kt-scroll-dependencies="#kt_aside_logo, #kt_aside_footer" data-kt-scroll-wrappers="#kt_aside_menu" data-kt-scroll-offset="0">
-                        <div class="menu menu-column menu-title-gray-800 menu-state-title-primary menu-state-icon-primary menu-state-bullet-primary menu-arrow-gray-500" id="#kt_aside_menu" data-kt-menu="true">
+                        <div class="menu menu-column menu-title-gray-800 menu-state-title-primary menu-state-icon-primary menu-state-bullet-primary menu-arrow-gray-500" id="kt_aside_menu" data-kt-menu="true">
 
                             <!-- Dashboard (Semua Role) -->
                             <div class="menu-item">
@@ -354,20 +352,8 @@
     <script src="{{ asset('plugins/daterangepicker/moment.min.js') }}"></script>
     <script src="{{ asset('plugins/daterangepicker/daterangepicker.js') }}"></script>
 
-    <script>
-        // Accordion menu toggle
-        document.querySelectorAll('[data-kt-menu-trigger="click"]').forEach(function(el) {
-            el.addEventListener('click', function(e) {
-                var parent = this.closest('.menu-item.menu-accordion');
-                if (parent) { parent.classList.toggle('open'); }
-                e.stopPropagation();
-            });
-        });
-        // Auto-open active accordion
-        document.querySelectorAll('.menu-item.menu-accordion').forEach(function(item) {
-            if (item.querySelector('.menu-link.active')) { item.classList.add('open'); }
-        });
-    </script>
+    <!-- App Script (Dynamic rows, submit guard) -->
+    @vite('resources/js/app.js')
     @stack('scripts')
 </body>
 </html>
