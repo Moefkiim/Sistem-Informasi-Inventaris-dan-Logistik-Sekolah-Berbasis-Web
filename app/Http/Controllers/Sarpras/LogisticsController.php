@@ -32,7 +32,7 @@ class LogisticsController extends Controller
     public function storeIncoming(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'item_id' => ['required', 'exists:items,id'],
+            'item_id' => ['required', Rule::exists('items', 'id')->whereNull('deleted_at')],
             'quantity' => ['required', 'integer', 'min:1'],
             'source' => ['required', 'in:pembelian,bantuan'],
             'source_origin' => ['nullable', 'string', 'max:255'],
@@ -55,7 +55,9 @@ class LogisticsController extends Controller
             ]);
 
             // Tambahkan stok barang secara konsisten
-            Item::where('id', $validated['item_id'])->increment('stock', $validated['quantity']);
+            Item::where('id', $validated['item_id'])
+                ->whereNull('deleted_at')
+                ->increment('stock', $validated['quantity']);
         });
 
         return back()->with('success', 'Transaksi barang masuk berhasil dicatat dan stok telah bertambah.');

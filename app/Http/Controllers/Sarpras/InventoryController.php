@@ -10,6 +10,7 @@ use App\Models\LocationHistory;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class InventoryController extends Controller
@@ -53,7 +54,7 @@ class InventoryController extends Controller
             'stock' => ['required', 'integer', 'min:0'],
             'source' => ['required', 'in:pembelian,bantuan'],
             'department' => ['nullable', 'string'],
-            'location_id' => ['nullable', 'exists:locations,id'],
+            'location_id' => ['nullable', Rule::exists('locations', 'id')->whereNull('deleted_at')],
             'current_condition' => ['required', 'in:baik,rusak_ringan,rusak_berat'],
             'description' => ['nullable', 'string'],
         ]);
@@ -108,7 +109,7 @@ class InventoryController extends Controller
     public function updateLocation(Request $request, Item $item): RedirectResponse
     {
         $validated = $request->validate([
-            'to_location_id' => ['required', 'exists:locations,id'],
+            'to_location_id' => ['required', Rule::exists('locations', 'id')->whereNull('deleted_at')],
             'notes' => ['nullable', 'string', 'max:255'],
         ]);
 
