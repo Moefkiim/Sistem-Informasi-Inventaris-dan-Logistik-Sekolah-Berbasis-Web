@@ -46,4 +46,28 @@ class UserFactory extends Factory
             'email_verified_at' => null,
         ]);
     }
+
+    public function kajur(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => 'kajur',
+            'department' => 'Rekayasa Perangkat Lunak',
+        ]);
+    }
+
+    public function sarpras(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => 'sarpras',
+            'department' => null,
+        ]);
+    }
+
+    public function kepalaSekolah(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => 'kepala_sekolah',
+            'department' => null,
+        ]);
+    }
 }

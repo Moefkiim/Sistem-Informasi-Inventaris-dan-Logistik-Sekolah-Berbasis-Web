@@ -25,17 +25,7 @@ class UserController extends Controller
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:6'],
             'role' => ['required', 'in:kajur,sarpras'],
-            'department' => [
-                'required_if:role,kajur',
-                'nullable',
-                'string',
-                'max:100',
-                function ($attribute, $value, $fail) use ($request) {
-                    if ($request->input('role') === 'kajur' && empty(trim((string) $value))) {
-                        $fail('Jurusan wajib diisi jika peran pengguna adalah Kajur.');
-                    }
-                },
-            ],
+            'department' => ['required_if:role,kajur', 'nullable', 'string', 'max:100'],
         ]);
 
         // role & is_active dikecualikan dari $fillable — set secara eksplisit

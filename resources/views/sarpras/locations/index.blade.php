@@ -21,27 +21,27 @@
 
                     <div class="mb-4">
                         <label class="form-label fw-bold required">Kode Lokasi (Unik)</label>
-                        <input type="text" name="code" class="form-control form-control-solid font-monospace" placeholder="LAB-RPL-01 / GDG-A" required>
+                        <input type="text" name="code" class="form-control form-control-solid font-monospace" value="{{ old('code') }}" placeholder="LAB-RPL-01 / GDG-A" required>
                     </div>
 
                     <div class="mb-4">
                         <label class="form-label fw-bold required">Nama Ruangan / Lokasi</label>
-                        <input type="text" name="name" class="form-control form-control-solid" placeholder="Contoh: Lab Komputer RPL 1" required>
+                        <input type="text" name="name" class="form-control form-control-solid" value="{{ old('name') }}" placeholder="Contoh: Lab Komputer RPL 1" required>
                     </div>
 
                     <div class="mb-4">
                         <label class="form-label fw-bold">Nama Gedung</label>
-                        <input type="text" name="building" class="form-control form-control-solid" placeholder="Gedung A Lantai 2">
+                        <input type="text" name="building" class="form-control form-control-solid" value="{{ old('building') }}" placeholder="Gedung A Lantai 2">
                     </div>
 
                     <div class="mb-4">
                         <label class="form-label fw-bold">Jurusan Pemakai (Opsional)</label>
-                        <input type="text" name="department" class="form-control form-control-solid" placeholder="Rekayasa Perangkat Lunak">
+                        <input type="text" name="department" class="form-control form-control-solid" value="{{ old('department') }}" placeholder="Rekayasa Perangkat Lunak">
                     </div>
 
                     <div class="mb-4">
                         <label class="form-label fw-bold">Keterangan</label>
-                        <textarea name="description" class="form-control form-control-solid" rows="2"></textarea>
+                        <textarea name="description" class="form-control form-control-solid" rows="2">{{ old('description') }}</textarea>
                     </div>
 
                     <button type="submit" class="btn btn-primary w-100">

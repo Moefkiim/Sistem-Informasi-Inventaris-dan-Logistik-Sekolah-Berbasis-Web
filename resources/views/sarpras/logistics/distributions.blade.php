@@ -24,14 +24,14 @@
                         <select name="item_id" class="form-select form-select-solid" required>
                             <option value="">-- Pilih Barang --</option>
                             @foreach($items as $it)
-                                <option value="{{ $it->id }}">{{ $it->name }} (Stok: {{ $it->stock }} {{ $it->unit }})</option>
+                                <option value="{{ $it->id }}" {{ old('item_id') == $it->id ? 'selected' : '' }}>{{ $it->name }} (Stok: {{ $it->stock }} {{ $it->unit }})</option>
                             @endforeach
                         </select>
                     </div>
 
                     <div class="mb-4">
                         <label class="form-label fw-bold required">Jumlah Distribusi</label>
-                        <input type="number" name="quantity" class="form-control form-control-solid" min="1" value="1" required>
+                        <input type="number" name="quantity" class="form-control form-control-solid" min="1" value="{{ old('quantity', 1) }}" required>
                     </div>
 
                     <div class="mb-4">
@@ -39,29 +39,29 @@
                         <select name="to_location_id" class="form-select form-select-solid" required>
                             <option value="">-- Pilih Lokasi --</option>
                             @foreach($locations as $loc)
-                                <option value="{{ $loc->id }}">{{ $loc->name }} ({{ $loc->code }})</option>
+                                <option value="{{ $loc->id }}" {{ old('to_location_id') == $loc->id ? 'selected' : '' }}>{{ $loc->name }} ({{ $loc->code }})</option>
                             @endforeach
                         </select>
                     </div>
 
                     <div class="mb-4">
                         <label class="form-label fw-bold">Jurusan / Unit Penerima</label>
-                        <input type="text" name="recipient_department" class="form-control form-control-solid" placeholder="Contoh: Rekayasa Perangkat Lunak / Lab IPA">
+                        <input type="text" name="recipient_department" class="form-control form-control-solid" value="{{ old('recipient_department') }}" placeholder="Contoh: Rekayasa Perangkat Lunak / Lab IPA">
                     </div>
 
                     <div class="mb-4">
                         <label class="form-label fw-bold">Nama Penerima / Guru Penanggung Jawab</label>
-                        <input type="text" name="recipient_name" class="form-control form-control-solid" placeholder="Nama penerima">
+                        <input type="text" name="recipient_name" class="form-control form-control-solid" value="{{ old('recipient_name') }}" placeholder="Nama penerima">
                     </div>
 
                     <div class="mb-4">
                         <label class="form-label fw-bold required">Tanggal Penyaluran</label>
-                        <input type="date" name="distribution_date" class="form-control form-control-solid" value="{{ date('Y-m-d') }}" required>
+                        <input type="date" name="distribution_date" class="form-control form-control-solid" value="{{ old('distribution_date', date('Y-m-d')) }}" required>
                     </div>
 
                     <div class="mb-4">
                         <label class="form-label fw-bold">Catatan Penyaluran</label>
-                        <textarea name="notes" class="form-control form-control-solid" rows="2" placeholder="Keterangan tambahan..."></textarea>
+                        <textarea name="notes" class="form-control form-control-solid" rows="2" placeholder="Keterangan tambahan...">{{ old('notes') }}</textarea>
                     </div>
 
                     <button type="submit" class="btn btn-primary w-100">

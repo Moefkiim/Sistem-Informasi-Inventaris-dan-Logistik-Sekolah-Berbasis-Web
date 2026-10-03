@@ -24,37 +24,37 @@
                         <select name="item_id" class="form-select form-select-solid" required>
                             <option value="">-- Pilih Barang --</option>
                             @foreach($items as $it)
-                                <option value="{{ $it->id }}">{{ $it->name }} (Stok Saat Ini: {{ $it->stock }} {{ $it->unit }})</option>
+                                <option value="{{ $it->id }}" {{ old('item_id') == $it->id ? 'selected' : '' }}>{{ $it->name }} (Stok Saat Ini: {{ $it->stock }} {{ $it->unit }})</option>
                             @endforeach
                         </select>
                     </div>
 
                     <div class="mb-4">
                         <label class="form-label fw-bold required">Jumlah Masuk</label>
-                        <input type="number" name="quantity" class="form-control form-control-solid" min="1" value="1" required>
+                        <input type="number" name="quantity" class="form-control form-control-solid" min="1" value="{{ old('quantity', 1) }}" required>
                     </div>
 
                     <div class="mb-4">
                         <label class="form-label fw-bold required">Sumber Asal</label>
                         <select name="source" class="form-select form-select-solid" required>
-                            <option value="pembelian">Pembelian Sekolah</option>
-                            <option value="bantuan">Bantuan / Hibah</option>
+                            <option value="pembelian" {{ old('source') == 'pembelian' ? 'selected' : '' }}>Pembelian Sekolah</option>
+                            <option value="bantuan" {{ old('source') == 'bantuan' ? 'selected' : '' }}>Bantuan / Hibah</option>
                         </select>
                     </div>
 
                     <div class="mb-4">
                         <label class="form-label fw-bold">Keterangan Sumber (Toko / Instansi)</label>
-                        <input type="text" name="source_origin" class="form-control form-control-solid" placeholder="Contoh: Toko Komputer XYZ / PT Telkom">
+                        <input type="text" name="source_origin" class="form-control form-control-solid" value="{{ old('source_origin') }}" placeholder="Contoh: Toko Komputer XYZ / PT Telkom">
                     </div>
 
                     <div class="mb-4">
                         <label class="form-label fw-bold required">Tanggal Masuk</label>
-                        <input type="date" name="entry_date" class="form-control form-control-solid" value="{{ date('Y-m-d') }}" required>
+                        <input type="date" name="entry_date" class="form-control form-control-solid" value="{{ old('entry_date', date('Y-m-d')) }}" required>
                     </div>
 
                     <div class="mb-4">
                         <label class="form-label fw-bold">Catatan Log</label>
-                        <textarea name="notes" class="form-control form-control-solid" rows="2" placeholder="Nomor faktur/surat pengantar..."></textarea>
+                        <textarea name="notes" class="form-control form-control-solid" rows="2" placeholder="Nomor faktur/surat pengantar...">{{ old('notes') }}</textarea>
                     </div>
 
                     <button type="submit" class="btn btn-primary w-100">

@@ -21,17 +21,17 @@
 
                     <div class="mb-4">
                         <label class="form-label fw-bold required">Nama Lengkap</label>
-                        <input type="text" name="name" class="form-control form-control-solid" placeholder="Nama pengguna" required>
+                        <input type="text" name="name" class="form-control form-control-solid" value="{{ old('name') }}" placeholder="Nama pengguna" required>
                     </div>
 
                     <div class="mb-4">
                         <label class="form-label fw-bold required">Username</label>
-                        <input type="text" name="username" class="form-control form-control-solid" placeholder="username_unik" required>
+                        <input type="text" name="username" class="form-control form-control-solid" value="{{ old('username') }}" placeholder="username_unik" required>
                     </div>
 
                     <div class="mb-4">
                         <label class="form-label fw-bold required">Email</label>
-                        <input type="email" name="email" class="form-control form-control-solid" placeholder="user@sekolah.sch.id" required>
+                        <input type="email" name="email" class="form-control form-control-solid" value="{{ old('email') }}" placeholder="user@sekolah.sch.id" required>
                     </div>
 
                     <div class="mb-4">
@@ -42,14 +42,14 @@
                     <div class="mb-4">
                         <label class="form-label fw-bold required">Peran (Role)</label>
                         <select name="role" class="form-select form-select-solid" required>
-                            <option value="kajur">Kajur (Kepala Kejuruan)</option>
-                            <option value="sarpras">Sarpras (Operator & Logistik)</option>
+                            <option value="kajur" {{ old('role') == 'kajur' ? 'selected' : '' }}>Kajur (Kepala Kejuruan)</option>
+                            <option value="sarpras" {{ old('role') == 'sarpras' ? 'selected' : '' }}>Sarpras (Operator & Logistik)</option>
                         </select>
                     </div>
 
                     <div class="mb-4">
                         <label class="form-label fw-bold">Jurusan (Wajib jika role Kajur)</label>
-                        <input type="text" name="department" class="form-control form-control-solid" placeholder="Contoh: Rekayasa Perangkat Lunak">
+                        <input type="text" name="department" class="form-control form-control-solid" value="{{ old('department') }}" placeholder="Contoh: Rekayasa Perangkat Lunak">
                     </div>
 
                     <button type="submit" class="btn btn-primary w-100">

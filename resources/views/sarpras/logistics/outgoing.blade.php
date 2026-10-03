@@ -24,34 +24,34 @@
                         <select name="item_id" class="form-select form-select-solid" required>
                             <option value="">-- Pilih Barang --</option>
                             @foreach($items as $it)
-                                <option value="{{ $it->id }}">{{ $it->name }} (Sisa Stok: {{ $it->stock }} {{ $it->unit }})</option>
+                                <option value="{{ $it->id }}" {{ old('item_id') == $it->id ? 'selected' : '' }}>{{ $it->name }} (Stok: {{ $it->stock }} {{ $it->unit }})</option>
                             @endforeach
                         </select>
                     </div>
 
                     <div class="mb-4">
                         <label class="form-label fw-bold required">Jumlah Keluar</label>
-                        <input type="number" name="quantity" class="form-control form-control-solid" min="1" value="1" required>
+                        <input type="number" name="quantity" class="form-control form-control-solid" min="1" value="{{ old('quantity', 1) }}" required>
                     </div>
 
                     <div class="mb-4">
                         <label class="form-label fw-bold required">Alasan Pengeluaran</label>
                         <select name="reason" class="form-select form-select-solid" required>
-                            <option value="Rusak Total">Rusak Total / Tak Dapat Digunakan</option>
-                            <option value="Pemusnahan / Afkir">Pemusnahan / Aset Di-afkir</option>
-                            <option value="Hibah / Penyaluran Luar">Hibah ke Pihak Luar</option>
-                            <option value="Lainnya">Lainnya</option>
+                            <option value="Rusak Total" {{ old('reason') == 'Rusak Total' ? 'selected' : '' }}>Rusak Total / Tak Dapat Digunakan</option>
+                            <option value="Pemusnahan / Afkir" {{ old('reason') == 'Pemusnahan / Afkir' ? 'selected' : '' }}>Pemusnahan / Aset Di-afkir</option>
+                            <option value="Hibah / Penyaluran Luar" {{ old('reason') == 'Hibah / Penyaluran Luar' ? 'selected' : '' }}>Hibah ke Pihak Luar</option>
+                            <option value="Lainnya" {{ old('reason') == 'Lainnya' ? 'selected' : '' }}>Lainnya</option>
                         </select>
                     </div>
 
                     <div class="mb-4">
                         <label class="form-label fw-bold required">Tanggal Keluar</label>
-                        <input type="date" name="exit_date" class="form-control form-control-solid" value="{{ date('Y-m-d') }}" required>
+                        <input type="date" name="exit_date" class="form-control form-control-solid" value="{{ old('exit_date', date('Y-m-d')) }}" required>
                     </div>
 
                     <div class="mb-4">
                         <label class="form-label fw-bold">Catatan Log</label>
-                        <textarea name="notes" class="form-control form-control-solid" rows="2" placeholder="Nomor BAST/berita acara penghapusan aset..."></textarea>
+                        <textarea name="notes" class="form-control form-control-solid" rows="2" placeholder="Nomor BAST/berita acara penghapusan aset...">{{ old('notes') }}</textarea>
                     </div>
 
                     <button type="submit" class="btn btn-danger w-100">
