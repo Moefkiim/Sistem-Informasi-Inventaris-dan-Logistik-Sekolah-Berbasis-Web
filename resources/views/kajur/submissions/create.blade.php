@@ -34,30 +34,41 @@
 
             <h4 class="fw-bolder mb-4">Daftar Item Kebutuhan (Bisa Tambah Banyak Item)</h4>
             <div id="items-container">
+                @php
+                    $oldItems = old('items');
+                    $itemsList = is_array($oldItems) && count($oldItems) > 0 ? $oldItems : [['item_name' => null, 'quantity' => 1, 'unit' => 'Unit', 'estimated_price' => null, 'specification' => null]];
+                @endphp
+                @foreach($itemsList as $idx => $it)
                 <div class="item-row border rounded p-4 mb-4 bg-light">
                     <div class="row g-3">
                         <div class="col-md-4">
                             <label class="form-label fw-bold required">Nama Barang</label>
-                            <input type="text" name="items[0][item_name]" class="form-control form-control-solid" placeholder="Contoh: PC Desktop Core i5" required>
+                            <input type="text" name="items[{{ $idx }}][item_name]" class="form-control form-control-solid" value="{{ $it['item_name'] ?? '' }}" placeholder="Contoh: PC Desktop Core i5" required>
                         </div>
                         <div class="col-md-2">
                             <label class="form-label fw-bold required">Jumlah</label>
-                            <input type="number" name="items[0][quantity]" class="form-control form-control-solid" min="1" value="1" required>
+                            <input type="number" name="items[{{ $idx }}][quantity]" class="form-control form-control-solid" min="1" value="{{ $it['quantity'] ?? 1 }}" required>
                         </div>
                         <div class="col-md-2">
                             <label class="form-label fw-bold required">Satuan</label>
-                            <input type="text" name="items[0][unit]" class="form-control form-control-solid" value="Unit" placeholder="Unit/Set/Pcs" required>
+                            <input type="text" name="items[{{ $idx }}][unit]" class="form-control form-control-solid" value="{{ $it['unit'] ?? 'Unit' }}" placeholder="Unit/Set/Pcs" required>
                         </div>
                         <div class="col-md-4">
                             <label class="form-label fw-bold">Estimasi Harga Satuan (Rp)</label>
-                            <input type="number" name="items[0][estimated_price]" class="form-control form-control-solid" placeholder="0">
+                            <input type="number" name="items[{{ $idx }}][estimated_price]" class="form-control form-control-solid" value="{{ $it['estimated_price'] ?? '' }}" placeholder="0">
                         </div>
                         <div class="col-md-12 mt-2">
                             <label class="form-label fw-bold">Spesifikasi Detail</label>
-                            <input type="text" name="items[0][specification]" class="form-control form-control-solid" placeholder="Contoh: RAM 16GB, SSD 512GB NVMe, Monitor 24 Inch">
+                            <input type="text" name="items[{{ $idx }}][specification]" class="form-control form-control-solid" value="{{ $it['specification'] ?? '' }}" placeholder="Contoh: RAM 16GB, SSD 512GB NVMe, Monitor 24 Inch">
                         </div>
                     </div>
+                    @if($idx > 0)
+                    <button type="button" class="btn btn-sm btn-light-danger mt-3" onclick="this.closest('.item-row').remove()">
+                        <i class="bi bi-trash"></i> Hapus Item
+                    </button>
+                    @endif
                 </div>
+                @endforeach
             </div>
 
             <button type="button" class="btn btn-sm btn-light-primary" id="btn-add-item">
@@ -77,3 +88,52 @@
     </form>
 </div>
 @endsection
+@push('scripts')
+<template id="item-template">
+    <div class="item-row border rounded p-4 mb-4 bg-light">
+        <div class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label fw-bold required">Nama Barang</label>
+                <input type="text" name="__NAME__[item_name]" class="form-control form-control-solid" placeholder="Contoh: PC Desktop Core i5" required>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label fw-bold required">Jumlah</label>
+                <input type="number" name="__NAME__[quantity]" class="form-control form-control-solid" min="1" value="1" required>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label fw-bold required">Satuan</label>
+                <input type="text" name="__NAME__[unit]" class="form-control form-control-solid" value="Unit" placeholder="Unit/Set/Pcs" required>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label fw-bold">Estimasi Harga Satuan (Rp)</label>
+                <input type="number" name="__NAME__[estimated_price]" class="form-control form-control-solid" placeholder="0">
+            </div>
+            <div class="col-md-12 mt-2">
+                <label class="form-label fw-bold">Spesifikasi Detail</label>
+                <input type="text" name="__NAME__[specification]" class="form-control form-control-solid" placeholder="Contoh: RAM 16GB, SSD 512GB NVMe, Monitor 24 Inch">
+            </div>
+        </div>
+        <button type="button" class="btn btn-sm btn-light-danger mt-3" onclick="this.closest('.item-row').remove()">
+            <i class="bi bi-trash"></i> Hapus Item
+        </button>
+    </div>
+</template>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const container = document.getElementById('items-container');
+    const btnAdd = document.getElementById('btn-add-item');
+    const tmpl = document.getElementById('item-template');
+    let itemIndex = container ? container.querySelectorAll('.item-row').length : 0;
+    if (btnAdd) {
+        btnAdd.addEventListener('click', function () {
+            if (!tmpl || !container) return;
+            const html = tmpl.innerHTML.replace(/__NAME__/g, 'items[' + itemIndex + ']');
+            const wrapper = document.createElement('div');
+            wrapper.innerHTML = html;
+            container.appendChild(wrapper.firstElementChild);
+            itemIndex++;
+        });
+    }
+});
+</script>
+@endpush
