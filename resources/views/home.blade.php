@@ -3,9 +3,7 @@
 @section('title', 'Dashboard')
 @section('header-title', 'Dashboard')
 
-@section('breadcrumb')
-    <span class="text-muted fw-bold fs-7">Beranda</span>
-@endsection
+
 
 @section('content')
 {{-- Welcome Banner --}}

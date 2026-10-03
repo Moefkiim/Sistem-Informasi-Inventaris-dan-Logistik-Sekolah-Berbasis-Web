@@ -15,7 +15,7 @@
     <div class="d-flex flex-column flex-root">
         <div class="d-flex flex-column flex-lg-row flex-column-fluid">
             <!-- Aside kiri / Banner Metronic -->
-            <div class="d-flex flex-column flex-lg-row-auto w-xl-500px positon-xl-relative" style="background-color: #1e1e2d">
+            <div class="d-flex flex-column flex-lg-row-auto w-xl-500px position-xl-relative" style="background-color: #1e1e2d">
                 <div class="d-flex flex-column position-xl-fixed top-0 bottom-0 w-xl-500px scroll-y p-10 justify-content-between">
                     <div class="text-center pt-lg-15">
                         <div class="mb-5">
