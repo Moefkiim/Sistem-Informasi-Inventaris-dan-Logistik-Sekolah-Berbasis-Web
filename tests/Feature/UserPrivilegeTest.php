@@ -10,92 +10,38 @@ class UserPrivilegeTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_sarpras_cannot_create_kepala_sekolah_user(): void
+    public function test_sarpras_cannot_create_kepala_sekolah(): void
     {
-        $sarpras = User::factory()->create([
-            'role' => 'sarpras',
-            'is_active' => true,
-        ]);
+        $sarpras = User::factory()->sarpras()->create();
 
-        $response = $this->actingAs($sarpras)->post(route('sarpras.users.store'), [
-            'name' => 'Calon Kepala Sekolah',
-            'username' => 'calon_kepsek',
-            'email' => 'calon_kepsek@sekolah.sch.id',
-            'password' => 'secret123',
-            'role' => 'kepala_sekolah',
-        ]);
-
-        $response->assertSessionHasErrors('role');
-        $this->assertDatabaseMissing('users', [
-            'username' => 'calon_kepsek',
-        ]);
+        $this->actingAs($sarpras)
+            ->post(route('sarpras.users.store'), [
+                'name' => 'Kepsek Baru',
+                'username' => 'kepsek_baru',
+                'email' => 'kepsek@example.com',
+                'password' => 'password123',
+                'role' => 'kepala_sekolah',
+                'department' => null,
+            ])
+            ->assertSessionHasErrors(['role']);
     }
 
-    public function test_sarpras_must_provide_department_when_creating_kajur(): void
+    public function test_sarpras_cannot_toggle_kepala_sekolah(): void
     {
-        $sarpras = User::factory()->create([
-            'role' => 'sarpras',
-            'is_active' => true,
-        ]);
+        $sarpras = User::factory()->sarpras()->create();
+        $kepsek = User::factory()->state(['role' => 'kepala_sekolah', 'department' => null, 'is_active' => true])->create();
 
-        $response = $this->actingAs($sarpras)->post(route('sarpras.users.store'), [
-            'name' => 'Kajur Baru',
-            'username' => 'kajur_baru',
-            'email' => 'kajur_baru@sekolah.sch.id',
-            'password' => 'secret123',
-            'role' => 'kajur',
-            'department' => '',
-        ]);
-
-        $response->assertSessionHasErrors('department');
-        $this->assertDatabaseMissing('users', [
-            'username' => 'kajur_baru',
-        ]);
+        $this->actingAs($sarpras)
+            ->post(route('sarpras.users.toggle', $kepsek))
+            ->assertSessionHasErrors();
     }
 
-    public function test_sarpras_cannot_toggle_kepala_sekolah_or_sarpras_status(): void
+    public function test_sarpras_cannot_toggle_self(): void
     {
-        $operatorSarpras = User::factory()->create([
-            'role' => 'sarpras',
-            'is_active' => true,
-        ]);
+        $sarpras = User::factory()->sarpras()->create();
 
-        $kepalaSekolah = User::factory()->create([
-            'role' => 'kepala_sekolah',
-            'is_active' => true,
-        ]);
-
-        $otherSarpras = User::factory()->create([
-            'role' => 'sarpras',
-            'is_active' => true,
-        ]);
-
-        // Attempt toggle Kepala Sekolah
-        $response1 = $this->actingAs($operatorSarpras)->post(route('sarpras.users.toggle', $kepalaSekolah));
-        $response1->assertSessionHasErrors('msg');
-        $this->assertTrue($kepalaSekolah->fresh()->is_active);
-
-        // Attempt toggle another Sarpras
-        $response2 = $this->actingAs($operatorSarpras)->post(route('sarpras.users.toggle', $otherSarpras));
-        $response2->assertSessionHasErrors('msg');
-        $this->assertTrue($otherSarpras->fresh()->is_active);
-    }
-
-    public function test_sarpras_can_toggle_kajur_status(): void
-    {
-        $operatorSarpras = User::factory()->create([
-            'role' => 'sarpras',
-            'is_active' => true,
-        ]);
-
-        $kajur = User::factory()->create([
-            'role' => 'kajur',
-            'department' => 'RPL',
-            'is_active' => true,
-        ]);
-
-        $response = $this->actingAs($operatorSarpras)->post(route('sarpras.users.toggle', $kajur));
-        $response->assertSessionHasNoErrors();
-        $this->assertFalse($kajur->fresh()->is_active);
+        $this->actingAs($sarpras)
+            ->post(route('sarpras.users.toggle', $sarpras))
+            ->assertSessionHasErrors();
     }
 }

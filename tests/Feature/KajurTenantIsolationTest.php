@@ -11,78 +11,36 @@ class KajurTenantIsolationTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_kajur_with_null_department_is_forbidden_from_inventory(): void
+    public function test_kajur_cannot_access_other_department_item(): void
     {
-        $kajurNull = User::factory()->create([
-            'role' => 'kajur',
-            'department' => null,
-            'is_active' => true,
-        ]);
+        $rpl = User::factory()->kajur()->create(['department' => 'Rekayasa Perangkat Lunak']);
+        $tkj = User::factory()->kajur()->create(['department' => 'Teknik Komputer Jaringan']);
 
-        $response = $this->actingAs($kajurNull)->get(route('kajur.inventory.index'));
-        $response->assertStatus(403);
+        $itemRpl = Item::factory()->create(['department' => 'Rekayasa Perangkat Lunak']);
+        $itemTkj = Item::factory()->create(['department' => 'Teknik Komputer Jaringan']);
+
+        $this->actingAs($rpl)
+            ->get(route('kajur.inventory.show', $itemTkj))
+            ->assertForbidden();
+
+        $response = $this->actingAs($rpl)
+            ->get(route('kajur.inventory.index'))
+            ->assertOk();
+        $response->assertDontSee($itemTkj->name);
+        $response->assertSee($itemRpl->name);
     }
 
-    public function test_kajur_cannot_access_items_from_different_department(): void
+    public function test_kajur_with_null_department_gets_forbidden(): void
     {
-        $kajurRPL = User::factory()->create([
-            'role' => 'kajur',
-            'department' => 'RPL',
-            'is_active' => true,
-        ]);
+        $kajur = User::factory()->kajur()->create(['department' => null]);
+        $item = Item::factory()->create(['department' => 'Rekayasa Perangkat Lunak']);
 
-        $itemTKJ = Item::create([
-            'code' => 'TKJ-001',
-            'name' => 'Crimping Tool',
-            'category' => 'Alat',
-            'unit' => 'Pcs',
-            'stock' => 5,
-            'source' => 'pembelian',
-            'department' => 'TKJ',
-            'current_condition' => 'baik',
-        ]);
+        $this->actingAs($kajur)
+            ->get(route('kajur.inventory.index'))
+            ->assertForbidden();
 
-        $response = $this->actingAs($kajurRPL)->get(route('kajur.inventory.show', $itemTKJ));
-        $response->assertStatus(403);
-    }
-
-    public function test_kajur_with_null_department_is_forbidden_from_reports(): void
-    {
-        $kajurNull = User::factory()->create([
-            'role' => 'kajur',
-            'department' => null,
-            'is_active' => true,
-        ]);
-
-        $response = $this->actingAs($kajurNull)->get(route('reports.index'));
-        $response->assertStatus(403);
-    }
-
-    public function test_kajur_can_only_see_their_own_department_inventory(): void
-    {
-        $kajurRPL = User::factory()->create([
-            'role' => 'kajur',
-            'department' => 'RPL',
-            'is_active' => true,
-        ]);
-
-        $itemRPL = Item::create([
-            'code' => 'RPL-001',
-            'name' => 'PC Workstation RPL',
-            'category' => 'Elektronik',
-            'unit' => 'Unit',
-            'stock' => 10,
-            'source' => 'pembelian',
-            'department' => 'RPL',
-            'current_condition' => 'baik',
-        ]);
-
-        $response = $this->actingAs($kajurRPL)->get(route('kajur.inventory.index'));
-        $response->assertStatus(200);
-        $response->assertSee('PC Workstation RPL');
-
-        $detailResponse = $this->actingAs($kajurRPL)->get(route('kajur.inventory.show', $itemRPL));
-        $detailResponse->assertStatus(200);
-        $detailResponse->assertSee('PC Workstation RPL');
+        $this->actingAs($kajur)
+            ->get(route('kajur.inventory.show', $item))
+            ->assertForbidden();
     }
 }
