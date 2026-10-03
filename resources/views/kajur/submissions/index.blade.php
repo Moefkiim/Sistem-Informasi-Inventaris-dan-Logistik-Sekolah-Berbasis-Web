@@ -48,19 +48,7 @@
                             <td>{{ $sub->title }}</td>
                             <td><span class="badge badge-light-info">{{ $sub->items->count() }} Item</span></td>
                             <td>
-                                @if($sub->status === 'draft')
-                                    <span class="badge badge-light-secondary">Draft</span>
-                                @elseif($sub->status === 'submitted')
-                                    <span class="badge badge-light-warning">Menunggu Review Sarpras</span>
-                                @elseif($sub->status === 'reviewed_sarpras')
-                                    <span class="badge badge-light-primary">Menunggu Approval Kepsek</span>
-                                @elseif($sub->status === 'approved')
-                                    <span class="badge badge-light-success">Disetujui</span>
-                                @elseif($sub->status === 'rejected')
-                                    <span class="badge badge-light-danger">Ditolak</span>
-                                @elseif($sub->status === 'cancelled')
-                                    <span class="badge badge-light-dark">Dibatalkan</span>
-                                @endif
+                                <x-submission-status-badge :status="$sub->status" />
                             </td>
                             <td>{{ $sub->created_at->format('d M Y H:i') }}</td>
                             <td class="text-end">

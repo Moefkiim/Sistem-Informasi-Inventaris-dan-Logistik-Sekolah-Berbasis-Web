@@ -10,19 +10,7 @@
             <h3 class="fw-bolder">Pengajuan #{{ $submission->submission_number }}</h3>
         </div>
         <div class="card-toolbar">
-            @if($submission->status === 'draft')
-                <span class="badge badge-light-secondary fs-7 py-2 px-4">Status: Draft</span>
-            @elseif($submission->status === 'submitted')
-                <span class="badge badge-light-warning fs-7 py-2 px-4">Status: Menunggu Review Sarpras</span>
-            @elseif($submission->status === 'reviewed_sarpras')
-                <span class="badge badge-light-primary fs-7 py-2 px-4">Status: Menunggu Approval Kepala Sekolah</span>
-            @elseif($submission->status === 'approved')
-                <span class="badge badge-light-success fs-7 py-2 px-4">Status: Disetujui</span>
-            @elseif($submission->status === 'rejected')
-                <span class="badge badge-light-danger fs-7 py-2 px-4">Status: Ditolak</span>
-            @elseif($submission->status === 'cancelled')
-                <span class="badge badge-light-dark fs-7 py-2 px-4">Status: Dibatalkan</span>
-            @endif
+            <x-submission-status-badge :status="$submission->status" class="fs-7 py-2 px-4" />
         </div>
     </div>
     <div class="card-body">

@@ -39,19 +39,7 @@
                             <td><span class="badge badge-light-primary">{{ $sub->department }}</span></td>
                             <td>{{ $sub->title }}</td>
                             <td>
-                                @if($sub->status === 'draft')
-                                    <span class="badge badge-light-secondary">Draft Kajur</span>
-                                @elseif($sub->status === 'submitted')
-                                    <span class="badge badge-light-warning">Perlu Ditelaah Sarpras</span>
-                                @elseif($sub->status === 'reviewed_sarpras')
-                                    <span class="badge badge-light-primary">Sudah Diteruskan ke Kepsek</span>
-                                @elseif($sub->status === 'approved')
-                                    <span class="badge badge-light-success">Disetujui Kepsek</span>
-                                @elseif($sub->status === 'rejected')
-                                    <span class="badge badge-light-danger">Ditolak</span>
-                                @elseif($sub->status === 'cancelled')
-                                    <span class="badge badge-light-dark">Dibatalkan Kajur</span>
-                                @endif
+                                <x-submission-status-badge :status="$sub->status" />
                             </td>
                             <td>{{ $sub->created_at->format('d/m/Y H:i') }}</td>
                             <td class="text-end">

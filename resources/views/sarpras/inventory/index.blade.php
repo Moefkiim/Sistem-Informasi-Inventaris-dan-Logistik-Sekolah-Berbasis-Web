@@ -50,13 +50,7 @@
                             <td>{{ $item->department ?: 'Umum / Sarpras' }}</td>
                             <td>{{ $item->location?->name ?: 'Belum Ada' }}</td>
                             <td>
-                                @if($item->current_condition === 'baik')
-                                    <span class="badge badge-light-success">Baik</span>
-                                @elseif($item->current_condition === 'rusak_ringan')
-                                    <span class="badge badge-light-warning">Rusak Ringan</span>
-                                @else
-                                    <span class="badge badge-light-danger">Rusak Berat</span>
-                                @endif
+                                <x-condition-badge :condition="$item->current_condition" />
                             </td>
                             <td class="text-end">
                                 <a href="{{ route('sarpras.inventory.show', $item) }}" class="btn btn-sm btn-light btn-active-light-primary">

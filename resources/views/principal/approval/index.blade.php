@@ -49,13 +49,7 @@
                             <td><span class="badge badge-light-primary">{{ $sub->department }}</span></td>
                             <td>{{ $sub->title }}</td>
                             <td>
-                                @if($sub->status === 'reviewed_sarpras')
-                                    <span class="badge badge-light-warning">Perlu Keputusan</span>
-                                @elseif($sub->status === 'approved')
-                                    <span class="badge badge-light-success">Disetujui</span>
-                                @elseif($sub->status === 'rejected')
-                                    <span class="badge badge-light-danger">Ditolak</span>
-                                @endif
+                                <x-submission-status-badge :status="$sub->status" />
                             </td>
                             <td>{{ $sub->sarprasUser?->name ?: '-' }}</td>
                             <td class="text-end">
