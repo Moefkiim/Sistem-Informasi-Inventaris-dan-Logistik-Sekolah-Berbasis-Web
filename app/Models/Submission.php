@@ -73,4 +73,14 @@ class Submission extends Model
     {
         return $this->status === 'reviewed_sarpras';
     }
+
+    protected static function booted(): void
+    {
+        static::creating(function ($submission) {
+            if ($submission->status === null) {
+                $submission->status = 'draft';
+            }
+        });
+    }
+
 }
