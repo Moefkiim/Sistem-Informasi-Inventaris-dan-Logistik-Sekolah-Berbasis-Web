@@ -21,11 +21,12 @@ class WorkflowTransitionTest extends TestCase
             'title' => 'Test',
             'purpose' => 'Test',
             'department' => $kajur->department,
-            'status' => 'reviewed_sarpras',
-            'sarpras_notes' => 'OK',
-            'sarpras_user_id' => User::factory()->sarpras()->create()->id,
-            'reviewed_at' => now(),
         ]);
+        $submission->status = 'reviewed_sarpras';
+        $submission->sarpras_notes = 'OK';
+        $submission->sarpras_user_id = User::factory()->sarpras()->create()->id;
+        $submission->reviewed_at = now();
+        $submission->save();
         SubmissionItem::create([
             'submission_id' => $submission->id,
             'item_name' => 'PC',
