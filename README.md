@@ -400,6 +400,15 @@ php artisan test --filter=AuthenticationAndRoleAccessTest
 | **Cetak Laporan / Print Export** | ✅ Sudah | Tampilan bebas elemen navigasi web |
 | **Manajemen User Sarpras** | ✅ Sudah | CRUD staf & toggle `is_active` |
 
+### Status Teknis
+
+| Aspek Teknis | Status | Keterangan |
+|---|:---:|---|
+| **CI/CD** | ✅ Terpasang | Workflow GitHub Actions (`tests.yml`) menjalankan `php artisan test` otomatis pada push/PR ke `main`. |
+| **Konsistensi CSS** | ✅ Terkonsolidasi | UI konsisten dengan gaya Metronic/Bootstrap 5; halaman `documents/index.blade.php` telah diseragamkan dan bebas dari Tailwind utility di area view terpakai. |
+| **Indeks Database** | ✅ Tersedia | Migration `2026_10_04_012000_add_indexes_to_inventory_and_submissions` menambah indeks pada tabel `inventories`, `submissions`, `submission_items`, dan `documents` untuk optimasi query. |
+| **Catatan Desain yang Disengaja** | ✅ Tercatat | Field sensitif (`status`, `role`, `is_active`, dll.) sengaja dikeluarkan dari `$fillable` — controller (dan test yang memerlukan transisi state) WAJIB mengubahnya melalui set properti eksplisit (`$model->field = $value; $model->save()`) sesuai alur transisi yang benar, bukan via mass-assignment. |
+
 ### Batasan Scope (Strict Scope Boundaries)
 Sistem ini secara eksplisit **TIDAK MEMILIKI** dan **DILARANG MENAMBAHKAN** fitur di bawah ini tanpa persetujuan resmi:
 - Barcode / QR Code Scanner
