@@ -333,7 +333,13 @@ php artisan test --filter=AuthenticationAndRoleAccessTest
 
 ## 9. Continuous Integration
 
-*Belum tersedia.* Sistem CI/CD otomatis (seperti GitHub Actions) belum dikonfigurasi pada repositori ini. Seluruh pengujian saat ini dijalankan secara lokal menggunakan perintah `php artisan test`.
+**Tersedia.** Repositori ini telah dilengkapi dengan workflow CI/CD GitHub Actions (`.github/workflows/tests.yml`) yang secara otomatis:
+
+- Menjalankan `php artisan test` pada setiap event `push` dan `pull_request` ke branch `main`.
+- Mengatur lingkungan PHP 8.2 dengan ekstensi yang dibutuhkan dan dependency via Composer (termasuk paket `laravel/boost --dev` bila terpasang).
+- Menggunakan SQLite in-memory untuk menjalankan seluruh test suite secara deterministik.
+
+Workflow terhubung langsung dengan repositori ini dan memastikan regresi terdeteksi sebelum perubahan digabung ke `main`.
 
 ---
 
