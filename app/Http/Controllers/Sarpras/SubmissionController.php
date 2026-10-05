@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Sarpras;
 
 use App\Http\Controllers\Controller;
+use App\Models\ActivityLog;
 use App\Models\Submission;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -59,6 +60,15 @@ class SubmissionController extends Controller
         $submission->sarpras_user_id = $request->user()->id;
         $submission->reviewed_at    = now();
         $submission->save();
+
+        ActivityLog::log(
+            $status === 'reviewed_sarpras' ? 'submission_reviewed' : 'submission_rejected_sarpras',
+            "Pengajuan {$submission->submission_number} " . ($status === 'reviewed_sarpras' ? 'diverifikasi' : 'ditolak') . " oleh Sarpras: {$validated['sarpras_notes']}",
+            $submission,
+            ['status' => 'submitted'],
+            ['status' => $status, 'sarpras_notes' => $validated['sarpras_notes']],
+            $submission->submission_number
+        );
 
         $msg = $status === 'reviewed_sarpras'
             ? 'Pengajuan berhasil diproses dan diteruskan ke Kepala Sekolah untuk approval.'

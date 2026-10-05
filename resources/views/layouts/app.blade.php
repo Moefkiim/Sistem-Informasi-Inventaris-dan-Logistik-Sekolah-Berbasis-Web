@@ -169,6 +169,13 @@
                                     </a>
                                 </div>
 
+                                <div class="menu-item">
+                                    <a class="menu-link {{ request()->routeIs('sarpras.loans.*') ? 'active' : '' }}" href="{{ route('sarpras.loans.index') }}">
+                                        <span class="menu-icon"><i class="bi bi-arrow-left-right fs-3"></i></span>
+                                        <span class="menu-title">Peminjaman Barang</span>
+                                    </a>
+                                </div>
+
                                 <div class="menu-item pt-5">
                                     <div class="menu-content">
                                         <span class="menu-section-label">Administrasi</span>
@@ -186,6 +193,13 @@
                                     <a class="menu-link {{ request()->routeIs('sarpras.users.*') ? 'active' : '' }}" href="{{ route('sarpras.users.index') }}">
                                         <span class="menu-icon"><i class="bi bi-people fs-3"></i></span>
                                         <span class="menu-title">Manajemen Pengguna</span>
+                                    </a>
+                                </div>
+
+                                <div class="menu-item">
+                                    <a class="menu-link {{ request()->routeIs('sarpras.activity_logs.*') ? 'active' : '' }}" href="{{ route('sarpras.activity_logs.index') }}">
+                                        <span class="menu-icon"><i class="bi bi-clock-history fs-3"></i></span>
+                                        <span class="menu-title">Riwayat Aktivitas</span>
                                     </a>
                                 </div>
 

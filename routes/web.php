@@ -115,6 +115,18 @@ Route::middleware(['auth', 'role'])->group(function () {
         Route::post('/users', [\App\Http\Controllers\Sarpras\UserController::class, 'store'])->name('users.store');
         Route::post('/users/{user}/toggle', [\App\Http\Controllers\Sarpras\UserController::class, 'toggleStatus'])->name('users.toggle');
 
+        // Modul Peminjaman & Pengembalian
+        Route::get('/loans', [\App\Http\Controllers\Sarpras\LoanController::class, 'index'])->name('loans.index');
+        Route::get('/loans/create', [\App\Http\Controllers\Sarpras\LoanController::class, 'create'])->name('loans.create');
+        Route::post('/loans', [\App\Http\Controllers\Sarpras\LoanController::class, 'store'])->name('loans.store');
+        Route::get('/loans/{loan}', [\App\Http\Controllers\Sarpras\LoanController::class, 'show'])->name('loans.show');
+        Route::post('/loans/{loan}/approve', [\App\Http\Controllers\Sarpras\LoanController::class, 'approve'])->name('loans.approve');
+        Route::post('/loans/{loan}/return', [\App\Http\Controllers\Sarpras\LoanController::class, 'returnLoan'])->name('loans.return');
+        Route::post('/loans/{loan}/reject', [\App\Http\Controllers\Sarpras\LoanController::class, 'reject'])->name('loans.reject');
+
+        // Audit Trail / Activity Log (Hanya baca, tidak bisa dihapus via UI)
+        Route::get('/activity-logs', [\App\Http\Controllers\Sarpras\ActivityLogController::class, 'index'])->name('activity_logs.index');
+
         // Alias area untuk backward compatibility
         Route::get('/area', function () {
             return redirect()->route('sarpras.inventory.index');

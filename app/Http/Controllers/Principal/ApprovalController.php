@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Principal;
 
 use App\Http\Controllers\Controller;
+use App\Models\ActivityLog;
 use App\Models\Submission;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -61,6 +62,15 @@ class ApprovalController extends Controller
         $submission->principal_user_id = $request->user()->id;
         $submission->decided_at       = now();
         $submission->save();
+
+        ActivityLog::log(
+            $status === 'approved' ? 'submission_approved' : 'submission_rejected',
+            "Pengajuan {$submission->submission_number} " . ($status === 'approved' ? 'DISETUJUI' : 'DITOLAK') . " oleh Kepala Sekolah" . ($validated['principal_notes'] ? ": {$validated['principal_notes']}" : ''),
+            $submission,
+            ['status' => 'reviewed_sarpras'],
+            ['status' => $status, 'principal_notes' => $validated['principal_notes'] ?? null],
+            $submission->submission_number
+        );
 
         $statusLabel = $status === 'approved' ? 'disetujui' : 'ditolak';
 

@@ -14,16 +14,69 @@ class Item extends Model
 
     protected $fillable = [
         'code',
+        'inventory_number',
+        'serial_number',
+        'brand',
+        'model',
         'name',
         'category',
+        'item_type',
         'unit',
         'stock',
+        'minimum_stock',
         'source',
+        'acquisition_year',
+        'acquisition_price',
         'department',
         'location_id',
         'current_condition',
+        'current_status',
         'description',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'acquisition_price' => 'decimal:2',
+            'stock'             => 'integer',
+            'minimum_stock'     => 'integer',
+        ];
+    }
+
+    // === Helper: Tipe Barang ===
+
+    public function isIndividual(): bool
+    {
+        return $this->item_type === 'individual';
+    }
+
+    public function isConsumable(): bool
+    {
+        return $this->item_type === 'consumable';
+    }
+
+    // === Helper: Status Stok ===
+
+    public function stockStatus(): string
+    {
+        if ($this->stock <= 0) {
+            return 'habis';
+        }
+        if ($this->minimum_stock > 0 && $this->stock <= $this->minimum_stock) {
+            return 'menipis';
+        }
+        return 'aman';
+    }
+
+    public function isStockLow(): bool
+    {
+        return $this->stockStatus() === 'menipis';
+    }
+
+    public function isStockEmpty(): bool
+    {
+        return $this->stock <= 0;
+    }
 
     public function location(): BelongsTo
     {
@@ -53,5 +106,15 @@ class Item extends Model
     public function distributions(): HasMany
     {
         return $this->hasMany(Distribution::class)->latest('distribution_date');
+    }
+
+    public function loans(): HasMany
+    {
+        return $this->hasMany(Loan::class)->latest();
+    }
+
+    public function activeLoans(): HasMany
+    {
+        return $this->hasMany(Loan::class)->whereIn('status', ['dipinjam', 'disetujui', 'menunggu']);
     }
 }

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Kajur;
 
 use App\Http\Controllers\Controller;
+use App\Models\ActivityLog;
 use App\Models\Submission;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -53,7 +54,7 @@ class SubmissionController extends Controller
         $user = $request->user();
 
         DB::transaction(function () use ($validated, $user) {
-            $submissionNumber = 'REQ-' . date('Ymd') . '-' . strtoupper(substr(uniqid(), -4));
+            $submissionNumber = $this->generateSubmissionNumber();
             $status = $validated['action'] === 'submit' ? 'submitted' : 'draft';
 
             $submission = new Submission();
@@ -68,12 +69,21 @@ class SubmissionController extends Controller
             foreach ($validated['items'] as $itemData) {
                 $submission->items()->create([
                     'item_name' => $itemData['item_name'],
-                    'quantity' => $itemData['quantity'],
-                    'unit' => $itemData['unit'],
+                    'quantity'  => $itemData['quantity'],
+                    'unit'      => $itemData['unit'],
                     'estimated_price' => $itemData['estimated_price'] ?? 0,
-                    'specification' => $itemData['specification'] ?? null,
+                    'specification'   => $itemData['specification'] ?? null,
                 ]);
             }
+
+            ActivityLog::log(
+                $status === 'submitted' ? 'submission_submitted' : 'submission_created',
+                "Pengajuan {$submissionNumber} dibuat oleh {$user->name} (status: {$status})",
+                $submission,
+                [],
+                ['status' => $status],
+                $submissionNumber
+            );
         });
 
         return redirect()->route('kajur.submissions.index')
@@ -171,6 +181,15 @@ class SubmissionController extends Controller
         $submission->status = 'cancelled';
         $submission->save();
 
+        ActivityLog::log(
+            'submission_cancelled',
+            "Pengajuan {$submission->submission_number} dibatalkan oleh " . auth()->user()->name,
+            $submission,
+            ['status' => 'draft'],
+            ['status' => 'cancelled'],
+            $submission->submission_number
+        );
+
         return redirect()->route('kajur.submissions.index')
             ->with('success', 'Pengajuan draft telah berhasil dibatalkan.');
     }
@@ -190,6 +209,15 @@ class SubmissionController extends Controller
         $submission->status = 'submitted';
         $submission->save();
 
+        ActivityLog::log(
+            'submission_submitted',
+            "Pengajuan {$submission->submission_number} dikirimkan ke Sarpras oleh " . auth()->user()->name,
+            $submission,
+            ['status' => 'draft'],
+            ['status' => 'submitted'],
+            $submission->submission_number
+        );
+
         return redirect()->route('kajur.submissions.index')
             ->with('success', 'Pengajuan berhasil dikirimkan ke pihak Sarpras untuk ditinjau.');
     }
@@ -199,5 +227,23 @@ class SubmissionController extends Controller
         if ($submission->user_id !== auth()->id()) {
             abort(403, 'Akses ditolak: Anda hanya dapat mengakses pengajuan jurusan Anda sendiri.');
         }
+    }
+
+    /**
+     * Generate nomor pengajuan yang aman dari race condition.
+     */
+    private function generateSubmissionNumber(): string
+    {
+        $prefix = 'REQ-' . date('Ymd') . '-';
+
+        $last = Submission::where('submission_number', 'like', $prefix . '%')
+            ->orderByDesc('submission_number')
+            ->first();
+
+        $next = $last
+            ? (intval(substr($last->submission_number, -4)) + 1)
+            : 1;
+
+        return $prefix . str_pad($next, 4, '0', STR_PAD_LEFT);
     }
 }
