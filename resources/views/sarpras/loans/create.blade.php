@@ -55,6 +55,27 @@
                                value="{{ old('borrower_department') }}">
                         @error('borrower_department')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
+                    <div class="col-12">
+                        <label class="form-label" for="borrower_user_id">
+                            Akun Peminjam
+                            <span class="text-muted fw-normal">(opsional — jika peminjam punya akun sistem)</span>
+                        </label>
+                        <select name="borrower_user_id" id="borrower_user_id"
+                                class="form-select form-select-solid @error('borrower_user_id') is-invalid @enderror">
+                            <option value="">-- Peminjam di luar sistem / tanpa akun --</option>
+                            @foreach($borrowers as $borrower)
+                                <option value="{{ $borrower->id }}"
+                                        {{ (int) old('borrower_user_id') === (int) $borrower->id ? 'selected' : '' }}>
+                                    {{ $borrower->name }} &middot; {{ $borrower->role }}
+                                    @if($borrower->department) &middot; {{ $borrower->department }}@endif
+                                </option>
+                            @endforeach
+                        </select>
+                        <div class="form-text">
+                            Peminjam di luar sistem (guru/siswa tanpa akun) cukup diisi namanya, tanpa memilih akun.
+                        </div>
+                        @error('borrower_user_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
 
                     {{-- 2. Barang yang Dipinjam --}}
                     <div class="col-12">

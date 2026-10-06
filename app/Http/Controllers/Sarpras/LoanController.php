@@ -7,6 +7,7 @@ use App\Models\ActivityLog;
 use App\Models\ConditionHistory;
 use App\Models\Item;
 use App\Models\Loan;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -73,7 +74,11 @@ class LoanController extends Controller
             ->orderBy('name')
             ->get();
 
-        return view('sarpras.loans.create', compact('items'));
+        $borrowers = User::where('is_active', true)
+            ->orderBy('name')
+            ->get();
+
+        return view('sarpras.loans.create', compact('items', 'borrowers'));
     }
 
     /**
@@ -84,6 +89,7 @@ class LoanController extends Controller
         $validated = $request->validate([
             'borrower_name' => ['required', 'string', 'max:255'],
             'borrower_department' => ['nullable', 'string', 'max:100'],
+            'borrower_user_id' => ['nullable', 'integer', Rule::exists('users', 'id')],
             'item_id' => ['required', Rule::exists('items', 'id')->whereNull('deleted_at')],
             'quantity' => ['required', 'integer', 'min:1'],
             'loan_date' => ['required', 'date'],
@@ -121,9 +127,10 @@ class LoanController extends Controller
 
             $loan = Loan::create([
                 'loan_number' => $loanNumber,
-                'borrower_user_id' => $request->user()->id, // Dicatat oleh siapa
+                'borrower_user_id' => $validated['borrower_user_id'] ?? null, // Peminjam terdaftar (opsional)
                 'borrower_name' => $validated['borrower_name'],
                 'borrower_department' => $validated['borrower_department'] ?? null,
+                'recorded_by' => $request->user()->id, // Sarpras yang mencatat
                 'item_id' => $item->id,
                 'quantity' => $validated['quantity'],
                 'loan_date' => $validated['loan_date'],
@@ -153,7 +160,7 @@ class LoanController extends Controller
      */
     public function show(Loan $loan): View
     {
-        $loan->load(['item.location', 'borrower', 'approvedBy', 'returnedTo']);
+        $loan->load(['item.location', 'borrower', 'recordedBy', 'approvedBy', 'returnedTo']);
 
         return view('sarpras.loans.show', compact('loan'));
     }

@@ -35,6 +35,7 @@ class Loan extends Model
         'borrower_user_id',
         'borrower_name',
         'borrower_department',
+        'recorded_by',
         'item_id',
         'quantity',
         'loan_date',
@@ -72,6 +73,11 @@ class Loan extends Model
     public function borrower(): BelongsTo
     {
         return $this->belongsTo(User::class, 'borrower_user_id');
+    }
+
+    public function recordedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'recorded_by');
     }
 
     public function approvedBy(): BelongsTo

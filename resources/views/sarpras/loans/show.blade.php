@@ -125,8 +125,8 @@
                             <div class="fw-bold text-dark">Peminjaman dicatat</div>
                             <div class="text-muted fs-7">
                                 {{ $loan->created_at?->format('d M Y H:i') }}
-                                @if($loan->borrower)
-                                    &bullet; dicatat oleh {{ $loan->borrower->name }}
+                                @if($loan->recordedBy)
+                                    &bullet; dicatat oleh {{ $loan->recordedBy->name }}
                                 @endif
                             </div>
                         </div>

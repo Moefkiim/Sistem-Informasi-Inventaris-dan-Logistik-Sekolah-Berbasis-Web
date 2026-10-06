@@ -465,4 +465,76 @@ class LoanWorkflowTest extends TestCase
             ->get(route('sarpras.activity_logs.index'))
             ->assertForbidden();
     }
+
+    // ===== BUG-4: semantik borrower_user_id vs recorded_by =====
+
+    public function test_loan_borrower_user_id_stores_the_real_borrower(): void
+    {
+        $registrar = $this->sarpras();
+        $borrower = User::factory()->kajur()->create(['name' => 'Guru Aisyah']);
+        $item = $this->consumableItem(['stock' => 5]);
+
+        $this->actingAs($registrar)
+            ->post(route('sarpras.loans.store'), [
+                'borrower_user_id' => $borrower->id,
+                'borrower_name' => 'Aisyah Nur',
+                'borrower_department' => 'RPL',
+                'item_id' => $item->id,
+                'quantity' => 1,
+                'loan_date' => now()->toDateString(),
+                'due_date' => now()->addDays(3)->toDateString(),
+                'purpose' => 'Pembelajaran web',
+            ])
+            ->assertRedirect(route('sarpras.loans.index'));
+
+        $loan = Loan::firstOrFail();
+
+        $this->assertSame($borrower->id, $loan->borrower_user_id, 'borrower_user_id harus user peminjam asli');
+        $this->assertSame($registrar->id, $loan->recorded_by, 'recorded_by harus Sarpras pencatat');
+        $this->assertNotSame($registrar->id, $loan->borrower_user_id, 'pencatat tidak boleh mengisi kolom peminjam');
+    }
+
+    public function test_loan_without_registered_user_leaves_borrower_user_id_null(): void
+    {
+        $item = $this->consumableItem(['stock' => 5]);
+
+        $this->actingAs($this->sarpras())
+            ->post(route('sarpras.loans.store'), [
+                'borrower_name' => 'Siswa Non-Akun',
+                'item_id' => $item->id,
+                'quantity' => 1,
+                'loan_date' => now()->toDateString(),
+                'due_date' => now()->addDays(3)->toDateString(),
+                'purpose' => 'PKL',
+            ])
+            ->assertRedirect(route('sarpras.loans.index'));
+
+        $loan = Loan::firstOrFail();
+
+        $this->assertNull($loan->borrower_user_id, 'peminjam luar sistem => borrower_user_id NULL');
+        $this->assertNotNull($loan->recorded_by, 'pencatat tetap tercatat');
+        $this->assertSame('Siswa Non-Akun', $loan->borrower_name);
+    }
+
+    public function test_index_and_show_mark_real_borrower_and_recorder(): void
+    {
+        $registrar = $this->sarpras();
+        $borrower = User::factory()->kepalaSekolah()->create(['name' => 'Ibu Kepala']);
+        $item = $this->individualItem();
+
+        $loan = Loan::factory()->create([
+            'borrower_user_id' => $borrower->id,
+            'borrower_name' => 'Ibu Kepala Sekolah',
+            'borrower_department' => 'Tata Usaha',
+            'recorded_by' => $registrar->id,
+            'item_id' => $item->id,
+        ]);
+
+        $response = $this->actingAs($registrar)->get(route('sarpras.loans.show', $loan));
+
+        $response->assertOk()
+            ->assertSee('Ibu Kepala Sekolah')
+            ->assertSee('Akun sistem: Ibu Kepala')
+            ->assertSee('dicatat oleh '.$registrar->name);
+    }
 }
