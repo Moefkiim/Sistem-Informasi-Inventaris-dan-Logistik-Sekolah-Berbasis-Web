@@ -13,29 +13,31 @@ Setiap klaim disertai bukti `file:line`. Bagian yang belum dikerjakan ditandai e
 
 ## 0. Ringkasan Eksekutif: Status 20 Section
 
-Pekerjaan yang benar-benar ada di repo ini (verifikasi Oct 2026) hanya **2 dari 20 section** yang
-berstatus Selesai penuh, 5 section Sebagian, dan 13 section belum disentuh sama sekali.
+Pekerjaan yang benar-benar ada di repo ini (verifikasi Oct 2026) — setelah sesi verifikasi lanjutan
+6 Okt — berstatus **6 dari 16 section Selesai penuh, 9 Sebagian, dan 1 belum disentuh** (Section 12
+QR dilarang oleh `AGENTS.md` §4). Pekerjaan terbuka yang tersisa: aset per-unit (§2) dan dashboard
+lanjutan (§6).
 
 | # | Bagian | Prioritas | Status | Bukti |
 |---|--------|-----------|--------|-------|
-| 1 | Alur pengajuan draft → approval | P0 | **Sebagian** | `Kajur/SubmissionController.php`, `Sarpras/SubmissionController.php`, `Principal/ApprovalController.php` — guard transisi ada, tapi tabel histori approval tidak ada |
+| 1 | Alur pengajuan draft → approval | P0 | **Selesai** | `Kajur/SubmissionController.php`, `Sarpras/SubmissionController.php`, `Principal/ApprovalController.php` — guard transisi + tabel `submission_histories` (Section 8) + blok "Riwayat Proses" di 3 halaman detail |
 | 2 | Identitas aset individual | P1 | **Sebagian** | `2026_10_05_000001_*.php`, `Item.php:17-33`, form create — kolom ada, tapi model data masih agregat 1 baris = banyak unit fisik |
-| 3 | Modul Peminjaman & Pengembalian | P0 | **Selesai** | `LoanController.php`, `Loan.php`, `loans` migration, `LoanFactory`, 3 view, `LoanWorkflowTest.php` (26 test) |
+| 3 | Modul Peminjaman & Pengembalian | P0 | **Selesai** | `LoanController.php`, `Loan.php`, `loans` migration, `LoanFactory`, 3 view, `LoanWorkflowTest.php` (29 test) + `recorded_by` (BUG-4) |
 | 4 | Pemisahan kondisi vs status | P1 | **Sebagian** | `current_status` enum ada (`000001:38-46`), hanya di-set oleh `LoanController.php:186,232`; tidak ada UI untuk status `'dalam_perbaikan'`/`'disposed'` |
 | 5 | Stok minimum | P1 | **Sebagian** | Kolom + helper `Item.php:60-77`, validasi, input form — tapi **tidak ada** alerting/filter/list badge yang memakainya |
 | 6 | Dashboard statistik real | P0 | **Sebagian** | `routes/web.php:39-41` hitung 3 angka dari DB — hanya 3 statistik, tanpa scoping per role, tanpa grafik, tanpa low-stock widget |
-| 7 | Audit trail | P0 | **Sebagian** | `ActivityLog.php`, migration, 12 call site — view halaman **hilang** dan tidak ada di nav (keduanya diperbaiki dalam commit ini) |
-| 8 | Approval dan histori | P0 | **Sebagian** | Transisi dijaga ketat, tapi `approval_histories` / `submission_status_histories` **tidak pernah dibuat** — hanya `condition_histories` + `location_histories` |
-| 9 | Nomor dokumen otomatis | P1 | **Sebagian** | `submission_number` berurutan (`Kajur/SubmissionController.php:236-247`), `loan_number` (`LoanController.php:308-323`) — tetapi `IN-`/`OUT-`/`DIST-` masih pakai `uniqid()` acak (`LogisticsController.php:44,108,169`) |
+| 7 | Audit trail | P0 | **Selesai** | `ActivityLog.php`, migration, 12 call site, view `sarpras/activity_logs`, entri nav, test akses role |
+| 8 | Approval dan histori | P0 | **Selesai** | `submission_histories` dibuat (commit `4ca0511`): from/to status, aktor, catatan, recorded_at — pencatatan di 6 titik transisi + 10 test |
+| 9 | Nomor dokumen otomatis | P1 | **Selesai** | `submission_number` & `loan_number` berurutan; `IN-`/`OUT-`/`DIST-` kini memakai `generateDocumentNumber()` urut race-safe (commit `db48328`) + 5 test |
 | 10 | Search dan filter | P2 | **Sebagian** | Ada di inventory sarpras + loans + activity logs; **tidak ada** di lokasi, barang masuk, barang keluar, distribusi, pengajuan sarpras |
-| 11 | Export PDF/Excel | P2 | **Belum disentuh** | Tidak ada dependency PDF/Excel di `composer.json`; hanya print via `window.print()` |
+| 11 | Export PDF/Excel | P2 | **Selesai** | `barryvdh/laravel-dompdf` ^3.1 + `phpoffice/phpspreadsheet` ^5.10; route `reports.pdf` / `reports.excel`; view `reports/pdf.blade.php`; 6 test |
 | 12 | QR Code (P3) | P3 | **Belum disentuh** | Nol baris `qrcode`/`barcode` di seluruh repo — memang sesuai batasan scope |
 | 13 | Audit keamanan | P0 | **Sebagian** | Role middleware + mass-assignment guard kuat; `Item.stock` sudah dikeluarkan dari `$fillable` (BUG-6, commit `bc9a3ed`); tidak ada proteksi rate-limit di endpoint mutasi |
 | 14 | Audit database | P1 | **Sebagian** | FK & index tersedia; `submissions.department`, `submissions.created_at`, `documents.department` tanpa index |
 | 15 | UI/UX | P2 | **Sebagian** | Layout responsif + flash + empty state; belum ada loading state, sorting kolom, atau bulk action |
 | 16 | Dokumentasi README | P2 | **Sebagian** | README 25 KB sangat lengkap; **tidak menyebut modul Peminjaman sama sekali** |
 
-Ringkasan: **Selesai 1, Sebagian 13, Belum disentuh 2** (dari 16 section yang dilaporkan; section 17-20
+Ringkasan: **Selesai 6, Sebagian 9, Belum disentuh 1** (dari 16 section yang dilaporkan; section 17-20
 tidak ada di prompt klarifikasi ini dan tidak diklaim).
 
 ### Yang terjadi pada 2 section yang saya laporkan "Sebagian"
@@ -74,15 +76,44 @@ Dua catatan riwayat yang penting untuk pembaca:
    dipertahankan, penghapusan di remote dibatalkan, dan seluruh commit sudah di-push.
    Detail di §9 butir 1 dan §11.
 
-Perubahan kode di luar commit feat: hanya dua perbaikan bug (BUG-6 dan BUG-8 bagian copy),
-keduanya terpisah per commit, tanpa fitur produk baru.
+Sesi verifikasi & lanjutan (6 Okt 2026):
+
+| Commit | Isi |
+|---|---|
+| `b6099b3` | fix: BUG-4 — `borrower_user_id` = peminjam asli, kolom baru `recorded_by` untuk pencatat (+ migration, model, view, 3 test) |
+| `db48328` | fix: BUG-7 — `generateDocumentNumber()` urut & race-safe untuk IN/OUT/DIST (+ 5 test) |
+| `5d67ea0` | fix: BUG-3 + BUG-5 — barang dipinjam tidak muncul di dropdown loan; `activeLoans()` dipakai di detail aset Kajur/Sarpras (+ 6 test) |
+| `4ca0511` | feat: Section 8 — tabel `submission_histories` + pencatatan di 6 titik transisi + blok riwayat di 3 halaman detail (+ 10 test) |
+| `83dd94c` | feat: Section 11 — export laporan PDF (dompdf) & Excel (.xlsx) server-side, route `reports.pdf`/`reports.excel` (+ 6 test) |
+
+Perubahan kode di luar commit feat sesi pertama: perbaikan bug (BUG-6, BUG-8 bagian copy). Pada sesi
+lanjutan: perbaikan BUG-4, BUG-5, BUG-7, BUG-3 + dua fitur produk (histori approval & export
+PDF/Excel), semuanya ber-commit terpisah dan ter-push.
 
 ---
 
 ## 2. Fitur Ditambahkan
 
-Tidak ada fitur produk baru. Yang ditambahkan adalah pelengkapan fitur yang sudah ada namun tidak
-fungsional.
+Sesi pertama hanya melengkapi fitur yang sudah ada namun tidak fungsional. Sesi verifikasi
+lanjutan menambahkan **dua fitur produk baru** — histori approval (Section 8) dan export
+PDF/Excel (Section 11) — selain perbaikan BUG-3/4/5/7.
+
+### 2.4 Riwayat Proses Pengajuan (Section 8, commit `4ca0511`)
+
+Tabel baru `submission_histories` (append-only) mencatat setiap transisi status pengajuan:
+status sebelum → sesudah, aktor (nama + peran via relasi `actor`), catatan Sarpras/Kepala
+Sekolah pada saat transisi, dan waktu. Dicatat otomatis di 6 titik transisi (store,
+update draft, cancel, submitDraft, Sarpras process, Kepsek decide) dan ditampilkan sebagai
+blok "Riwayat Proses Pengajuan (Audit Trail)" di halaman detail Kajur, Sarpras, dan Kepala
+Sekolah.
+
+### 2.5 Export Laporan PDF/Excel (Section 11, commit `83dd94c`)
+
+Tombol "PDF" dan "Excel" di halaman Laporan & Rekap; keduanya mewarisi semua filter aktif
+(jenis laporan, date range, jurusan). PDF dirender server-side via dompdf (A4 landscape,
+kop laporan, meta, tabel, kolom tanda tangan); Excel via PhpSpreadsheet (header tebal +
+autosize kolom). Data list dari query yang sama dengan tampilan layar, sehingga selalu
+terisi otomatis dari database.
 
 ### 2.1 Halaman Riwayat Aktivitas (`/sarpras/activity-logs`)
 
@@ -93,7 +124,7 @@ dengan:
 - Tabel log: waktu, jenis aksi, pengguna + role, keterangan, label data terkait
 - Filter: pencarian teks (nama pengguna/keterangan/label), dropdown jenis aksi (distinct),
   rentang tanggal `start_date`–`end_date` — semua sudah didukung `ActivityLogController.php:16-35`,
-  view baru ini yangMahontradeUI-nya
+  view baru inilah yang menampilkan UI-nya
 - Ringkasan Before/After per baris via modal, membaca cast `array` `old_values`/`new_values`
   (`ActivityLog.php:30-37`)
 - Empty state dan pagination ringkas
@@ -153,12 +184,17 @@ halaman itu adalah mengetik URL secara manual. Sudah diperbaiki di `layouts/app.
 | BUG-2 | `layouts/app.blade.php` | Tidak ada entri nav ke audit trail | Minor | **Selesai** — nav ditambahkan |
 | BUG-6 | `Item.php:15-35` | `stock` ada di `$fillable`, kelas invariant yang sama dengan `Submission.status`/`User.role` | Sedang | **Selesai** — commit `bc9a3ed` |
 | BUG-8 | `ApprovalController.php:37` | Klaim bypass approval **SALAH**; bagian UX copy saja (§3.3) | Ringan | **Selesai** — commit `aa5d05a` |
-| BUG-3 | `app/Models/Item.php` | Relasi `activeLoans()` tidak pernah dipakai (kode mati) | Ringan | Tercatat di §3.2 |
-| BUG-4 | `LoanController.php` | `borrower_user_id` terisi ID Sarpras pencatat, bukan peminjam asli | Sedang | Tercatat di §3.2 |
-| BUG-5 | `LoanController.php` | Dropdown create tidak menyaring barang yang sedang dipinjam | Ringan | Tercatat di §3.2 |
-| BUG-7 | `LogisticsController.php` | Nomor dokumen pakai `uniqid()` — tidak urut, berisiko tabrakan | Sedang | Tercatat di §3.2 |
+| BUG-3 | `app/Models/Item.php` | Relasi `activeLoans()` tidak pernah dipakai (kode mati) | Ringan | **Selesai** — commit `5d67ea0` |
+| BUG-4 | `LoanController.php` | `borrower_user_id` terisi ID Sarpras pencatat, bukan peminjam asli | Sedang | **Selesai** — commit `b6099b3` |
+| BUG-5 | `LoanController.php` | Dropdown create tidak menyaring barang yang sedang dipinjam | Ringan | **Selesai** — commit `5d67ea0` |
+| BUG-7 | `LogisticsController.php` | Nomor dokumen pakai `uniqid()` — tidak urut, berisiko tabrakan | Sedang | **Selesai** — commit `db48328` |
 
 ### 3.2 Technical debt yang dicatat, sengaja TIDAK diperbaiki
+
+> **Pembaruan 6 Okt 2026:** keempat item di bawah **sudah diperbaiki** lewat prompt verifikasi
+> lanjutan. Rincian implementasi ada di commit `b6099b3` (BUG-4), `db48328` (BUG-7),
+> `5d67ea0` (BUG-3 + BUG-5). Teks di bawah dipertahankan sebagai arsip keputusan desain
+> (khususnya alasan pemilihan kolom `recorded_by` untuk BUG-4).
 
 Empat item di bawah **tidak mengeksploitasi apa pun saat ini**. Tidak ada benturan keamanan
 atau kehilangan data yang terjadi sekarang. Tetapi semuanya adalah bahan bakar yang bisa
@@ -248,15 +284,17 @@ Status keamanan yang sudah ada di codebase (bukan kontribusi commit ini) dan **s
 
 ## 5. Migrasi Baru
 
-Tidak ada. Tiga migrasi untracked sudah ada dari sesi sebelumnya dan ikut ter-commit:
+Satu set dari sesi sebelum ini ikut ter-commit, plus dua migrasi baru dari sesi verifikasi lanjutan:
 
 | File | Isi |
 |---|---|
 | `2026_10_05_000001_enhance_items_and_add_asset_identity.php` | Tambah kolom identitas aset (`inventory_number` unique, `serial_number`, `brand`, `model`), `item_type` enum, `acquisition_year`, `acquisition_price`, `current_status` enum, `minimum_stock` |
 | `2026_10_05_000002_create_loans_table.php` | Tabel `loans` + FK ke `items`/`users` + index `(item_id,status)`, `loan_date`, `due_date` + soft delete |
 | `2026_10_05_000003_create_activity_logs_table.php` | Tabel `activity_logs` append-only, polymorphic `auditable`, JSON `old_values`/`new_values`, `ip_address`, snapshot `user_name`/`user_role` |
+| `2026_10_06_000001_add_recorded_by_to_loans_table.php` | **BUG-4**: kolom `recorded_by` (pencatat transaksi), backfill `recorded_by = borrower_user_id`, lalu `borrower_user_id = NULL` agar diisi peminjam asli |
+| `2026_10_06_000002_create_submission_histories_table.php` | **Section 8**: tabel `submission_histories` append-only (from_status, to_status, actor_user_id, notes, recorded_at; index `(submission_id, recorded_at)`) |
 
-Semua 3 sudah diverifikasi jalan pada `php artisan test` (54 test hijau sebelum saya menambah 3 test baru).
+Semua sudah diverifikasi jalan pada `php artisan test` (93 test hijau saat ini).
 
 ---
 
@@ -319,18 +357,38 @@ Modified:  resources/views/principal/approval/show.blade.php
 Modified:  tests/Feature/WorkflowTransitionTest.php      (+2 test copy)
 ```
 
+Sesi verifikasi & lanjutan, 6 Okt 2026 (semua ter-push, lihat §9/§11):
+
+```
+b6099b3  fix: BUG-4 — borrower_user_id kini peminjam asli, kolom recorded_by untuk pencatat
+           (+ migration, Loan model/controller/view, LoanWorkflowTest +3)
+db48328  fix: BUG-7 — helper generateDocumentNumber() urut&race-safe di LogisticsController
+           (+ tests/Feature/DocumentNumberSequentialTest.php, 5 test)
+5d67ea0  fix: BUG-3+BUG-5 — filter barang dipinjam di dropdown loan, activeLoans() dipakai
+           di detail aset Kajur/Sarpras (6 test baru)
+4ca0511  feat: Section 8 — tabel submission_histories + pencatatan di 6 titik transisi,
+           blok "Riwayat Proses Pengajuan" di 3 halaman detail (10 test baru)
+83dd94c  feat: Section 11 — export laporan PDF (dompdf) & Excel (.xlsx) server-side
+           (composer: barryvdh/laravel-dompdf ^3.1, phpoffice/phpspreadsheet ^5.10;
+            Route reports.pdf/reports.excel; 6 test baru)
+```
+
 ---
 
 ## 7. Testing & Hasilnya
 
 ```
 $ php artisan test
-Tests:    63 passed (234 assertions)
+Tests:    93 passed (329 assertions)
 ```
 
 | Test file | Jumlah | Cakupan |
 |---|---|---|
-| `LoanWorkflowTest` | 26 | Alur peminjaman end-to-end: create → approve → return, gate stok consumable, gate aset individual, penolakan, filter, auto-terlambat, audit log, **+ 3 test audit trail baru** |
+| `LoanWorkflowTest` | 29 | Alur peminjaman end-to-end: create → approve → return, gate stok consumable, gate aset individual, penolakan, filter, auto-terlambat, audit log, **+ 3 test audit trail, + 3 test BUG-4 (`recorded_by`)** |
+| `DocumentNumberSequentialTest` | 5 | **BUG-7**: nomor IN/OUT/DIST urut 0001…, lanjut setelah nomor uniqid lama tanpa duplikat, bulk 50 transaksi |
+| `LoanDropdownAndActiveLoanDisplayTest` | 6 | **BUG-5 + BUG-3**: barang dipinjam/stok 0 tak muncul di dropdown, blok "Peminjaman Aktif" di detail aset Sarpras & Kajur |
+| `SubmissionHistoryTest` | 10 | **Section 8**: pencatatan histori di semua transisi (store/submit/cancel/Sarpras review-reject/Kepsek approve-reject), urutan alur penuh, tampilan di detail |
+| `ReportExportTest` | 6 | **Section 11**: tombol export, unduhan PDF `.pdf` & `.xlsx` (content-type + nama file), filter date range, scoping Kajur, tipe invalid ditolak |
 | `LocationManagementTest` | 4 | CRUD lokasi, soft-delete guard, integritas histori |
 | `ReportScopingTest` | 3 | Scoping laporan per role, Kajur tanpa department dapat 403 |
 | `UserPrivilegeTest` | 3 | Sarpras tidak bisa buat/toggle kepala_sekolah |
@@ -338,7 +396,7 @@ Tests:    63 passed (234 assertions)
 | `ItemStockMassAssignmentTest` | 4 | **Regression guard BUG-6**: `stock` tidak bisa diset/diubah lewat mass-assignment, assignment eksplisit tetap jalan |
 | `DistributionStockTest`, `DocumentAuthTest`, `KajurTenantIsolationTest`, `AuthenticationAndRoleAccessTest`, `ExampleTest` ×2 | 17 | Distribusi/stok, auth dokumen, isolasi tenant, otorisasi role |
 
-Semua 63 lulus. Test kunci sebagai regression guard:
+Semua 93 lulus. Test kunci sebagai regression guard:
 
 - `test_sarpras_can_open_activity_logs_page` — **BUG-1**. Sebelum view dibuat, gagal "View not found".
 - `ItemStockMassAssignmentTest::stock cannot be set via mass assignment on create` — **BUG-6**.
@@ -348,7 +406,8 @@ Semua 63 lulus. Test kunci sebagai regression guard:
 
 Tidak ada test yang gagal atau di-skip. `vendor/bin/pint --test` masih gagal di **18 file**,
 semuanya pre-existing sejak sebelum modul Peminjaman (daftar file identik dengan baseline
-`2e880da`; tidak ada file baru yang ikut gagal).
+`2e880da`); file yang disentuh pada sesi verifikasi lanjutan selalu dirapikan pint per-file
+sehingga tidak ada file baru yang ikut masuk daftar gagal.
 
 ---
 
@@ -358,9 +417,7 @@ Prioritas ini **tidak diselesaikan** dan saya tidak membuatnya selesai:
 
 | Section | Kenapa belum |
 |---|---|
-| 11 — Export PDF/Excel | Tidak ada dependency (`dompdf`, `phpoffice`, `maatwebsite` semuanya nol di `composer.json`). Butuh penambahan package + route download + view laporan. |
 | 12 — QR Code | Sesuai `AGENTS.md` §4, barcode/QR code **dilarang keras** tanpa persetujuan eksplisit. Sengaja tidak dikerjakan. |
-| 8 — Approval histori | Butuh desain tabel `approval_histories` yang belum ada di plan. Ini keputusan skema, bukan sekadar kode. |
 | 2 — Aset per-unit | Butuh tabel anak (satu baris per unit fisik). Ongkos perubahan skema besar — kolom identitas yang sekarang ada pada baris agregat, idealnya dipindah ke `asset_units`. Saya tidak ingin memutus data yang sudah ada tanpa persetujuan. |
 | 6 — Dashboard lanjutan | Butuh keputusan produk: statistik apa yang penting per role. Tidak ada di prompt. |
 
@@ -390,15 +447,18 @@ Prioritas ini **tidak diselesaikan** dan saya tidak membuatnya selesai:
    Sisanya **pre-existing** (`bootstrap/app.php`, `AppServiceProvider.php`, `routes/web.php`,
    `Submission.php`, `LocationFactory.php`, dan 13 lainnya) — sudah gagal sebelum kerjaan peminjaman
    dimulai. Tidak ada file baru yang masuk daftar gagal. `pint` **tidak** dijalankan di CI, jadi tidak memblokir pipeline.
-3. **BUG-3, BUG-4, BUG-5, BUG-7 masih hidup** di codebase dan sengaja dibiarkan — alasan
-   per item ada di §3.2. Urutan yang saya sarankan: BUG-4 (butuh keputusan desain), BUG-7
-   (menyangkut format nomor data lama), BUG-5 (satu baris), BUG-3 (bersihkan kode mati).
-   **BUG-6 sudah selesai** (commit `bc9a3ed`), jadi `stock` bukan lagi risiko.
-   Perhatikan bahwa BUG-8 sudah dikoreksi di §3.3 — klaim bypass approval ternyata tidak
-   terbukti, jadi jangan diperlakukan sebagai risiko; yang tersisa hanya copy view dan sudah
-   diperbaiki di `aa5d05a`.
-4. **Skema index belum lengkap** — `submissions.department` dan `submissions.created_at` difilter di `ReportController.php:74,80` tapi tanpa index. Belum jadi bottleneck pada data skala sekolah.
-5. **`Item.current_status` punya 5 nilai enum tapi hanya 2 yang bisa dicapai** lewat UI. Nilai `'dalam_perbaikan'` dan `'disposed'` hanya bisa diset via Tinker. Section 4 baru benar-benar "Sebagian" karena ini.
+3. **BUG-3, BUG-4, BUG-5, BUG-7 sudah diperbaiki** di sesi verifikasi lanjutan
+   (commit `b6099b3`, `db48328`, `5d67ea0`), dan **BUG-6 sudah selesai** (commit `bc9a3ed`).
+   `stock` bukan lagi risiko; relasi `activeLoans()` kini dipakai; barang yang dipinjam sudah
+   tidak muncul di dropdown; dan nomor dokumen sudah urut/aman. Tidak ada tech-debt aktif dari
+   daftar ini. Perhatikan BUG-8 sudah dikoreksi di §3.3 — yang tersisa hanya copy view dan
+   sudah diperbaiki di `aa5d05a`.
+4. **`phpspreadsheet` di-install dengan `--ignore-platform-req=ext-gd`** karena platform PHP
+   mesin ini tidak punya `ext-gd`. Menulis `.xlsx` di modul laporan ini tidak menyentuh gambar,
+   jadi aman. Kalau nanti laporan perlu perendaman image (logo/ikon dalam sel), wajib
+   menambahkan `ext-gd` dulu.
+5. **Skema index belum lengkap** — `submissions.department` dan `submissions.created_at` difilter di `ReportController` tapi tanpa index. Belum jadi bottleneck pada data skala sekolah.
+6. **`Item.current_status` punya 5 nilai enum tapi hanya 2 yang bisa dicapai** lewat UI. Nilai `'dalam_perbaikan'` dan `'disposed'` hanya bisa diset via Tinker. Section 4 baru benar-benar "Sebagian" karena ini.
 
 ---
 
@@ -468,7 +528,9 @@ belum dikerjakan lebih lanjut.**
    lokal menang, file laporan ini dipertahankan. Saat rebase, `git rebase --continue` pernah gagal
    sekali karena `.git/index.lock` bentrok, sehingga commit BUG-6 dibuat ulang manual dari pesan
    commit aslinya — diff-nya diverifikasi identik dengan versi sebelum rebase.
-2. **Push — selesai.** `origin/main` identik dengan HEAD lokal, `git status -sb` tanpa selisih.
+2. **Push — selesai (termasuk sesi verifikasi lanjutan).** Semua commit
+   (`b6099b3`, `db48328`, `5d67ea0`, `4ca0511`, `83dd94c`, dan pembaruan laporan ini) ter-push.
+   `origin/main` identik dengan HEAD lokal, `git status -sb` tanpa selisih.
    Push harus dijalankan dari PowerShell Windows karena WSL tidak punya kredensial:
 
    ```powershell
@@ -480,6 +542,6 @@ belum dikerjakan lebih lanjut.**
 
 ### Sisa pekerjaan berikutnya
 
-3. **Section 11 (export PDF/Excel)** — satu-satunya gap P2 dengan dampak user nyata terbesar.
-4. **Section 8 (tabel approval histories)** — butuh keputusan skema.
-5. **BUG-4** lalu **BUG-7** — keduanya butuh keputusan Anda, alasan lengkap di §3.2.
+3. **Section 2 — Aset per-unit / per-serial** (butuh keputusan skema `asset_units`).
+4. **Section 6 — Dashboard lanjutan** (butuh keputusan produk statistik per role).
+5. **Section 12 — QR Code** tetap dilarang tanpa persetujuan eksplisit (`AGENTS.md` §4).
