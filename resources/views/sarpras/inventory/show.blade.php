@@ -23,6 +23,45 @@
                     </div>
                 </div>
 
+                @if($item->activeLoans && $item->activeLoans->isNotEmpty())
+                    <div class="mt-5">
+                        <h6 class="fw-bolder text-uppercase fs-8 text-primary mb-3"><i class="bi bi-person-check me-1"></i> Peminjaman Aktif</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-row-bordered table-row-gray-100 align-middle">
+                                <thead class="fw-bold text-muted">
+                                    <tr>
+                                        <th>Nomor</th>
+                                        <th>Peminjam</th>
+                                        <th>Status</th>
+                                        <th>Jumlah</th>
+                                        <th>Tenggat</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($item->activeLoans as $loan)
+                                        <tr>
+                                            <td class="font-monospace">{{ $loan->loan_number }}</td>
+                                            <td>
+                                                {{ $loan->borrower_name }}
+                                                @if($loan->borrower)
+                                                    <span class="text-muted fs-8">(akun: {{ $loan->borrower->name }})</span>
+                                                @endif
+                                            </td>
+                                            <td>
+                                                <span class="badge badge-light-{{ \App\Models\Loan::STATUS_META[$loan->status]['color'] ?? 'secondary' }}">
+                                                    {{ \App\Models\Loan::STATUS_META[$loan->status]['label'] ?? $loan->status }}
+                                                </span>
+                                            </td>
+                                            <td>{{ $loan->quantity }}</td>
+                                            <td>{{ $loan->due_date?->format('d M Y') }}</td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                @endif
+
                 <div class="separator separator-dashed my-5"></div>
 
                 <!-- Form Pindah Lokasi -->

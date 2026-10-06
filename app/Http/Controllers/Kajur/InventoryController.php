@@ -43,7 +43,7 @@ class InventoryController extends Controller
             abort(403, 'Akses ditolak: Anda hanya berhak melihat inventaris jurusan Anda sendiri.');
         }
 
-        $item->load(['location', 'locationHistories.fromLocation', 'locationHistories.toLocation', 'conditionHistories']);
+        $item->load(['location', 'locationHistories.fromLocation', 'locationHistories.toLocation', 'conditionHistories', 'activeLoans.borrower']);
 
         return view('kajur.inventory.show', compact('item'));
     }

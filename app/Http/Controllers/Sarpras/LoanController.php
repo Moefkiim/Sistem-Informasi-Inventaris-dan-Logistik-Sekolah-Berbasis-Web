@@ -70,9 +70,18 @@ class LoanController extends Controller
     public function create(): View
     {
         $items = Item::with('location')
+            ->withSum(['activeLoans as active_loan_quantity'], 'quantity')
             ->whereNotIn('current_status', ['disposed', 'tidak_aktif'])
             ->orderBy('name')
-            ->get();
+            ->get()
+            ->filter(function (Item $item) {
+                if ($item->isIndividual()) {
+                    return (int) $item->active_loan_quantity < $item->stock;
+                }
+
+                return $item->stock > 0;
+            })
+            ->values();
 
         $borrowers = User::where('is_active', true)
             ->orderBy('name')

@@ -124,6 +124,7 @@ class InventoryController extends Controller
             'incomingItems.user',
             'outgoingItems.user',
             'distributions.toLocation',
+            'activeLoans.borrower',
         ]);
         $locations = Location::all();
 
