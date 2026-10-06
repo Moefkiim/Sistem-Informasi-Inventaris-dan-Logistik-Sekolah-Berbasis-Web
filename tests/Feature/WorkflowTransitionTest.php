@@ -155,4 +155,75 @@ class WorkflowTransitionTest extends TestCase
         $user->update(['role' => 'kepala_sekolah']);
         $this->assertSame('kajur', $user->fresh()->role);
     }
+
+    public function test_approval_page_shows_correct_copy_per_status(): void
+    {
+        $kepsek = User::factory()->state(['role' => 'kepala_sekolah', 'department' => null])->create();
+
+        foreach (['draft', 'submitted'] as $pending) {
+            $sub = $this->makeSubmission($pending);
+            $html = $this->actingAs($kepsek)
+                ->get(route('kepala_sekolah.approval.show', $sub))
+                ->getContent();
+
+            $this->assertStringContainsString('Belum ada keputusan', $html, "status=$pending");
+            $this->assertStringNotContainsString(
+                'Keputusan Telah Dibuat',
+                $html,
+                "Tidak boleh mengklaim ada keputusan untuk status=$pending"
+            );
+            $this->assertStringNotContainsString('Pada:', $html, "Tidak ada baris tanggal kosong untuk $pending");
+        }
+    }
+
+    public function test_approval_page_shows_final_decision_only_after_real_decision(): void
+    {
+        $kepsek = User::factory()->state(['role' => 'kepala_sekolah', 'department' => null])->create();
+
+        [$kajur, $submission] = $this->createDraftSubmission();
+        $this->advanceToSubmitted($submission, $kajur);
+        $this->advanceToReviewed($submission);
+
+        $this->actingAs($kepsek)
+            ->post(route('kepala_sekolah.approval.decide', $submission), [
+                'action' => 'approve',
+                'principal_notes' => 'Disetujui Kepala Sekolah',
+            ])
+            ->assertRedirect();
+
+        $html = $this->actingAs($kepsek)
+            ->get(route('kepala_sekolah.approval.show', $submission))
+            ->getContent();
+
+        $this->assertStringContainsString('Keputusan Kepala Sekolah', $html);
+        $this->assertStringContainsString('DISETUJUI', $html);
+        $this->assertStringContainsString('Disetujui Kepala Sekolah', $html);
+        $this->assertStringNotContainsString('Belum ada keputusan', $html);
+    }
+
+    private function makeSubmission(string $status): Submission
+    {
+        $kajur = User::factory()->kajur()->create();
+
+        $submission = Submission::create([
+            'submission_number' => 'REQ-COPY-'.strtoupper($status),
+            'user_id' => $kajur->id,
+            'title' => 'Test',
+            'purpose' => 'Test',
+            'department' => $kajur->department,
+        ]);
+
+        SubmissionItem::create([
+            'submission_id' => $submission->id,
+            'item_name' => 'PC',
+            'quantity' => 1,
+            'unit' => 'Unit',
+            'estimated_price' => 1000000,
+        ]);
+
+        $submission->status = $status;
+        $submission->save();
+
+        return $submission;
+    }
 }

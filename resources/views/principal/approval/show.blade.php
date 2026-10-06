@@ -89,13 +89,30 @@
                     </div>
                 </form>
             </div>
-        @else
+        @elseif(in_array($submission->status, ['approved', 'rejected']))
+            <div class="separator separator-dashed my-6"></div>
             <div class="alert alert-light-{{ $submission->status === 'approved' ? 'success' : 'danger' }} p-4">
-                <strong>Keputusan Telah Dibuat:</strong> {{ strtoupper($submission->status) }}
+                <strong>Keputusan Kepala Sekolah:</strong>
+                {{ $submission->status === 'approved' ? 'DISETUJUI' : 'DITOLAK' }}
                 @if($submission->principal_notes)
                     <div class="mt-2"><strong>Catatan:</strong> {{ $submission->principal_notes }}</div>
                 @endif
-                <div class="text-muted fs-8 mt-1">Pada: {{ $submission->decided_at?->format('d/m/Y H:i') }}</div>
+                @if($submission->decided_at)
+                    <div class="text-muted fs-8 mt-1">Pada: {{ $submission->decided_at->format('d/m/Y H:i') }}</div>
+                @endif
+            </div>
+        @else
+            <div class="separator separator-dashed my-6"></div>
+            <div class="alert alert-light-warning p-4">
+                <strong>Belum ada keputusan.</strong>
+                Pengajuan berstatus <span class="text-uppercase fw-bold">{{ $submission->status }}</span>
+                @if($submission->status === 'draft' || $submission->status === 'submitted')
+                    , sehingga masih menunggu verifikasi Sarpras sebelum dapat diputuskan oleh Kepala Sekolah.
+                @elseif($submission->status === 'cancelled')
+                    karena dibatalkan, sehingga tidak memerlukan keputusan Kepala Sekolah.
+                @endif
+                . Kepala Sekolah baru dapat menyetujui atau menolak setelah pengajuan berstatus
+                <span class="text-uppercase fw-bold">reviewed_sarpras</span>.
             </div>
         @endif
     </div>
