@@ -14,9 +14,8 @@ Setiap klaim disertai bukti `file:line`. Bagian yang belum dikerjakan ditandai e
 ## 0. Ringkasan Eksekutif: Status 20 Section
 
 Pekerjaan yang benar-benar ada di repo ini (verifikasi Oct 2026) — setelah sesi verifikasi lanjutan
-6 Okt — berstatus **6 dari 16 section Selesai penuh, 9 Sebagian, dan 1 belum disentuh** (Section 12
-QR dilarang oleh `AGENTS.md` §4). Pekerjaan terbuka yang tersisa: aset per-unit (§2) dan dashboard
-lanjutan (§6).
+6 Okt — berstatus **7 dari 16 section Selesai penuh, 8 Sebagian, dan 1 belum disentuh** (Section 12
+QR dilarang oleh `AGENTS.md` §4). Pekerjaan terbuka yang tersisa: aset per-unit (§2).
 
 | # | Bagian | Prioritas | Status | Bukti |
 |---|--------|-----------|--------|-------|
@@ -25,7 +24,7 @@ lanjutan (§6).
 | 3 | Modul Peminjaman & Pengembalian | P0 | **Selesai** | `LoanController.php`, `Loan.php`, `loans` migration, `LoanFactory`, 3 view, `LoanWorkflowTest.php` (29 test) + `recorded_by` (BUG-4) |
 | 4 | Pemisahan kondisi vs status | P1 | **Sebagian** | `current_status` enum ada (`000001:38-46`), hanya di-set oleh `LoanController.php:186,232`; tidak ada UI untuk status `'dalam_perbaikan'`/`'disposed'` |
 | 5 | Stok minimum | P1 | **Sebagian** | Kolom + helper `Item.php:60-77`, validasi, input form — tapi **tidak ada** alerting/filter/list badge yang memakainya |
-| 6 | Dashboard statistik real | P0 | **Sebagian** | `routes/web.php:39-41` hitung 3 angka dari DB — hanya 3 statistik, tanpa scoping per role, tanpa grafik, tanpa low-stock widget |
+| 6 | Dashboard statistik real | P0 | **Selesai** | `HomeController.php`, `routes/web.php:22` — statistik 3 angka scoped per role (Kajur = jurusannya, Sarpras/Kepsek = school-wide, Kajur tanpa department = 403), grafik Chart.js (`chart.umd.js` di-vendor `public/plugins/chartjs`): kondisi aset, distribusi per lokasi, persebaran per jurusan (non-Kajur), tren masuk/keluar 12 bulan; `DashboardScopingTest.php` (5 test) |
 | 7 | Audit trail | P0 | **Selesai** | `ActivityLog.php`, migration, 12 call site, view `sarpras/activity_logs`, entri nav, test akses role |
 | 8 | Approval dan histori | P0 | **Selesai** | `submission_histories` dibuat (commit `4ca0511`): from/to status, aktor, catatan, recorded_at — pencatatan di 6 titik transisi + 10 test |
 | 9 | Nomor dokumen otomatis | P1 | **Selesai** | `submission_number` & `loan_number` berurutan; `IN-`/`OUT-`/`DIST-` kini memakai `generateDocumentNumber()` urut race-safe (commit `db48328`) + 5 test |
@@ -386,11 +385,12 @@ db48328  fix: BUG-7 — helper generateDocumentNumber() urut&race-safe di Logist
 
 ```
 $ php artisan test
-Tests:    98 passed (379 assertions)
+Tests:    103 passed (407 assertions)
 ```
 
 | Test file | Jumlah | Cakupan |
 |---|---|---|
+| `DashboardScopingTest` | 5 | **Section 6**: statistik dashboard scoped — Kajur `RPL` tidak melihat angka jurusan `TKJ`, Kajur tanpa department dapat 403, Sarpras/Kepsek melihat angka global; chart Kajur ikut scoping & tanpa grafik per-jurusan; chart Sarpras memuat persebaran jurusan + tren masuk/keluar |
 | `DemoReadinessTest` | 5 | **TASK 2 (CI & demo)**: akun demo `kajur_rpl`/`sarpras`/`kepsek` terprovisi (`role` + `is_active` benar) dari `DatabaseSeeder`, ketiganya login via HTTP dan membuka dashboard + halaman sesi ini (export PDF/Excel, blok "Riwayat Proses", blok "Peminjaman Aktif", `recorded_by` pada detail peminjaman); `user_nonaktif` ditolak login |
 | `LoanWorkflowTest` | 29 | Alur peminjaman end-to-end: create → approve → return, gate stok consumable, gate aset individual, penolakan, filter, auto-terlambat, audit log, **+ 3 test audit trail, + 3 test BUG-4 (`recorded_by`)** |
 | `DocumentNumberSequentialTest` | 5 | **BUG-7**: nomor IN/OUT/DIST urut 0001…, lanjut setelah nomor uniqid lama tanpa duplikat, bulk 50 transaksi |
@@ -404,7 +404,7 @@ Tests:    98 passed (379 assertions)
 | `ItemStockMassAssignmentTest` | 4 | **Regression guard BUG-6**: `stock` tidak bisa diset/diubah lewat mass-assignment, assignment eksplisit tetap jalan |
 | `DistributionStockTest`, `DocumentAuthTest`, `KajurTenantIsolationTest`, `AuthenticationAndRoleAccessTest`, `ExampleTest` ×2 | 17 | Distribusi/stok, auth dokumen, isolasi tenant, otorisasi role |
 
-Semua 98 lulus. Test kunci sebagai regression guard:
+Semua 103 lulus. Test kunci sebagai regression guard:
 
 - `test_sarpras_can_open_activity_logs_page` — **BUG-1**. Sebelum view dibuat, gagal "View not found".
 - `ItemStockMassAssignmentTest::stock cannot be set via mass assignment on create` — **BUG-6**.
@@ -423,8 +423,16 @@ xmlreader/xmlwriter), sedangkan `shivammathur/setup-php` hanya memasang mbstring
 fileinfo/curl. Setelah `extensions` diperluas (commit `8236b6b`), CI run #20 **hijau penuh**;
 `composer install` diverifikasi lolos tanpa `--ignore-platform-req` (lokal: hanya `ext-gd` yang
 kurang, dan kini tersedia di CI). CI run #21 (commit `f8f6aaa`, seluruh 98 test di php 8.4) juga
-**hijau**. Kode export Excel (`ReportController::exportExcel`) memang tidak memakai GD saat runtime —
-kehadirannya hanya untuk memenuhi requirement composer.
+**hijau**, dan run #22 (dokumen `c4e937c`) **hijau**. Kode export Excel
+(`ReportController::exportExcel`) memang tidak memakai GD saat runtime — kehadirannya hanya untuk
+memenuhi requirement composer.
+
+**Dashboard (Section 6) dan CI.** Commit `5623c7d` (scoping statistik) dan `80166c4` (grafik
+Chart.js) keduanya ter-push dan dijalankan di CI pada **php 8.4** (workflow yang sama, sqlite
+in-memory + build Vite): run #23 dan #24 sama-sama **hijau**. `public/plugins/chartjs/chart.umd.js`
+(v4.4.7, MIT) di-vendor statis seperti `public/plugins/daterangepicker` sehingga tidak menyentuh
+manifest Vite. Uji manual smoke (login `kajur_rpl`/`sarpras`/`kepsek`, buka `/home`) memastikan
+canvas render tanpa error konsol.
 
 ---
 
@@ -436,7 +444,6 @@ Prioritas ini **tidak diselesaikan** dan saya tidak membuatnya selesai:
 |---|---|
 | 12 — QR Code | Sesuai `AGENTS.md` §4, barcode/QR code **dilarang keras** tanpa persetujuan eksplisit. Sengaja tidak dikerjakan. |
 | 2 — Aset per-unit | Butuh tabel anak (satu baris per unit fisik). Ongkos perubahan skema besar — kolom identitas yang sekarang ada pada baris agregat, idealnya dipindah ke `asset_units`. Saya tidak ingin memutus data yang sudah ada tanpa persetujuan. |
-| 6 — Dashboard lanjutan | Butuh keputusan produk: statistik apa yang penting per role. Tidak ada di prompt. |
 
 ---
 
@@ -536,8 +543,8 @@ duplikat di kolom itu (mustahil sebelumnya karena kolomnya baru), tidak ada masa
 
 ## 11. Status Section yang Dirapot Tidak Disentuh
 
-Bagian 3 (Peminjaman) dan sebagian 2, 4, 5, 7 ikut ter-commit. **Section 1, 6, 9, 10, 11, 13, 14, 15, 16
-belum dikerjakan lebih lanjut.**
+Bagian 3 (Peminjaman) dan sebagian 2, 4, 5, 7 ikut ter-commit. **Section 1, 9, 10, 11, 13, 14, 15, 16
+belum dikerjakan lebih lanjut** (Section 6 sudah diselesaikan di commit `5623c7d` + `80166c4`).
 
 ### Status langkah teknis
 
@@ -560,5 +567,4 @@ belum dikerjakan lebih lanjut.**
 ### Sisa pekerjaan berikutnya
 
 3. **Section 2 — Aset per-unit / per-serial** (butuh keputusan skema `asset_units`).
-4. **Section 6 — Dashboard lanjutan** (butuh keputusan produk statistik per role).
-5. **Section 12 — QR Code** tetap dilarang tanpa persetujuan eksplisit (`AGENTS.md` §4).
+4. **Section 12 — QR Code** tetap dilarang tanpa persetujuan eksplisit (`AGENTS.md` §4).
