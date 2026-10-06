@@ -22,7 +22,6 @@ class Item extends Model
         'category',
         'item_type',
         'unit',
-        'stock',
         'minimum_stock',
         'source',
         'acquisition_year',

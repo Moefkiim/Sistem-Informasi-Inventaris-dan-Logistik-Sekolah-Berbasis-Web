@@ -24,8 +24,8 @@ class InventoryController extends Controller
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('code', 'like', "%{$search}%")
-                  ->orWhere('category', 'like', "%{$search}%");
+                    ->orWhere('code', 'like', "%{$search}%")
+                    ->orWhere('category', 'like', "%{$search}%");
             });
         }
 
@@ -42,55 +42,61 @@ class InventoryController extends Controller
     public function create(): View
     {
         $locations = Location::all();
+
         return view('sarpras.inventory.create', compact('locations'));
     }
 
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'code'              => ['required', 'string', 'max:50', 'unique:items,code'],
-            'inventory_number'  => ['nullable', 'string', 'max:100', 'unique:items,inventory_number'],
-            'serial_number'     => ['nullable', 'string', 'max:100'],
-            'brand'             => ['nullable', 'string', 'max:100'],
-            'model'             => ['nullable', 'string', 'max:100'],
-            'name'              => ['required', 'string', 'max:255'],
-            'category'          => ['required', 'string'],
-            'item_type'         => ['required', 'in:individual,consumable'],
-            'unit'              => ['required', 'string', 'max:30'],
-            'stock'             => ['required', 'integer', 'min:0'],
-            'minimum_stock'     => ['nullable', 'integer', 'min:0'],
-            'source'            => ['required', 'in:pembelian,bantuan'],
-            'acquisition_year'  => ['nullable', 'integer', 'min:1900', 'max:' . (date('Y') + 1)],
+            'code' => ['required', 'string', 'max:50', 'unique:items,code'],
+            'inventory_number' => ['nullable', 'string', 'max:100', 'unique:items,inventory_number'],
+            'serial_number' => ['nullable', 'string', 'max:100'],
+            'brand' => ['nullable', 'string', 'max:100'],
+            'model' => ['nullable', 'string', 'max:100'],
+            'name' => ['required', 'string', 'max:255'],
+            'category' => ['required', 'string'],
+            'item_type' => ['required', 'in:individual,consumable'],
+            'unit' => ['required', 'string', 'max:30'],
+            'stock' => ['required', 'integer', 'min:0'],
+            'minimum_stock' => ['nullable', 'integer', 'min:0'],
+            'source' => ['required', 'in:pembelian,bantuan'],
+            'acquisition_year' => ['nullable', 'integer', 'min:1900', 'max:'.(date('Y') + 1)],
             'acquisition_price' => ['nullable', 'numeric', 'min:0'],
-            'department'        => ['nullable', 'string'],
-            'location_id'       => ['nullable', Rule::exists('locations', 'id')->whereNull('deleted_at')],
-            'current_condition'  => ['required', 'in:baik,rusak_ringan,rusak_berat'],
-            'description'       => ['nullable', 'string'],
+            'department' => ['nullable', 'string'],
+            'location_id' => ['nullable', Rule::exists('locations', 'id')->whereNull('deleted_at')],
+            'current_condition' => ['required', 'in:baik,rusak_ringan,rusak_berat'],
+            'description' => ['nullable', 'string'],
         ]);
 
         DB::transaction(function () use ($validated, $request) {
-            $item = Item::create($validated);
+            $initial_stock = $validated['stock'];
+            unset($validated['stock']);
+
+            $item = new Item($validated);
+            $item->stock = $initial_stock;
+            $item->save();
 
             // Jika ada lokasi awal, buat histori mutasi lokasi perdana
-            if (!empty($validated['location_id'])) {
+            if (! empty($validated['location_id'])) {
                 LocationHistory::create([
-                    'item_id'          => $item->id,
+                    'item_id' => $item->id,
                     'from_location_id' => null,
-                    'to_location_id'   => $validated['location_id'],
-                    'user_id'          => $request->user()->id,
-                    'notes'            => 'Pencatatan inventaris awal',
-                    'moved_at'         => now(),
+                    'to_location_id' => $validated['location_id'],
+                    'user_id' => $request->user()->id,
+                    'notes' => 'Pencatatan inventaris awal',
+                    'moved_at' => now(),
                 ]);
             }
 
             // Buat entri awal riwayat kondisi fisik
             ConditionHistory::create([
-                'item_id'        => $item->id,
+                'item_id' => $item->id,
                 'from_condition' => $validated['current_condition'],
-                'to_condition'   => $validated['current_condition'],
-                'user_id'        => $request->user()->id,
-                'notes'          => 'Kondisi fisik saat registrasi aset',
-                'recorded_at'    => now(),
+                'to_condition' => $validated['current_condition'],
+                'user_id' => $request->user()->id,
+                'notes' => 'Kondisi fisik saat registrasi aset',
+                'recorded_at' => now(),
             ]);
 
             ActivityLog::log(
@@ -137,12 +143,12 @@ class InventoryController extends Controller
 
         DB::transaction(function () use ($item, $validated, $request) {
             LocationHistory::create([
-                'item_id'          => $item->id,
+                'item_id' => $item->id,
                 'from_location_id' => $item->location_id,
-                'to_location_id'   => $validated['to_location_id'],
-                'user_id'          => $request->user()->id,
-                'notes'            => $validated['notes'] ?? 'Pemindahan lokasi barang',
-                'moved_at'         => now(),
+                'to_location_id' => $validated['to_location_id'],
+                'user_id' => $request->user()->id,
+                'notes' => $validated['notes'] ?? 'Pemindahan lokasi barang',
+                'moved_at' => now(),
             ]);
 
             $item->update(['location_id' => $validated['to_location_id']]);
@@ -173,12 +179,12 @@ class InventoryController extends Controller
 
         DB::transaction(function () use ($item, $validated, $request) {
             ConditionHistory::create([
-                'item_id'        => $item->id,
+                'item_id' => $item->id,
                 'from_condition' => $item->current_condition,
-                'to_condition'   => $validated['to_condition'],
-                'user_id'        => $request->user()->id,
-                'notes'          => $validated['notes'] ?? 'Pembaruan kondisi fisik barang',
-                'recorded_at'    => now(),
+                'to_condition' => $validated['to_condition'],
+                'user_id' => $request->user()->id,
+                'notes' => $validated['notes'] ?? 'Pembaruan kondisi fisik barang',
+                'recorded_at' => now(),
             ]);
 
             $item->update(['current_condition' => $validated['to_condition']]);
