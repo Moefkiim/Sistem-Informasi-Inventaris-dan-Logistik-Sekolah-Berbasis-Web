@@ -86,6 +86,13 @@ Sesi verifikasi & lanjutan (6 Okt 2026):
 | `4ca0511` | feat: Section 8 — tabel `submission_histories` + pencatatan di 6 titik transisi + blok riwayat di 3 halaman detail (+ 10 test) |
 | `83dd94c` | feat: Section 11 — export laporan PDF (dompdf) & Excel (.xlsx) server-side, route `reports.pdf`/`reports.excel` (+ 6 test) |
 
+Sesi verifikasi CI & akun demo (7 Okt 2026):
+
+| Commit | Isi |
+|---|---|
+| `8236b6b` | ci: tambahkan ekstensi `gd, zip, iconv, simplexml, xmlreader, xmlwriter, ctype, filter` ke setup-php agar `composer install` di workflow lolos requirement phpspreadsheet (CI run #20 **hijau**) |
+| `f8f6aaa` | test: `DemoReadinessTest` (5 test) — bukti akun demo Kajur/Sarpras/Kepsek bisa login & akses halaman setelah `migrate:fresh`, akun nonaktif ditolak (CI run #21 **hijau**) |
+
 Perubahan kode di luar commit feat sesi pertama: perbaikan bug (BUG-6, BUG-8 bagian copy). Pada sesi
 lanjutan: perbaikan BUG-4, BUG-5, BUG-7, BUG-3 + dua fitur produk (histori approval & export
 PDF/Excel), semuanya ber-commit terpisah dan ter-push.
@@ -379,11 +386,12 @@ db48328  fix: BUG-7 — helper generateDocumentNumber() urut&race-safe di Logist
 
 ```
 $ php artisan test
-Tests:    93 passed (329 assertions)
+Tests:    98 passed (379 assertions)
 ```
 
 | Test file | Jumlah | Cakupan |
 |---|---|---|
+| `DemoReadinessTest` | 5 | **TASK 2 (CI & demo)**: akun demo `kajur_rpl`/`sarpras`/`kepsek` terprovisi (`role` + `is_active` benar) dari `DatabaseSeeder`, ketiganya login via HTTP dan membuka dashboard + halaman sesi ini (export PDF/Excel, blok "Riwayat Proses", blok "Peminjaman Aktif", `recorded_by` pada detail peminjaman); `user_nonaktif` ditolak login |
 | `LoanWorkflowTest` | 29 | Alur peminjaman end-to-end: create → approve → return, gate stok consumable, gate aset individual, penolakan, filter, auto-terlambat, audit log, **+ 3 test audit trail, + 3 test BUG-4 (`recorded_by`)** |
 | `DocumentNumberSequentialTest` | 5 | **BUG-7**: nomor IN/OUT/DIST urut 0001…, lanjut setelah nomor uniqid lama tanpa duplikat, bulk 50 transaksi |
 | `LoanDropdownAndActiveLoanDisplayTest` | 6 | **BUG-5 + BUG-3**: barang dipinjam/stok 0 tak muncul di dropdown, blok "Peminjaman Aktif" di detail aset Sarpras & Kajur |
@@ -396,7 +404,7 @@ Tests:    93 passed (329 assertions)
 | `ItemStockMassAssignmentTest` | 4 | **Regression guard BUG-6**: `stock` tidak bisa diset/diubah lewat mass-assignment, assignment eksplisit tetap jalan |
 | `DistributionStockTest`, `DocumentAuthTest`, `KajurTenantIsolationTest`, `AuthenticationAndRoleAccessTest`, `ExampleTest` ×2 | 17 | Distribusi/stok, auth dokumen, isolasi tenant, otorisasi role |
 
-Semua 93 lulus. Test kunci sebagai regression guard:
+Semua 98 lulus. Test kunci sebagai regression guard:
 
 - `test_sarpras_can_open_activity_logs_page` — **BUG-1**. Sebelum view dibuat, gagal "View not found".
 - `ItemStockMassAssignmentTest::stock cannot be set via mass assignment on create` — **BUG-6**.
@@ -408,6 +416,15 @@ Tidak ada test yang gagal atau di-skip. `vendor/bin/pint --test` masih gagal di 
 semuanya pre-existing sejak sebelum modul Peminjaman (daftar file identik dengan baseline
 `2e880da`); file yang disentuh pada sesi verifikasi lanjutan selalu dirapikan pint per-file
 sehingga tidak ada file baru yang ikut masuk daftar gagal.
+
+**Status CI (TASK 1 prompt CI & demo).** Sebelum perbaikan, `composer install` di workflow akan
+gagal karena `phpoffice/phpspreadsheet 5.10.0` mewajibkan `ext-gd` (juga zip/iconv/simplexml/
+xmlreader/xmlwriter), sedangkan `shivammathur/setup-php` hanya memasang mbstring/intl/sqlite3/dom/
+fileinfo/curl. Setelah `extensions` diperluas (commit `8236b6b`), CI run #20 **hijau penuh**;
+`composer install` diverifikasi lolos tanpa `--ignore-platform-req` (lokal: hanya `ext-gd` yang
+kurang, dan kini tersedia di CI). CI run #21 (commit `f8f6aaa`, seluruh 98 test di php 8.4) juga
+**hijau**. Kode export Excel (`ReportController::exportExcel`) memang tidak memakai GD saat runtime —
+kehadirannya hanya untuk memenuhi requirement composer.
 
 ---
 
