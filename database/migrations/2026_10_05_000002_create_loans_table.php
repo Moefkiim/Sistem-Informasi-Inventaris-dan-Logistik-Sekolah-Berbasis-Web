@@ -43,7 +43,7 @@ return new class extends Migration
                 'menunggu',    // Menunggu persetujuan Sarpras
                 'disetujui',   // Disetujui, belum diambil
                 'dipinjam',    // Sedang dipinjam
-                'dikembalikan',// Sudah dikembalikan
+                'dikembalikan', // Sudah dikembalikan
                 'terlambat',   // Melewati due_date belum dikembalikan
                 'ditolak',     // Ditolak oleh Sarpras
             ])->default('menunggu');

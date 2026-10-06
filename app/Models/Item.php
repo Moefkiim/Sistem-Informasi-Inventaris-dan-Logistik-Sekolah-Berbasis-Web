@@ -38,8 +38,8 @@ class Item extends Model
     {
         return [
             'acquisition_price' => 'decimal:2',
-            'stock'             => 'integer',
-            'minimum_stock'     => 'integer',
+            'stock' => 'integer',
+            'minimum_stock' => 'integer',
         ];
     }
 
@@ -65,6 +65,7 @@ class Item extends Model
         if ($this->minimum_stock > 0 && $this->stock <= $this->minimum_stock) {
             return 'menipis';
         }
+
         return 'aman';
     }
 

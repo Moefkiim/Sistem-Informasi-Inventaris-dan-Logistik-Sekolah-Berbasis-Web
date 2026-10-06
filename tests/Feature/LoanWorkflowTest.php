@@ -22,8 +22,8 @@ class LoanWorkflowTest extends TestCase
     private function individualItem(array $attributes = []): Item
     {
         return Item::factory()->create(array_merge([
-            'item_type'      => 'individual',
-            'stock'          => 1,
+            'item_type' => 'individual',
+            'stock' => 1,
             'current_status' => 'aktif',
         ], $attributes));
     }
@@ -31,8 +31,8 @@ class LoanWorkflowTest extends TestCase
     private function consumableItem(array $attributes = []): Item
     {
         return Item::factory()->create(array_merge([
-            'item_type'      => 'consumable',
-            'stock'          => 10,
+            'item_type' => 'consumable',
+            'stock' => 10,
             'current_status' => 'aktif',
         ], $attributes));
     }
@@ -109,13 +109,13 @@ class LoanWorkflowTest extends TestCase
 
         $this->actingAs($this->sarpras())
             ->post(route('sarpras.loans.store'), [
-                'borrower_name'       => 'Siti Aminah',
+                'borrower_name' => 'Siti Aminah',
                 'borrower_department' => 'TKJ',
-                'item_id'             => $item->id,
-                'quantity'            => 2,
-                'loan_date'           => now()->toDateString(),
-                'due_date'            => now()->addDays(5)->toDateString(),
-                'purpose'             => 'Praktikum jaringan',
+                'item_id' => $item->id,
+                'quantity' => 2,
+                'loan_date' => now()->toDateString(),
+                'due_date' => now()->addDays(5)->toDateString(),
+                'purpose' => 'Praktikum jaringan',
             ])
             ->assertRedirect(route('sarpras.loans.index'));
 
@@ -130,10 +130,10 @@ class LoanWorkflowTest extends TestCase
         $this->assertSame(5, $item->fresh()->stock);
 
         $this->assertDatabaseHas('activity_logs', [
-            'action'         => 'loan_created',
+            'action' => 'loan_created',
             'auditable_type' => Loan::class,
-            'auditable_id'   => $loan->id,
-            'user_role'      => 'sarpras',
+            'auditable_id' => $loan->id,
+            'user_role' => 'sarpras',
         ]);
     }
 
@@ -144,11 +144,11 @@ class LoanWorkflowTest extends TestCase
         $this->actingAs($this->sarpras())
             ->post(route('sarpras.loans.store'), [
                 'borrower_name' => 'Andi',
-                'item_id'       => $item->id,
-                'quantity'      => 99,
-                'loan_date'     => now()->toDateString(),
-                'due_date'      => now()->addDay()->toDateString(),
-                'purpose'       => 'Uji coba',
+                'item_id' => $item->id,
+                'quantity' => 99,
+                'loan_date' => now()->toDateString(),
+                'due_date' => now()->addDay()->toDateString(),
+                'purpose' => 'Uji coba',
             ])
             ->assertSessionHasErrors('quantity');
 
@@ -162,11 +162,11 @@ class LoanWorkflowTest extends TestCase
         $this->actingAs($this->sarpras())
             ->post(route('sarpras.loans.store'), [
                 'borrower_name' => 'Andi',
-                'item_id'       => $item->id,
-                'quantity'      => 1,
-                'loan_date'     => now()->toDateString(),
-                'due_date'      => now()->subDays(3)->toDateString(),
-                'purpose'       => 'Uji coba',
+                'item_id' => $item->id,
+                'quantity' => 1,
+                'loan_date' => now()->toDateString(),
+                'due_date' => now()->subDays(3)->toDateString(),
+                'purpose' => 'Uji coba',
             ])
             ->assertSessionHasErrors('due_date');
 
@@ -211,11 +211,11 @@ class LoanWorkflowTest extends TestCase
         $this->actingAs($this->sarpras())
             ->post(route('sarpras.loans.store'), [
                 'borrower_name' => 'Rina',
-                'item_id'       => $item->id,
-                'quantity'      => 1,
-                'loan_date'     => now()->toDateString(),
-                'due_date'      => now()->addDay()->toDateString(),
-                'purpose'       => 'Peminjaman ganda',
+                'item_id' => $item->id,
+                'quantity' => 1,
+                'loan_date' => now()->toDateString(),
+                'due_date' => now()->addDay()->toDateString(),
+                'purpose' => 'Peminjaman ganda',
             ])
             ->assertSessionHasErrors('item_id');
 
@@ -238,14 +238,14 @@ class LoanWorkflowTest extends TestCase
     {
         $item = $this->individualItem(['current_status' => 'dipinjam']);
         $loan = Loan::factory()->onLoan()->create([
-            'item_id'    => $item->id,
+            'item_id' => $item->id,
             'condition_on_loan' => 'baik',
         ]);
 
         $this->actingAs($this->sarpras())
             ->post(route('sarpras.loans.return', $loan), [
                 'condition_on_return' => 'baik',
-                'notes'               => 'Lengkap',
+                'notes' => 'Lengkap',
             ])
             ->assertRedirect();
 
@@ -264,23 +264,23 @@ class LoanWorkflowTest extends TestCase
     {
         $item = $this->individualItem(['current_status' => 'dipinjam', 'current_condition' => 'baik']);
         $loan = Loan::factory()->onLoan()->create([
-            'item_id'           => $item->id,
+            'item_id' => $item->id,
             'condition_on_loan' => 'baik',
         ]);
 
         $this->actingAs($this->sarpras())
             ->post(route('sarpras.loans.return', $loan), [
                 'condition_on_return' => 'rusak_ringan',
-                'notes'               => 'Keyboard ada yang rusak',
+                'notes' => 'Keyboard ada yang rusak',
             ])
             ->assertRedirect();
 
         $this->assertSame('rusak_ringan', $item->fresh()->current_condition);
 
         $this->assertDatabaseHas('condition_histories', [
-            'item_id'        => $item->id,
+            'item_id' => $item->id,
             'from_condition' => 'baik',
-            'to_condition'   => 'rusak_ringan',
+            'to_condition' => 'rusak_ringan',
         ]);
     }
 
@@ -387,7 +387,7 @@ class LoanWorkflowTest extends TestCase
     public function test_overdue_loan_is_automatically_marked_late(): void
     {
         $loan = Loan::factory()->create([
-            'status'   => 'dipinjam',
+            'status' => 'dipinjam',
             'due_date' => now()->subDays(3)->toDateString(),
         ]);
 
@@ -419,11 +419,11 @@ class LoanWorkflowTest extends TestCase
     public function test_sarpras_can_open_activity_logs_page(): void
     {
         ActivityLog::create([
-            'action'      => 'loan_created',
+            'action' => 'loan_created',
             'description' => 'Peminjaman baru dicatat',
-            'user_name'   => 'Budi',
-            'user_role'   => 'sarpras',
-            'logged_at'   => now(),
+            'user_name' => 'Budi',
+            'user_role' => 'sarpras',
+            'logged_at' => now(),
         ]);
 
         $this->actingAs($this->sarpras())
@@ -436,18 +436,18 @@ class LoanWorkflowTest extends TestCase
     public function test_activity_logs_page_can_filter_by_action(): void
     {
         ActivityLog::create([
-            'action'      => 'loan_created',
+            'action' => 'loan_created',
             'description' => 'Peminjaman baru dicatat',
-            'user_name'   => 'Budi',
-            'user_role'   => 'sarpras',
-            'logged_at'   => now(),
+            'user_name' => 'Budi',
+            'user_role' => 'sarpras',
+            'logged_at' => now(),
         ]);
         ActivityLog::create([
-            'action'      => 'item_created',
+            'action' => 'item_created',
             'description' => 'Barang didaftarkan',
-            'user_name'   => 'Budi',
-            'user_role'   => 'sarpras',
-            'logged_at'   => now(),
+            'user_name' => 'Budi',
+            'user_role' => 'sarpras',
+            'logged_at' => now(),
         ]);
 
         $this->actingAs($this->sarpras())

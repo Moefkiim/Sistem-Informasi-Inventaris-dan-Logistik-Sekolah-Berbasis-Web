@@ -32,7 +32,7 @@ class ActivityLog extends Model
         return [
             'old_values' => 'array',
             'new_values' => 'array',
-            'logged_at'  => 'datetime',
+            'logged_at' => 'datetime',
         ];
     }
 
@@ -48,12 +48,12 @@ class ActivityLog extends Model
     /**
      * Catat aktivitas ke audit log.
      *
-     * @param  string       $action       Aksi (create, update, delete, approve, reject, loan, return, dll.)
-     * @param  string       $description  Deskripsi bebas
-     * @param  Model|null   $auditable    Object model yang terpengaruh
-     * @param  array        $oldValues    Nilai sebelum perubahan
-     * @param  array        $newValues    Nilai sesudah perubahan
-     * @param  string|null  $label        Label/kode untuk identifikasi mudah
+     * @param  string  $action  Aksi (create, update, delete, approve, reject, loan, return, dll.)
+     * @param  string  $description  Deskripsi bebas
+     * @param  Model|null  $auditable  Object model yang terpengaruh
+     * @param  array  $oldValues  Nilai sebelum perubahan
+     * @param  array  $newValues  Nilai sesudah perubahan
+     * @param  string|null  $label  Label/kode untuk identifikasi mudah
      */
     public static function log(
         string $action,
@@ -67,19 +67,19 @@ class ActivityLog extends Model
         $request = request();
 
         return self::create([
-            'user_id'         => $user?->id,
-            'user_name'       => $user?->name,
-            'user_role'       => $user?->role,
-            'action'          => $action,
-            'description'     => $description,
-            'auditable_type'  => $auditable ? get_class($auditable) : null,
-            'auditable_id'    => $auditable?->getKey(),
+            'user_id' => $user?->id,
+            'user_name' => $user?->name,
+            'user_role' => $user?->role,
+            'action' => $action,
+            'description' => $description,
+            'auditable_type' => $auditable ? get_class($auditable) : null,
+            'auditable_id' => $auditable?->getKey(),
             'auditable_label' => $label ?? ($auditable ? ($auditable->code ?? $auditable->submission_number ?? $auditable->loan_number ?? null) : null),
-            'old_values'      => !empty($oldValues) ? $oldValues : null,
-            'new_values'      => !empty($newValues) ? $newValues : null,
-            'ip_address'      => $request?->ip(),
-            'user_agent'      => $request ? substr($request->userAgent() ?? '', 0, 255) : null,
-            'logged_at'       => now(),
+            'old_values' => ! empty($oldValues) ? $oldValues : null,
+            'new_values' => ! empty($newValues) ? $newValues : null,
+            'ip_address' => $request?->ip(),
+            'user_agent' => $request ? substr($request->userAgent() ?? '', 0, 255) : null,
+            'logged_at' => now(),
         ]);
     }
 }

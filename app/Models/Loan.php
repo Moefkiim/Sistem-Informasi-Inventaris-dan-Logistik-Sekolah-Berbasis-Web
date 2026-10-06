@@ -17,12 +17,12 @@ class Loan extends Model
      * istilah bahasa Indonesia konsisten di seluruh modul.
      */
     public const STATUS_META = [
-        'menunggu'     => ['label' => 'Menunggu',     'color' => 'warning'],
-        'disetujui'    => ['label' => 'Disetujui',    'color' => 'primary'],
-        'dipinjam'     => ['label' => 'Dipinjam',     'color' => 'info'],
+        'menunggu' => ['label' => 'Menunggu',     'color' => 'warning'],
+        'disetujui' => ['label' => 'Disetujui',    'color' => 'primary'],
+        'dipinjam' => ['label' => 'Dipinjam',     'color' => 'info'],
         'dikembalikan' => ['label' => 'Dikembalikan', 'color' => 'success'],
-        'terlambat'    => ['label' => 'Terlambat',    'color' => 'danger'],
-        'ditolak'      => ['label' => 'Ditolak',      'color' => 'secondary'],
+        'terlambat' => ['label' => 'Terlambat',    'color' => 'danger'],
+        'ditolak' => ['label' => 'Ditolak',      'color' => 'secondary'],
     ];
 
     /**
@@ -54,8 +54,8 @@ class Loan extends Model
     protected function casts(): array
     {
         return [
-            'loan_date'   => 'date',
-            'due_date'    => 'date',
+            'loan_date' => 'date',
+            'due_date' => 'date',
             'return_date' => 'date',
             'approved_at' => 'datetime',
             'returned_at' => 'datetime',

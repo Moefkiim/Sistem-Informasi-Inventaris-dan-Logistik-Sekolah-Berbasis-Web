@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Sarpras;
 
 use App\Http\Controllers\Controller;
 use App\Models\ActivityLog;
+use App\Models\ConditionHistory;
 use App\Models\Item;
 use App\Models\Loan;
 use Illuminate\Http\RedirectResponse;
@@ -35,23 +36,23 @@ class LoanController extends Controller
             $search = $request->string('search')->toString();
             $query->where(function ($q) use ($search) {
                 $q->where('loan_number', 'like', "%{$search}%")
-                  ->orWhere('borrower_name', 'like', "%{$search}%")
-                  ->orWhere('borrower_department', 'like', "%{$search}%")
-                  ->orWhereHas('item', fn($i) => $i->where('name', 'like', "%{$search}%")
-                                                    ->orWhere('code', 'like', "%{$search}%")
-                                                    ->orWhere('inventory_number', 'like', "%{$search}%")
-                                                    ->orWhere('serial_number', 'like', "%{$search}%"));
+                    ->orWhere('borrower_name', 'like', "%{$search}%")
+                    ->orWhere('borrower_department', 'like', "%{$search}%")
+                    ->orWhereHas('item', fn ($i) => $i->where('name', 'like', "%{$search}%")
+                        ->orWhere('code', 'like', "%{$search}%")
+                        ->orWhere('inventory_number', 'like', "%{$search}%")
+                        ->orWhere('serial_number', 'like', "%{$search}%"));
             });
         }
 
         match ($request->string('due')->toString()) {
             'overdue' => $query->where('status', 'terlambat'),
-            'today'   => $query->whereIn('status', ['dipinjam', 'terlambat'])
-                              ->whereDate('due_date', now()),
-            'week'    => $query->whereIn('status', ['dipinjam', 'terlambat'])
-                              ->whereDate('due_date', '>=', now())
-                              ->whereDate('due_date', '<=', now()->addDays(7)),
-            default   => null,
+            'today' => $query->whereIn('status', ['dipinjam', 'terlambat'])
+                ->whereDate('due_date', now()),
+            'week' => $query->whereIn('status', ['dipinjam', 'terlambat'])
+                ->whereDate('due_date', '>=', now())
+                ->whereDate('due_date', '<=', now()->addDays(7)),
+            default => null,
         };
 
         $loans = $query->paginate(15)->withQueryString();
@@ -81,14 +82,14 @@ class LoanController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'borrower_name'       => ['required', 'string', 'max:255'],
+            'borrower_name' => ['required', 'string', 'max:255'],
             'borrower_department' => ['nullable', 'string', 'max:100'],
-            'item_id'             => ['required', Rule::exists('items', 'id')->whereNull('deleted_at')],
-            'quantity'            => ['required', 'integer', 'min:1'],
-            'loan_date'           => ['required', 'date'],
-            'due_date'            => ['required', 'date', 'after_or_equal:loan_date'],
-            'purpose'             => ['required', 'string', 'max:500'],
-            'notes'               => ['nullable', 'string'],
+            'item_id' => ['required', Rule::exists('items', 'id')->whereNull('deleted_at')],
+            'quantity' => ['required', 'integer', 'min:1'],
+            'loan_date' => ['required', 'date'],
+            'due_date' => ['required', 'date', 'after_or_equal:loan_date'],
+            'purpose' => ['required', 'string', 'max:500'],
+            'notes' => ['nullable', 'string'],
         ]);
 
         DB::transaction(function () use ($validated, $request) {
@@ -111,7 +112,7 @@ class LoanController extends Controller
                 // Consumable: cek stok cukup (tidak dikurangi dulu, baru dikurangi saat dikembalikan/status dipinjam)
                 if ($validated['quantity'] > $item->stock) {
                     throw ValidationException::withMessages([
-                        'quantity' => 'Stok tidak mencukupi. Stok saat ini: ' . $item->stock,
+                        'quantity' => 'Stok tidak mencukupi. Stok saat ini: '.$item->stock,
                     ]);
                 }
             }
@@ -119,18 +120,18 @@ class LoanController extends Controller
             $loanNumber = $this->generateLoanNumber();
 
             $loan = Loan::create([
-                'loan_number'         => $loanNumber,
-                'borrower_user_id'    => $request->user()->id, // Dicatat oleh siapa
-                'borrower_name'       => $validated['borrower_name'],
+                'loan_number' => $loanNumber,
+                'borrower_user_id' => $request->user()->id, // Dicatat oleh siapa
+                'borrower_name' => $validated['borrower_name'],
                 'borrower_department' => $validated['borrower_department'] ?? null,
-                'item_id'             => $item->id,
-                'quantity'            => $validated['quantity'],
-                'loan_date'           => $validated['loan_date'],
-                'due_date'            => $validated['due_date'],
-                'purpose'             => $validated['purpose'],
-                'status'              => 'menunggu',
-                'condition_on_loan'   => $item->current_condition,
-                'notes'               => $validated['notes'] ?? null,
+                'item_id' => $item->id,
+                'quantity' => $validated['quantity'],
+                'loan_date' => $validated['loan_date'],
+                'due_date' => $validated['due_date'],
+                'purpose' => $validated['purpose'],
+                'status' => 'menunggu',
+                'condition_on_loan' => $item->current_condition,
+                'notes' => $validated['notes'] ?? null,
             ]);
 
             ActivityLog::log(
@@ -153,6 +154,7 @@ class LoanController extends Controller
     public function show(Loan $loan): View
     {
         $loan->load(['item.location', 'borrower', 'approvedBy', 'returnedTo']);
+
         return view('sarpras.loans.show', compact('loan'));
     }
 
@@ -173,7 +175,7 @@ class LoanController extends Controller
             if ($item->isConsumable() && $loan->status === 'menunggu') {
                 if ($item->stock < $loan->quantity) {
                     throw ValidationException::withMessages([
-                        'quantity' => 'Stok tidak mencukupi saat konfirmasi: ' . $item->stock,
+                        'quantity' => 'Stok tidak mencukupi saat konfirmasi: '.$item->stock,
                     ]);
                 }
                 Item::where('id', $item->id)
@@ -186,7 +188,7 @@ class LoanController extends Controller
                 $item->update(['current_status' => 'dipinjam']);
             }
 
-            $loan->status      = 'dipinjam';
+            $loan->status = 'dipinjam';
             $loan->approved_by = $request->user()->id;
             $loan->approved_at = now();
             $loan->save();
@@ -215,7 +217,7 @@ class LoanController extends Controller
 
         $validated = $request->validate([
             'condition_on_return' => ['required', 'in:baik,rusak_ringan,rusak_berat'],
-            'notes'               => ['nullable', 'string', 'max:500'],
+            'notes' => ['nullable', 'string', 'max:500'],
         ]);
 
         DB::transaction(function () use ($loan, $validated, $request) {
@@ -234,26 +236,26 @@ class LoanController extends Controller
 
             // Catat kondisi fisik jika berubah
             if ($validated['condition_on_return'] !== $item->current_condition) {
-                \App\Models\ConditionHistory::create([
-                    'item_id'        => $item->id,
+                ConditionHistory::create([
+                    'item_id' => $item->id,
                     'from_condition' => $item->current_condition,
-                    'to_condition'   => $validated['condition_on_return'],
-                    'user_id'        => $request->user()->id,
-                    'notes'          => 'Kondisi setelah pengembalian peminjaman ' . $loan->loan_number,
-                    'recorded_at'    => now(),
+                    'to_condition' => $validated['condition_on_return'],
+                    'user_id' => $request->user()->id,
+                    'notes' => 'Kondisi setelah pengembalian peminjaman '.$loan->loan_number,
+                    'recorded_at' => now(),
                 ]);
                 $item->update(['current_condition' => $validated['condition_on_return']]);
             }
 
-            $loan->status               = 'dikembalikan';
-            $loan->condition_on_return  = $validated['condition_on_return'];
-            $loan->return_date          = now()->toDateString();
-            $loan->returned_to          = $request->user()->id;
-            $loan->returned_at          = now();
+            $loan->status = 'dikembalikan';
+            $loan->condition_on_return = $validated['condition_on_return'];
+            $loan->return_date = now()->toDateString();
+            $loan->returned_to = $request->user()->id;
+            $loan->returned_at = now();
 
             $returnNotes = trim((string) ($validated['notes'] ?? ''));
             if ($returnNotes !== '') {
-                $loan->notes = trim(($loan->notes ?? '') . ' | Catatan kembali: ' . $returnNotes);
+                $loan->notes = trim(($loan->notes ?? '').' | Catatan kembali: '.$returnNotes);
             }
 
             $loan->save();
@@ -285,7 +287,7 @@ class LoanController extends Controller
         ]);
 
         $loan->status = 'ditolak';
-        $loan->notes  = $validated['notes'];
+        $loan->notes = $validated['notes'];
         $loan->approved_by = auth()->id();
         $loan->approved_at = now();
         $loan->save();
@@ -307,10 +309,10 @@ class LoanController extends Controller
      */
     private function generateLoanNumber(): string
     {
-        $prefix = 'LN-' . date('Ymd') . '-';
+        $prefix = 'LN-'.date('Ymd').'-';
 
         $last = Loan::withTrashed()
-            ->where('loan_number', 'like', $prefix . '%')
+            ->where('loan_number', 'like', $prefix.'%')
             ->lockForUpdate()
             ->orderByDesc('loan_number')
             ->first();
@@ -319,6 +321,6 @@ class LoanController extends Controller
             ? (intval(substr($last->loan_number, -4)) + 1)
             : 1;
 
-        return $prefix . str_pad($next, 4, '0', STR_PAD_LEFT);
+        return $prefix.str_pad($next, 4, '0', STR_PAD_LEFT);
     }
 }
