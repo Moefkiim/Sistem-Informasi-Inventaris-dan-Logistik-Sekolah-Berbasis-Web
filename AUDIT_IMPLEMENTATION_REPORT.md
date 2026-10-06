@@ -59,17 +59,20 @@ sudah masuk `main` (lokal). Riwayat commit terkait pekerjaan audit:
 | `eebb67e` | docs: koreksi BUG-8 (klaim salah) + bukti perbandingan angka pint |
 | `bc9a3ed` | fix: BUG-6 — `stock` keluar dari `Item::$fillable` |
 | `aa5d05a` | fix: BUG-8 bagian copy — hapus "Keputusan Telah Dibuat" untuk pengajuan belum diputuskan |
-| (commit ini) | docs: catat BUG-3/4/5/7, perbarui status BUG-6 dan BUG-8 |
+| `002449d` | docs: catat BUG-3/4/5/7 sebagai technical debt, perbarui status BUG-6 dan BUG-8 |
+| `a6ff9e0` | docs: perbarui hash pasca-rebase dan status konflik yang sudah selesai |
+| (commit ini) | docs: tandai push selesai, rapikan §1 dan §11 |
 
 Dua catatan riwayat yang penting untuk pembaca:
 
 1. **`origin/main` bergerak sendiri.** Sementara pekerjaan berjalan, `origin/main` di-commit
    menjadi `2688930` ("Delete AUDIT_IMPLEMENTATION_REPORT.md", lewat GitHub web, 5 Okt 18:18)
-   yang menghapus laporan ini. Lokal punya 5 commit yang belum sampai ke remote. Karena itu
+   yang menghapus laporan ini, sementara 5 commit lokal belum sampai ke remote. Karena itu
    seluruh riwayat di atas **di-rebase di atas `2688930`**, sehingga hash 4 commit terakhir
    berbeda dari versi sebelum rebase. Isinya identik, hanya basisnya yang berubah.
 2. **Konflik modify/delete sudah diselesaikan dengan versi lokal menang** — file laporan ini
-   dipertahankan, penghapusan di remote dibatalkan. Detail di §9 butir 1 dan §11.
+   dipertahankan, penghapusan di remote dibatalkan, dan seluruh commit sudah di-push.
+   Detail di §9 butir 1 dan §11.
 
 Perubahan kode di luar commit feat: hanya dua perbaikan bug (BUG-6 dan BUG-8 bagian copy),
 keduanya terpisah per commit, tanpa fitur produk baru.
@@ -365,14 +368,14 @@ Prioritas ini **tidak diselesaikan** dan saya tidak membuatnya selesai:
 
 ## 9. Risiko yang Tersisa
 
-1. **Push adalah satu-satunya langkah yang belum selesai.** `git push` dari environment ini gagal:
-   `Permission denied (publickey)` — tidak ada SSH key terdaftar, `gh` tidak terpasang.
-   Masalah kedua, yang ditemukan saat mencoba push, sudah **selesai**: remote sempat bergerak ke
-   `2688930` ("Delete AUDIT_IMPLEMENTATION_REPORT.md", via GitHub web, 5 Okt) sehingga memicu
-   konflik **modify/delete** pada file ini. Konflik sudah diselesaikan dengan versi lokal menang
-   (keputusan pengguna), seluruh 5 commit sudah di-rebase di atas `2688930`, dan `main` lokal
-   kini `ahead 5, behind 0` dengan tree bersih. Yang tersisa hanya menjalankan `git push` dari
-   PowerShell Windows — lihat §11.
+1. **Push sudah selesai.** Tidak ada risiko tertinggal: `git ls-remote origin main` dan
+   `git rev-parse HEAD` identik, `git status -sb` menunjukkan `main...origin/main` tanpa selisih.
+   Catatan prosesnya: push dari WSL gagal `Permission denied (publickey)` (tidak ada SSH key,
+   `gh` tidak terpasang) dan harus dijalankan dari PowerShell Windows. Saat mencoba push,
+   ditemukan masalah kedua yang sudah diselesaikan: remote sempat bergerak ke `2688930`
+   ("Delete AUDIT_IMPLEMENTATION_REPORT.md", via GitHub web, 5 Okt) sehingga memicu konflik
+   **modify/delete** pada file ini. Konflik diselesaikan dengan versi lokal menang (keputusan
+   pengguna), seluruh commit di-rebase di atas `2688930`, dan file ini tetap ada di remote.
 2. **Pint/style check gagal** pada 18 file (`vendor/bin/pint --test`). Angka ini **sudah dibuktikan lewat perbandingan commit**, bukan dikira-kira:
 
    | Titik ukur | File gagal |
@@ -457,24 +460,26 @@ duplikat di kolom itu (mustahil sebelumnya karena kolomnya baru), tidak ada masa
 ## 11. Status Section yang Dirapot Tidak Disentuh
 
 Bagian 3 (Peminjaman) dan sebagian 2, 4, 5, 7 ikut ter-commit. **Section 1, 6, 9, 10, 11, 13, 14, 15, 16
-belum dikerjakan lebih lanjut** sesuai instruksi untuk memverifikasi push dulu.
+belum dikerjakan lebih lanjut.**
 
-### Sisa pekerjaan, berurutan
+### Status langkah teknis
 
-1. ~~Konflik push diputuskan~~ — **selesai.** Konflik modify/delete dengan `2688930` diselesaikan
-   dengan versi lokal menang, file laporan ini dipertahankan. `main` lokal: `ahead 5, behind 0`,
-   tree bersih. Langkah yang terpaksa dilewati: `git rebase --continue` pernah gagal sekali karena
-   `.git/index.lock` bentrok, sehingga commit `bc9a3ed` (BUG-6) dibuat ulang manual dari pesan
-   commit aslinya — diff-nya diverifikasi identik dengan `a7d9f2d` sebelum rebase.
-2. **Push 5 commit yang menunggu** dari PowerShell Windows (kredensial berfungsi di sana):
+1. **Konflik push — selesai.** Konflik modify/delete dengan `2688930` diselesaikan dengan versi
+   lokal menang, file laporan ini dipertahankan. Saat rebase, `git rebase --continue` pernah gagal
+   sekali karena `.git/index.lock` bentrok, sehingga commit BUG-6 dibuat ulang manual dari pesan
+   commit aslinya — diff-nya diverifikasi identik dengan versi sebelum rebase.
+2. **Push — selesai.** `origin/main` identik dengan HEAD lokal, `git status -sb` tanpa selisih.
+   Push harus dijalankan dari PowerShell Windows karena WSL tidak punya kredensial:
 
    ```powershell
    Set-ExecutionPolicy Bypass -Scope Process -Force
    cd "C:\Users\user\OneDrive\Documents\Project Web Inventaris\Sistem-Informasi-Inventaris-dan-Logistik-Sekolah-Berbasis-Web"
    git push origin main
+   git ls-remote origin main     # harus sama dengan git rev-parse HEAD
    ```
 
-   Setelah itu verifikasi `git rev-parse HEAD` identik dengan `git ls-remote origin main`.
+### Sisa pekerjaan berikutnya
+
 3. **Section 11 (export PDF/Excel)** — satu-satunya gap P2 dengan dampak user nyata terbesar.
 4. **Section 8 (tabel approval histories)** — butuh keputusan skema.
 5. **BUG-4** lalu **BUG-7** — keduanya butuh keputusan Anda, alasan lengkap di §3.2.
