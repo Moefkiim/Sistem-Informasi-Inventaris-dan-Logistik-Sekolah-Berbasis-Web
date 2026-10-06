@@ -41,7 +41,7 @@ class LogisticsController extends Controller
         ]);
 
         DB::transaction(function () use ($validated, $request) {
-            $transactionNumber = 'IN-' . date('Ymd') . '-' . strtoupper(substr(uniqid(), -4));
+            $transactionNumber = $this->generateDocumentNumber('incoming_items', 'transaction_number', 'IN');
 
             IncomingItem::create([
                 'transaction_number' => $transactionNumber,
@@ -91,7 +91,7 @@ class LogisticsController extends Controller
 
             if ($item->stock < $validated['quantity']) {
                 throw ValidationException::withMessages([
-                    'quantity' => 'Stok tidak mencukupi. Stok saat ini: ' . $item->stock,
+                    'quantity' => 'Stok tidak mencukupi. Stok saat ini: '.$item->stock,
                 ]);
             }
 
@@ -105,7 +105,7 @@ class LogisticsController extends Controller
                 ]);
             }
 
-            $transactionNumber = 'OUT-' . date('Ymd') . '-' . strtoupper(substr(uniqid(), -4));
+            $transactionNumber = $this->generateDocumentNumber('outgoing_items', 'transaction_number', 'OUT');
 
             OutgoingItem::create([
                 'transaction_number' => $transactionNumber,
@@ -136,9 +136,9 @@ class LogisticsController extends Controller
     public function storeDistribution(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'item_id' => ['required', \Illuminate\Validation\Rule::exists('items', 'id')->whereNull('deleted_at')],
+            'item_id' => ['required', Rule::exists('items', 'id')->whereNull('deleted_at')],
             'quantity' => ['required', 'integer', 'min:1'],
-            'to_location_id' => ['required', \Illuminate\Validation\Rule::exists('locations', 'id')->whereNull('deleted_at')],
+            'to_location_id' => ['required', Rule::exists('locations', 'id')->whereNull('deleted_at')],
             'recipient_department' => ['nullable', 'string', 'max:100'],
             'recipient_name' => ['nullable', 'string', 'max:100'],
             'distribution_date' => ['required', 'date'],
@@ -151,8 +151,8 @@ class LogisticsController extends Controller
                 ->firstOrFail();
 
             if ($item->stock < $validated['quantity']) {
-                throw \Illuminate\Validation\ValidationException::withMessages([
-                    'quantity' => 'Stok tidak mencukupi. Stok saat ini: ' . $item->stock,
+                throw ValidationException::withMessages([
+                    'quantity' => 'Stok tidak mencukupi. Stok saat ini: '.$item->stock,
                 ]);
             }
 
@@ -161,12 +161,12 @@ class LogisticsController extends Controller
                 ->decrement('stock', $validated['quantity']);
 
             if ($affected === 0) {
-                throw \Illuminate\Validation\ValidationException::withMessages([
+                throw ValidationException::withMessages([
                     'quantity' => 'Stok tidak mencukupi.',
                 ]);
             }
 
-            $transactionNumber = 'DIST-' . date('Ymd') . '-' . strtoupper(substr(uniqid(), -4));
+            $transactionNumber = $this->generateDocumentNumber('distributions', 'distribution_number', 'DIST');
 
             Distribution::create([
                 'distribution_number' => $transactionNumber,
@@ -185,11 +185,35 @@ class LogisticsController extends Controller
                 'from_location_id' => $item->location_id,
                 'to_location_id' => $validated['to_location_id'],
                 'user_id' => $request->user()->id,
-                'notes' => 'Distribusi barang: ' . ($validated['notes'] ?? $transactionNumber),
+                'notes' => 'Distribusi barang: '.($validated['notes'] ?? $transactionNumber),
                 'moved_at' => now(),
             ]);
         });
 
         return back()->with('success', 'Data distribusi berhasil dicatat ke dalam log sistem dan stok telah disesuaikan.');
+    }
+
+    /**
+     * Nomor dokumen transaksi berurutan dengan pola PREFIX-YYYYMMDD-XXXX.
+     *
+     * Pola yang sama dengan generateLoanNumber: baca nomor terbesar dari
+     * tabel dengan lockForUpdate (di dalam transaksi pemanggil), tambah
+     * satu, lalu str_pad ke 4 digit. Data lama yang memakai uniqid()
+     * (4 karakter acak, ada yang non-numerik) di-parse ke integer 0,
+     * sehingga nomor baru mulai dari 0001 tanpa menyentuh data lama.
+     */
+    private function generateDocumentNumber(string $table, string $column, string $prefix): string
+    {
+        $fullPrefix = $prefix.'-'.date('Ymd').'-';
+
+        $last = DB::table($table)
+            ->where($column, 'like', $fullPrefix.'%')
+            ->lockForUpdate()
+            ->orderByDesc($column)
+            ->first();
+
+        $next = $last ? ((int) substr((string) $last->{$column}, -4) + 1) : 1;
+
+        return $fullPrefix.str_pad($next, 4, '0', STR_PAD_LEFT);
     }
 }
