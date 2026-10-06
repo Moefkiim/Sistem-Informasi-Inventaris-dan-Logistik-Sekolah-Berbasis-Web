@@ -45,6 +45,8 @@ Route::middleware(['auth', 'role'])->group(function () {
 
     // Modul Laporan (Dapat diakses seluruh role dengan filter otomatis sesuai wewenang)
     Route::get('/reports', [\App\Http\Controllers\ReportController::class, 'index'])->name('reports.index');
+    Route::get('/reports/pdf', [\App\Http\Controllers\ReportController::class, 'exportPdf'])->name('reports.pdf');
+    Route::get('/reports/excel', [\App\Http\Controllers\ReportController::class, 'exportExcel'])->name('reports.excel');
 
     // Modul Dokumen (Dapat diakses seluruh role sesuai hak akses)
     Route::get('/documents', [\App\Http\Controllers\DocumentController::class, 'index'])->name('documents.index');

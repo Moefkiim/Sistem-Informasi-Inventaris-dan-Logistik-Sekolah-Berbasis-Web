@@ -38,6 +38,12 @@
                 <button type="submit" class="btn btn-primary w-100">
                     <i class="bi bi-filter me-1"></i> Filter
                 </button>
+                <a href="{{ route('reports.pdf', request()->query()) }}" class="btn btn-light-danger flex-shrink-0" title="Unduh Laporan PDF">
+                    <i class="bi bi-file-earmark-pdf me-1"></i> PDF
+                </a>
+                <a href="{{ route('reports.excel', request()->query()) }}" class="btn btn-light-primary flex-shrink-0" title="Unduh Laporan Excel">
+                    <i class="bi bi-file-earmark-excel me-1"></i> Excel
+                </a>
                 <a href="{{ route('reports.index', array_merge(request()->all(), ['export' => 'print'])) }}" target="_blank" class="btn btn-light-success flex-shrink-0" title="Cetak / Export Laporan">
                     <i class="bi bi-printer me-1"></i> Cetak
                 </a>
