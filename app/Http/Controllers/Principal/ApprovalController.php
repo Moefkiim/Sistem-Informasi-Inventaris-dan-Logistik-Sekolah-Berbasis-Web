@@ -36,7 +36,8 @@ class ApprovalController extends Controller
      */
     public function show(Submission $submission): View
     {
-        $submission->load(['user', 'sarprasUser', 'items', 'documents']);
+        $submission->load(['user', 'sarprasUser', 'items', 'documents', 'histories.actor']);
+
         return view('principal.approval.show', compact('submission'));
     }
 
@@ -57,15 +58,17 @@ class ApprovalController extends Controller
         $status = $validated['action'] === 'approve' ? 'approved' : 'rejected';
 
         // Fields ini dikecualikan dari $fillable — set secara eksplisit
-        $submission->status           = $status;
-        $submission->principal_notes  = $validated['principal_notes'] ?? null;
+        $submission->status = $status;
+        $submission->principal_notes = $validated['principal_notes'] ?? null;
         $submission->principal_user_id = $request->user()->id;
-        $submission->decided_at       = now();
+        $submission->decided_at = now();
         $submission->save();
+
+        $submission->recordStatusChange('reviewed_sarpras', $status, $request->user(), $validated['principal_notes'] ?? null);
 
         ActivityLog::log(
             $status === 'approved' ? 'submission_approved' : 'submission_rejected',
-            "Pengajuan {$submission->submission_number} " . ($status === 'approved' ? 'DISETUJUI' : 'DITOLAK') . " oleh Kepala Sekolah" . ($validated['principal_notes'] ? ": {$validated['principal_notes']}" : ''),
+            "Pengajuan {$submission->submission_number} ".($status === 'approved' ? 'DISETUJUI' : 'DITOLAK').' oleh Kepala Sekolah'.($validated['principal_notes'] ? ": {$validated['principal_notes']}" : ''),
             $submission,
             ['status' => 'reviewed_sarpras'],
             ['status' => $status, 'principal_notes' => $validated['principal_notes'] ?? null],

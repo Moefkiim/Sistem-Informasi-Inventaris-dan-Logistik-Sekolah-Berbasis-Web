@@ -57,24 +57,26 @@ class SubmissionController extends Controller
             $submissionNumber = $this->generateSubmissionNumber();
             $status = $validated['action'] === 'submit' ? 'submitted' : 'draft';
 
-            $submission = new Submission();
+            $submission = new Submission;
             $submission->submission_number = $submissionNumber;
-            $submission->user_id    = $user->id;
+            $submission->user_id = $user->id;
             $submission->department = $user->department ?? 'Umum';
-            $submission->title      = $validated['title'];
-            $submission->purpose    = $validated['purpose'] ?? null;
-            $submission->status     = $status; // dikecualikan dari $fillable — set eksplisit
+            $submission->title = $validated['title'];
+            $submission->purpose = $validated['purpose'] ?? null;
+            $submission->status = $status; // dikecualikan dari $fillable — set eksplisit
             $submission->save();
 
             foreach ($validated['items'] as $itemData) {
                 $submission->items()->create([
                     'item_name' => $itemData['item_name'],
-                    'quantity'  => $itemData['quantity'],
-                    'unit'      => $itemData['unit'],
+                    'quantity' => $itemData['quantity'],
+                    'unit' => $itemData['unit'],
                     'estimated_price' => $itemData['estimated_price'] ?? 0,
-                    'specification'   => $itemData['specification'] ?? null,
+                    'specification' => $itemData['specification'] ?? null,
                 ]);
             }
+
+            $submission->recordStatusChange(null, $status, $user);
 
             ActivityLog::log(
                 $status === 'submitted' ? 'submission_submitted' : 'submission_created',
@@ -96,7 +98,7 @@ class SubmissionController extends Controller
     public function show(Submission $submission): View
     {
         $this->authorizeKajur($submission);
-        $submission->load(['items', 'sarprasUser', 'principalUser', 'documents']);
+        $submission->load(['items', 'sarprasUser', 'principalUser', 'documents', 'histories.actor']);
 
         return view('kajur.submissions.show', compact('submission'));
     }
@@ -114,6 +116,7 @@ class SubmissionController extends Controller
         }
 
         $submission->load('items');
+
         return view('kajur.submissions.edit', compact('submission'));
     }
 
@@ -144,10 +147,12 @@ class SubmissionController extends Controller
             $status = $validated['action'] === 'submit' ? 'submitted' : 'draft';
 
             // status dikecualikan dari $fillable — set properti secara eksplisit
-            $submission->title   = $validated['title'];
+            $submission->title = $validated['title'];
             $submission->purpose = $validated['purpose'] ?? null;
-            $submission->status  = $status;
+            $submission->status = $status;
             $submission->save();
+
+            $submission->recordStatusChange('draft', $status, auth()->user());
 
             $submission->items()->delete();
 
@@ -178,12 +183,16 @@ class SubmissionController extends Controller
         }
 
         // status dikecualikan dari $fillable — set properti secara eksplisit
-        $submission->status = 'cancelled';
-        $submission->save();
+        DB::transaction(function () use ($submission) {
+            $submission->status = 'cancelled';
+            $submission->save();
+
+            $submission->recordStatusChange('draft', 'cancelled', auth()->user());
+        });
 
         ActivityLog::log(
             'submission_cancelled',
-            "Pengajuan {$submission->submission_number} dibatalkan oleh " . auth()->user()->name,
+            "Pengajuan {$submission->submission_number} dibatalkan oleh ".auth()->user()->name,
             $submission,
             ['status' => 'draft'],
             ['status' => 'cancelled'],
@@ -206,12 +215,16 @@ class SubmissionController extends Controller
         }
 
         // status dikecualikan dari $fillable — set properti secara eksplisit
-        $submission->status = 'submitted';
-        $submission->save();
+        DB::transaction(function () use ($submission) {
+            $submission->status = 'submitted';
+            $submission->save();
+
+            $submission->recordStatusChange('draft', 'submitted', auth()->user());
+        });
 
         ActivityLog::log(
             'submission_submitted',
-            "Pengajuan {$submission->submission_number} dikirimkan ke Sarpras oleh " . auth()->user()->name,
+            "Pengajuan {$submission->submission_number} dikirimkan ke Sarpras oleh ".auth()->user()->name,
             $submission,
             ['status' => 'draft'],
             ['status' => 'submitted'],
@@ -234,9 +247,9 @@ class SubmissionController extends Controller
      */
     private function generateSubmissionNumber(): string
     {
-        $prefix = 'REQ-' . date('Ymd') . '-';
+        $prefix = 'REQ-'.date('Ymd').'-';
 
-        $last = Submission::where('submission_number', 'like', $prefix . '%')
+        $last = Submission::where('submission_number', 'like', $prefix.'%')
             ->orderByDesc('submission_number')
             ->first();
 
@@ -244,6 +257,6 @@ class SubmissionController extends Controller
             ? (intval(substr($last->submission_number, -4)) + 1)
             : 1;
 
-        return $prefix . str_pad($next, 4, '0', STR_PAD_LEFT);
+        return $prefix.str_pad($next, 4, '0', STR_PAD_LEFT);
     }
 }

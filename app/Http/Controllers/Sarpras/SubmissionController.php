@@ -33,7 +33,7 @@ class SubmissionController extends Controller
      */
     public function show(Submission $submission): View
     {
-        $submission->load(['user', 'items', 'sarprasUser', 'principalUser', 'documents']);
+        $submission->load(['user', 'items', 'sarprasUser', 'principalUser', 'documents', 'histories.actor']);
 
         return view('sarpras.submissions.show', compact('submission'));
     }
@@ -55,15 +55,17 @@ class SubmissionController extends Controller
         $status = $validated['action'] === 'review' ? 'reviewed_sarpras' : 'rejected';
 
         // Fields ini dikecualikan dari $fillable — set secara eksplisit
-        $submission->status         = $status;
-        $submission->sarpras_notes  = $validated['sarpras_notes'];
+        $submission->status = $status;
+        $submission->sarpras_notes = $validated['sarpras_notes'];
         $submission->sarpras_user_id = $request->user()->id;
-        $submission->reviewed_at    = now();
+        $submission->reviewed_at = now();
         $submission->save();
+
+        $submission->recordStatusChange('submitted', $status, $request->user(), $validated['sarpras_notes']);
 
         ActivityLog::log(
             $status === 'reviewed_sarpras' ? 'submission_reviewed' : 'submission_rejected_sarpras',
-            "Pengajuan {$submission->submission_number} " . ($status === 'reviewed_sarpras' ? 'diverifikasi' : 'ditolak') . " oleh Sarpras: {$validated['sarpras_notes']}",
+            "Pengajuan {$submission->submission_number} ".($status === 'reviewed_sarpras' ? 'diverifikasi' : 'ditolak')." oleh Sarpras: {$validated['sarpras_notes']}",
             $submission,
             ['status' => 'submitted'],
             ['status' => $status, 'sarpras_notes' => $validated['sarpras_notes']],

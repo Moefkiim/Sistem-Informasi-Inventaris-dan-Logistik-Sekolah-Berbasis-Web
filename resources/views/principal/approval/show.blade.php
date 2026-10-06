@@ -115,6 +115,37 @@
                 <span class="text-uppercase fw-bold">reviewed_sarpras</span>.
             </div>
         @endif
+
+        @if($submission->histories && $submission->histories->isNotEmpty())
+            <div class="separator separator-dashed my-6"></div>
+            <h4 class="fw-bolder mb-4">Riwayat Proses Pengajuan (Audit Trail)</h4>
+            <div class="table-responsive">
+                <table class="table table-sm table-row-bordered align-middle gy-3">
+                    <thead class="fw-bold text-muted fs-8 text-uppercase">
+                        <tr>
+                            <th>Waktu</th>
+                            <th>Transisi Status</th>
+                            <th>Aktor</th>
+                            <th>Catatan</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($submission->histories as $history)
+                            <tr>
+                                <td class="text-nowrap">{{ $history->recorded_at->format('d/m/Y H:i') }}</td>
+                                <td>
+                                    <span class="badge badge-light-secondary">{{ \App\Models\Submission::statusLabel($history->from_status) ?: '—' }}</span>
+                                    <i class="bi bi-arrow-right mx-1"></i>
+                                    <span class="badge badge-light-primary">{{ \App\Models\Submission::statusLabel($history->to_status) }}</span>
+                                </td>
+                                <td>{{ $history->actor?->name ?: 'Sistem' }}</td>
+                                <td class="text-muted">{{ $history->notes ?: '-' }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @endif
     </div>
     <div class="card-footer">
         <a href="{{ route('kepala_sekolah.approval.index') }}" class="btn btn-light">

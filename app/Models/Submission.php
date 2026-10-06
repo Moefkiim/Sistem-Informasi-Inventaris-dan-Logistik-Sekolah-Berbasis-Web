@@ -74,6 +74,39 @@ class Submission extends Model
         return $this->status === 'reviewed_sarpras';
     }
 
+    public static function statusLabel(?string $status): string
+    {
+        return match ($status) {
+            'draft' => 'Draft',
+            'submitted' => 'Diajukan',
+            'reviewed_sarpras' => 'Diverifikasi Sarpras',
+            'approved' => 'Disetujui',
+            'rejected' => 'Ditolak',
+            'cancelled' => 'Dibatalkan',
+            default => ucfirst((string) $status),
+        };
+    }
+
+    public function histories(): HasMany
+    {
+        return $this->hasMany(SubmissionHistory::class)->latest('recorded_at');
+    }
+
+    public function recordStatusChange(
+        ?string $fromStatus,
+        string $toStatus,
+        ?User $actor,
+        ?string $notes = null,
+    ): SubmissionHistory {
+        return $this->histories()->create([
+            'from_status' => $fromStatus,
+            'to_status' => $toStatus,
+            'actor_user_id' => $actor?->id,
+            'notes' => $notes,
+            'recorded_at' => now(),
+        ]);
+    }
+
     protected static function booted(): void
     {
         static::creating(function ($submission) {
@@ -82,5 +115,4 @@ class Submission extends Model
             }
         });
     }
-
 }
