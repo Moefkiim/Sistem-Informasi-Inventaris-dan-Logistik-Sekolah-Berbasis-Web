@@ -30,7 +30,7 @@ berstatus Selesai penuh, 5 section Sebagian, dan 13 section belum disentuh sama 
 | 10 | Search dan filter | P2 | **Sebagian** | Ada di inventory sarpras + loans + activity logs; **tidak ada** di lokasi, barang masuk, barang keluar, distribusi, pengajuan sarpras |
 | 11 | Export PDF/Excel | P2 | **Belum disentuh** | Tidak ada dependency PDF/Excel di `composer.json`; hanya print via `window.print()` |
 | 12 | QR Code (P3) | P3 | **Belum disentuh** | Nol baris `qrcode`/`barcode` di seluruh repo — memang sesuai batasan scope |
-| 13 | Audit keamanan | P0 | **Sebagian** | Role middleware + mass-assignment guard kuat; `Item.stock` masih fillable; tidak ada proteksi rate-limit di endpoint mutasi |
+| 13 | Audit keamanan | P0 | **Sebagian** | Role middleware + mass-assignment guard kuat; `Item.stock` sudah dikeluarkan dari `$fillable` (BUG-6, commit `a7d9f2d`); tidak ada proteksi rate-limit di endpoint mutasi |
 | 14 | Audit database | P1 | **Sebagian** | FK & index tersedia; `submissions.department`, `submissions.created_at`, `documents.department` tanpa index |
 | 15 | UI/UX | P2 | **Sebagian** | Layout responsif + flash + empty state; belum ada loading state, sorting kolom, atau bulk action |
 | 16 | Dokumentasi README | P2 | **Sebagian** | README 25 KB sangat lengkap; **tidak menyebut modul Peminjaman sama sekali** |
@@ -47,28 +47,25 @@ dan perbaiki dalam commit ini — lihat bagian "Bug Diperbaiki".
 
 ## 1. Ringkasan Perubahan
 
-### 1.1 Yang TELAH ADA sebelum laporan ini (untracked, dari sesi sebelumnya)
+Laporan ini lahir dari kondisi **untracked** di sesi sebelumnya: modul Peminjaman & identitas aset
+sudah ditulis lengkap di working tree tapi tidak pernah di-commit. Kondisi itu sudah beres — seluruhnya
+sudah masuk `main` (lokal). Riwayat commit terkait pekerjaan audit:
 
-Modul Peminjaman & identitas aset sudah ditulis lengkap di working tree tapi **tidak pernah di-commit**:
+| Commit | Isi |
+|---|---|
+| `eb6eed1` | feat: modul peminjaman, identitas aset, audit trail (21 file — file yang sebelumnya untracked) |
+| `dac980b` | docs: laporan audit ini (20 section) |
+| `e467414` | style: pint pada 8 file baru (perubahan whitespace saja) |
+| `bbd7f5e` | docs: koreksi BUG-8 (klaim salah) + bukti perbandingan angka pint |
+| `a7d9f2d` | fix: BUG-6 — `stock` keluar dari `Item::$fillable` |
+| `6fe5c00` | fix: BUG-8 bagian copy — hapus "Keputusan Telah Dibuat" untuk pengajuan belum diputuskan |
 
-```
-Untracked:
-  app/Http/Controllers/Sarpras/LoanController.php
-  app/Http/Controllers/Sarpras/ActivityLogController.php
-  app/Models/Loan.php
-  app/Models/ActivityLog.php
-  database/factories/LoanFactory.php
-  database/migrations/2026_10_05_000001_enhance_items_and_add_asset_identity.php
-  database/migrations/2026_10_05_000002_create_loans_table.php
-  database/migrations/2026_10_05_000003_create_activity_logs_table.php
-  resources/views/components/loan-status-badge.blade.php
-  resources/views/sarpras/loans/{index,create,show}.blade.php
-  tests/Feature/LoanWorkflowTest.php
-```
+Dari keenamnya, **hanya `dac980b` dan `bbd7f5e` yang sudah ada di remote** — dan keduanya justru
+terdampak karena `origin/main` bergerak sendiri ke `2688930` yang menghapus laporan ini lewat
+GitHub web. Detail konflik dan cara menyelesaikannya ada di §9 butir 1 dan §11.
 
-### 1.2 Yang saya kerjakan dalam commit ini
-
-Satu-satunya perubahan kode: **memperbaiki halaman audit trail yang rusak**.
+Perubahan kode di luar commit feat: hanya dua perbaikan bug (BUG-6 dan BUG-8 bagian copy),
+keduanya terpisah per commit, tanpa fitur produk baru.
 
 ---
 
@@ -114,7 +111,7 @@ Ditambahkan 3 test ke `tests/Feature/LoanWorkflowTest.php`:
 ### BUG-1 (Blokir): Route `/sarpras/activity-logs` melempar 500 — **DIPERBAIKI**
 
 _(BUG-1 dan BUG-2 adalah bug yang benar-benar terbukti lewat test reproduksi. Bandingkan dengan
-BUG-8 di §3.1 yang klaimnya saya tarik kembali karena tidak terbukti.)_
+BUG-8 di §3.3 yang klaimnya saya tarik kembali karena tidak terbukti.)_
 
 
 `ActivityLogController.php:40` memanggil `view('sarpras.activity_logs.index', ...)` tetapi direktori
@@ -138,20 +135,37 @@ audit trail yang merupakan deliverable utama section itu sama sekali tidak bisa 
 Menu sidebar tidak punya entri untuk `sarpras.activity_logs.index`. Satu-satunya cara membuka
 halaman itu adalah mengetik URL secara manual. Sudah diperbaiki di `layouts/app.blade.php:199-204`.
 
-### Bug yang BELUM diperbaiki (ditemukan, sengaja tidak disentuh di commit ini)
+### Bug yang sudah diperbaiki dan belum
 
-Saya menemukan ini saat audit. Semuanya **di luar cakupan** commit peminjaman, saya laporkan saja:
+| ID | Lokasi | Masalah | Severity | Status |
+|---|---|---|---|---|
+| BUG-1 | `ActivityLogController.php:40` | Route `/sarpras/activity-logs` memanggil view yang tidak pernah dibuat → 500 | **Blokir** | **Selesai** — view dibuat |
+| BUG-2 | `layouts/app.blade.php` | Tidak ada entri nav ke audit trail | Minor | **Selesai** — nav ditambahkan |
+| BUG-6 | `Item.php:15-35` | `stock` ada di `$fillable`, kelas invariant yang sama dengan `Submission.status`/`User.role` | Sedang | **Selesai** — commit `a7d9f2d` |
+| BUG-8 | `ApprovalController.php:37` | Klaim bypass approval **SALAH**; bagian UX copy saja (§3.3) | Ringan | **Selesai** — commit `6fe5c00` |
+| BUG-3 | `app/Models/Item.php` | Relasi `activeLoans()` tidak pernah dipakai (kode mati) | Ringan | Tercatat di §3.2 |
+| BUG-4 | `LoanController.php` | `borrower_user_id` terisi ID Sarpras pencatat, bukan peminjam asli | Sedang | Tercatat di §3.2 |
+| BUG-5 | `LoanController.php` | Dropdown create tidak menyaring barang yang sedang dipinjam | Ringan | Tercatat di §3.2 |
+| BUG-7 | `LogisticsController.php` | Nomor dokumen pakai `uniqid()` — tidak urut, berisiko tabrakan | Sedang | Tercatat di §3.2 |
 
-| ID | Lokasi | Masalah |
-|---|---|---|
-| BUG-3 | `app/Models/Item.php:118` | `activeLoans()` memfilter `['dipinjam','disetujui','menunggu']` tapi relasi ini **tidak pernah dipakai** di mana pun. Kode mati. |
-| BUG-4 | `app/Http/Controllers/Sarpras/LoanController.php:123` | `borrower_user_id` diisi dengan **ID Sarpras yang mencatat**, bukan user peminjam. Kolomnya bernama `borrower_user_id` dan relasinya `borrower()` — secara semantik ini data yang salah, meskipun tidak menimbulkan celah keamanan (data internal). |
-| BUG-5 | `app/Http/Controllers/Sarpras/LoanController.php:71` | `whereNotIn('current_status', ['disposed', 'tidak_aktif'])` **tidak menyaring barang yang sedang dipinjam** di halaman create. Validasi dobel ada di `store()`, tapi user melihat barang yang tak tersedia di dropdown. |
-| BUG-6 | `app/Models/Item.php:15-35` | `stock` ada di `$fillable` dan form create mengirim `stock` sebagai input user. Form edit inventaris tidak ada, jadi saat ini tidak bisa dieksploitasi, tapi setiap form baru yang mem-mass-assign `Item` bisa mengubah stok tanpa jejak. |
-| BUG-7 | `LogisticsController.php:44,108,169` | Nomor dokumen `'IN-'.date('Ymd').'-'.strtoupper(substr(uniqid(),-4))` — 4 karakter dari `uniqid()` acak, **bukan nomor urut**. Konsisten secara format tapi tidak urut dan rawan tabrakan pada volume tinggi (tabel punya unique constraint). |
-| BUG-8 | `app/Http/Controllers/Principal/ApprovalController.php:37` | ~~`show()` tidak memfilter `status` sehingga field approval bisa terisi sebelum giliran.~~ **SALAH — sudah dikoreksi, lihat §3.1.** Yang benar hanya: halaman detail terbuka 200 untuk semua status (bukan kebocoran data lintas jurusan, Kepala Sekolah memang role global), dan *copy* view menyesatkan — blok `@else` menampilkan "Keputusan Telah Dibuat: DRAFT / SUBMITTED / CANCELLED" padahal belum ada keputusan. |
+### 3.2 Technical debt yang dicatat, sengaja TIDAK diperbaiki
 
-### 3.1 Koreksi: BUG-8 yang saya laporkan ternyata SALAH
+Empat item di bawah **tidak mengeksploitasi apa pun saat ini**. Tidak ada benturan keamanan
+atau kehilangan data yang terjadi sekarang. Tetapi semuanya adalah bahan bakar yang bisa
+menjadi masalah nyata begitu ada penambahan fitur, jadi dicatat di sini beserta lokasi
+dan skenario agar tidak terlupa.
+
+| ID | Lokasi | Skenario | Severity | Kenapa belum diperbaiki |
+|---|---|---|---|---|
+| **BUG-3** | `app/Models/Item.php` — relasi `activeLoans()` | Relasi ini memfilter `whereIn('status', ['dipinjam','disetujui','menunggu'])`, tapi **tidak pernah dipanggil di mana pun** di seluruh `app/` dan `resources/`. Grep seluruh basis kode hanya menemukan definisinya. Kode mati: biaya baca, dan nilai `'disetujui'` yang sudah tidak dipakai `LoanController` lagi bisa membuat siapa pun yang nanti memakainya salah anggapan. | Ringan | Tidak ada fungsi yang terganggu. Perbaikannya mendesak hanya kalau relasi itu mulai dipakai. |
+| **BUG-4** | `app/Http/Controllers/Sarpras/LoanController.php` — `store()` | `borrower_user_id` diisi `$request->user()->id`, yaitu **Sarpras yang mencatat**, bukan peminjam sesungguhnya. Kolomnya bernama `borrower_user_id` dan relasinya `borrower()` — secara semantik berbeda. Kalau nanti ada pertanyaan "siapa yang meminjam?" di laporan, datanya akan menjawab "Sarpras". Tidak ada celah keamanan karena field itu internal, bukan input user. | Sedang | Perbaikan butuh keputusan desain: apakah peminjam harus akun user, atau `borrower_user_id` cukup diganti namanya jadi `created_by` agar semantiknya jujur. Keputusan ini butuh persetujuan Anda, bukan sekadar patch. |
+| **BUG-5** | `app/Http/Controllers/Sarpras/LoanController.php` — `create()` | Query mengambil barang hanya dengan `whereNotIn('current_status', ['disposed','tidak_aktif'])`, **tidak menyaring barang yang sedang dipinjam**. Akibatnya dropdown menampilkan aset yang sudah habis dipinjam. Tidak merusak data: `store()` punya guard sendiri yang menolak dengan pesan "Aset sedang dipinjam atau tidak tersedia". Jadi ini murni kebingungan UX, bukan celah. | Ringan | Data aman. Perbaikannya satu baris (`whereNotIn('current_status', ['dipinjam','disposed','tidak_aktif'])`) tapi butuh test agar tidak menutup barang consumable yang valid. |
+| **BUG-7** | `app/Http/Controllers/Sarpras/LogisticsController.php` — `store` barang masuk, barang keluar, distribusi | Format nomor `'IN-' . date('Ymd') . '-' . strtoupper(substr(uniqid(), -4))` — 4 karakter terakhir `uniqid()` berasal dari `microtime`, jadi **acak, bukan nomor urut**. Konsekuensinya: nomor dokumen tidak bisa dibaca urut, dan pada volume tinggi `substr(uniqid(), -4)` memang mungkin tabrakan. Kolom punya unique constraint, jadi tabrakan akan gagal insert (data tidak corrupt, tapi user kena error). | Sedang | Butuh pendekatan yang sama seperti `submission_number` dan `loan_number` (baca terakhir → urut → `str_pad`), plus perhatian pada race condition. Itu perubahan melintasi tiga method dan menyangkut format nomor dokumen yang sudah dipakai data lama — tidak akan saya kerjakan tanpa instruksi eksplisit. |
+
+Urutan saran penanganan: BUG-4 (butuh keputusan desain Anda) → BUG-7 (butuh perubahan format,
+berdampak pada data lama) → BUG-5 (satu baris) → BUG-3 (bersihkan kode mati).
+
+### 3.3 Koreksi: BUG-8 yang saya laporkan ternyata SALAH
 
 Laporan versi sebelumnya menyatakan `ApprovalController::show()` memungkinkan Kepala Sekolah
 mengisi field approval sebelum gilirannya. **Klaim itu tidak terbukti.** Saya sudah menulis
@@ -272,14 +286,36 @@ Modified:  tests/Feature/LoanWorkflowTest.php            (+39, 3 test baru)
 Added:     resources/views/sarpras/activity_logs/index.blade.php
 ```
 
+Rapian pint (commit terpisah, 8 file):
+
+```
+Modified:  (hanya whitespace/indent, tanpa perubahan logika) — lihat commit e467414
+```
+
+Perbaikan BUG-6 (commit `a7d9f2d`):
+
+```
+Modified:  app/Models/Item.php                           (-1, 'stock' keluar dari $fillable)
+Modified:  app/Http/Controllers/Sarpras/InventoryController.php
+             (+7/-1, assignment eksplisit $item->stock setelah new Item($validated))
+Added:     tests/Feature/ItemStockMassAssignmentTest.php (4 test regresi)
+```
+
+Perbaikan copy halaman approval, BUG-8 bagian view (commit `6fe5c00`):
+
+```
+Modified:  resources/views/principal/approval/show.blade.php
+             blok @else dibagi: reviewed_sarpras / approved+rejected / lainnya
+Modified:  tests/Feature/WorkflowTransitionTest.php      (+2 test copy)
+```
+
 ---
 
 ## 7. Testing & Hasilnya
 
 ```
 $ php artisan test
-Tests:    57 passed (207 assertions)
-Duration: 2.16s
+Tests:    63 passed (234 assertions)
 ```
 
 | Test file | Jumlah | Cakupan |
@@ -288,13 +324,21 @@ Duration: 2.16s
 | `LocationManagementTest` | 4 | CRUD lokasi, soft-delete guard, integritas histori |
 | `ReportScopingTest` | 3 | Scoping laporan per role, Kajur tanpa department dapat 403 |
 | `UserPrivilegeTest` | 3 | Sarpras tidak bisa buat/toggle kepala_sekolah |
-| `WorkflowTransitionTest` | 4 | Rantai draft→submitted→reviewed→approved, guard transisi, mass-assignment |
+| `WorkflowTransitionTest` | 6 | Rantai draft→submitted→reviewed→approved, guard transisi, mass-assignment, **+ 2 test copy halaman approval** |
+| `ItemStockMassAssignmentTest` | 4 | **Regression guard BUG-6**: `stock` tidak bisa diset/diubah lewat mass-assignment, assignment eksplisit tetap jalan |
 | `DistributionStockTest`, `DocumentAuthTest`, `KajurTenantIsolationTest`, `AuthenticationAndRoleAccessTest`, `ExampleTest` ×2 | 17 | Distribusi/stok, auth dokumen, isolasi tenant, otorisasi role |
 
-Semua 57 lulus. Yang penting: test `test_sarpras_can_open_activity_logs_page` **adalah regression guard
-untuk BUG-1** — sebelum view dibuat, test ini gagal dengan "View not found".
+Semua 63 lulus. Test kunci sebagai regression guard:
 
-Tidak ada test yang gagal atau di-skip.
+- `test_sarpras_can_open_activity_logs_page` — **BUG-1**. Sebelum view dibuat, gagal "View not found".
+- `ItemStockMassAssignmentTest::stock cannot be set via mass assignment on create` — **BUG-6**.
+  Payload `stock=999` ditolak, nilai tetap default DB. Tanpa perbaikan, test ini gagal.
+- `WorkflowTransitionTest::approval page shows correct copy per status` — **BUG-8 (bagian copy)**.
+  Memastikan halaman tidak lagi menampilkan "Keputusan Telah Dibuat" untuk `draft`/`submitted`.
+
+Tidak ada test yang gagal atau di-skip. `vendor/bin/pint --test` masih gagal di **18 file**,
+semuanya pre-existing sejak sebelum modul Peminjaman (daftar file identik dengan baseline
+`2e880da`; tidak ada file baru yang ikut gagal).
 
 ---
 
@@ -304,7 +348,7 @@ Prioritas ini **tidak diselesaikan** dan saya tidak membuatnya selesai:
 
 | Section | Kenapa belum |
 |---|---|
-| 11 — Export PDF/Excel | Tidak ada dependency (`dompdf`, `phpoffice`, `maatwebsite` 모두 nol di `composer.json`). Butuh penambahan package + route download + view laporan. |
+| 11 — Export PDF/Excel | Tidak ada dependency (`dompdf`, `phpoffice`, `maatwebsite` semuanya nol di `composer.json`). Butuh penambahan package + route download + view laporan. |
 | 12 — QR Code | Sesuai `AGENTS.md` §4, barcode/QR code **dilarang keras** tanpa persetujuan eksplisit. Sengaja tidak dikerjakan. |
 | 8 — Approval histori | Butuh desain tabel `approval_histories` yang belum ada di plan. Ini keputusan skema, bukan sekadar kode. |
 | 2 — Aset per-unit | Butuh tabel anak (satu baris per unit fisik). Ongkos perubahan skema besar — kolom identitas yang sekarang ada pada baris agregat, idealnya dipindah ke `asset_units`. Saya tidak ingin memutus data yang sudah ada tanpa persetujuan. |
@@ -314,22 +358,28 @@ Prioritas ini **tidak diselesaikan** dan saya tidak membuatnya selesai:
 
 ## 9. Risiko yang Tersisa
 
-1. **Tidak ada push yang berhasil.** `git push` gagal: `Permission denied (publickey)` — environment ini tidak punya SSH key yang terdaftar di GitHub. Commit ada secara lokal di `main`, tapi **belum sampai ke remote**. anyone yang clone dari GitHub masih melihat `2e880da` tanpa modul Peminjaman.
-2. **Pint/style check gagal** pada 19 file (`vendor/bin/pint --test`). Angka ini **sudah dibuktikan lewat perbandingan commit**, bukan dikira-kira:
+1. **Push belum berhasil dari environment ini.** `git push` lokal gagal: `Permission denied (publickey)` — tidak ada SSH key yang terdaftar, `gh` tidak terpasang. Laporan ini sendiri menemukan penyebab kedua saat mencoba push: remote `origin/main` sudah bergerak ke `2688930` ("Delete AUDIT_IMPLEMENTATION_REPORT.md", dihapus lewat GitHub web pada 2026-10-05). Karena itu rebase akan berbenturan **modify/delete** pada file ini (remote menghapus, lokal mengubah). Push harus lewat PowerShell Windows yang kredensialnya berfungsi, dan konflik itu harus diputuskan dulu — lihat §11.
+2. **Pint/style check gagal** pada 18 file (`vendor/bin/pint --test`). Angka ini **sudah dibuktikan lewat perbandingan commit**, bukan dikira-kira:
 
    | Titik ukur | File gagal |
    |---|---|
    | `2e880da` (sebelum modul peminjaman) | 19 |
    | `dac980b` (sesudah, tanpa fix) | 27 |
    | `e467414` (sesudah fix pint) | 19 |
+   | sesudah `a7d9f2d` (sekarang) | 18 |
 
-   Selisih 8 file itu persis file baru dari commit `eb6eed1`, sudah saya rapikan di `e467414`.
-   19 file sisanya **pre-existing** (`bootstrap/app.php`, `AppServiceProvider.php`, `routes/web.php`,
-   `Submission.php`, `LocationFactory.php`, dan 14 lainnya) — sudah gagal sebelum kerjaan peminjaman
-   dimulai. `pint` **tidak** dijalankan di CI, jadi tidak memblokir pipeline.
-3. **BUG-3 s.d. BUG-7 masih hidup** di codebase (§3). Yang paling perlu perhatian adalah **BUG-6**
-   (`stock` masih fillable di `Item`). Perhatikan bahwa BUG-8 sudah dikoreksi di §3.1 — klaim
-   bypass approval ternyata tidak terbukti, jadi jangan diperlakukan sebagai risiko.
+   Selisih 8 file pada `dac980b` itu persis file baru dari commit `eb6eed1`, sudah saya rapikan di `e467414`.
+   `InventoryController.php` ikut turun ke 18 karena formatnya ikut terpangkas saat perbaikan BUG-6.
+   Sisanya **pre-existing** (`bootstrap/app.php`, `AppServiceProvider.php`, `routes/web.php`,
+   `Submission.php`, `LocationFactory.php`, dan 13 lainnya) — sudah gagal sebelum kerjaan peminjaman
+   dimulai. Tidak ada file baru yang masuk daftar gagal. `pint` **tidak** dijalankan di CI, jadi tidak memblokir pipeline.
+3. **BUG-3, BUG-4, BUG-5, BUG-7 masih hidup** di codebase dan sengaja dibiarkan — alasan
+   per item ada di §3.2. Urutan yang saya sarankan: BUG-4 (butuh keputusan desain), BUG-7
+   (menyangkut format nomor data lama), BUG-5 (satu baris), BUG-3 (bersihkan kode mati).
+   **BUG-6 sudah selesai** (commit `a7d9f2d`), jadi `stock` bukan lagi risiko.
+   Perhatikan bahwa BUG-8 sudah dikoreksi di §3.3 — klaim bypass approval ternyata tidak
+   terbukti, jadi jangan diperlakukan sebagai risiko; yang tersisa hanya copy view dan sudah
+   diperbaiki di `6fe5c00`.
 4. **Skema index belum lengkap** — `submissions.department` dan `submissions.created_at` difilter di `ReportController.php:74,80` tapi tanpa index. Belum jadi bottleneck pada data skala sekolah.
 5. **`Item.current_status` punya 5 nilai enum tapi hanya 2 yang bisa dicapai** lewat UI. Nilai `'dalam_perbaikan'` dan `'disposed'` hanya bisa diset via Tinker. Section 4 baru benar-benar "Sebagian" karena ini.
 
@@ -395,9 +445,24 @@ duplikat di kolom itu (mustahil sebelumnya karena kolomnya baru), tidak ada masa
 Bagian 3 (Peminjaman) dan sebagian 2, 4, 5, 7 ikut ter-commit. **Section 1, 6, 9, 10, 11, 13, 14, 15, 16
 belum dikerjakan lebih lanjut** sesuai instruksi untuk memverifikasi push dulu.
 
-Urutan yang saya sarankan setelah push berhasil:
-1. Push & verifikasi hash (BLOCKED — butuh SSH key atau `gh auth login`)
-2. Perbaiki BUG-6 (keluarkan `stock` dari `$fillable` Item)
-3. Section 11 (export PDF/Excel) — satu-satunya gap P2 dengan dampak user nyata terbesar
-4. Section 8 (tabel approval histories)
-5. Rapikan copy `show.blade.php:92-100` yang menampilkan "Keputusan Telah Dibuat: DRAFT" (§3.1)
+### Sisa pekerjaan, berurutan
+
+1. **Konflik push harus diputuskan lebih dulu.** Remote `origin/main` (`2688930`) menghapus
+   `AUDIT_IMPLEMENTATION_REPORT.md` lewat GitHub web, sementara lokal mengubahnya → konflik
+   modify/delete. Dua pilihan, keputusan ada di Anda:
+   - **Pertahankan file** (disarankan): `git rm --cached` tidak berlaku untuk kasus ini, tapi
+     setelah rebase konflik muncul, cukup `git checkout --ours AUDIT_IMPLEMENTATION_REPORT.md`
+     lalu `git add`, sehingga versi lokal (yang sudah dikoreksi) menang atas penghapusan.
+   - **Ikuti penghapusan**: `git rm AUDIT_IMPLEMENTATION_REPORT.md` — laporan hilang dari repo.
+2. **Push 3 commit yang menunggu** dari PowerShell Windows (kredensial berfungsi di sana):
+
+   ```powershell
+   Set-ExecutionPolicy Bypass -Scope Process -Force
+   cd "C:\Users\user\OneDrive\Documents\Project Web Inventaris\Sistem-Informasi-Inventaris-dan-Logistik-Sekolah-Berbasis-Web"
+   git push origin main
+   ```
+
+   Setelah itu verifikasi `git rev-parse HEAD` identik dengan `git ls-remote origin main`.
+3. **Section 11 (export PDF/Excel)** — satu-satunya gap P2 dengan dampak user nyata terbesar.
+4. **Section 8 (tabel approval histories)** — butuh keputusan skema.
+5. **BUG-4** lalu **BUG-7** — keduanya butuh keputusan Anda, alasan lengkap di §3.2.
