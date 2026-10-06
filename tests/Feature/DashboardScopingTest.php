@@ -2,8 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Models\IncomingItem;
 use App\Models\Item;
 use App\Models\Location;
+use App\Models\OutgoingItem;
 use App\Models\Submission;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -100,5 +102,77 @@ class DashboardScopingTest extends TestCase
             $this->assertSame(2, $response->viewData('totalLocations'));
             $this->assertSame(2, $response->viewData('pendingSubmissions'));
         }
+    }
+
+    public function test_chart_kajur_ikut_scoping_dan_tanpa_grafik_jurusan(): void
+    {
+        $kajurRpl = $this->kajur('RPL');
+        $kajurTkj = $this->kajur('TKJ');
+
+        $labRpl = Location::factory()->create(['department' => 'RPL', 'name' => 'Lab RPL']);
+        Location::factory()->create(['department' => 'TKJ', 'name' => 'Lab TKJ']);
+
+        $itemRplAktif = $this->item('RPL');
+        $itemRplAktif->forceFill(['current_status' => 'aktif', 'location_id' => $labRpl->id])->save();
+
+        $itemRplPerbaikan = $this->item('RPL');
+        $itemRplPerbaikan->forceFill(['current_status' => 'dalam_perbaikan', 'location_id' => $labRpl->id])->save();
+
+        $this->item('TKJ');
+
+        $response = $this->actingAs($kajurRpl)->get(route('home'));
+
+        $response->assertOk();
+
+        $charts = $response->viewData('charts');
+        $this->assertSame(['Aktif', 'Dalam Perbaikan'], $charts['conditions']['labels']);
+        $this->assertSame([1, 1], $charts['conditions']['data']);
+        $this->assertSame(['Lab RPL'], $charts['locations']['labels']);
+        $this->assertSame([2], $charts['locations']['data']);
+        $this->assertNull($charts['departments']);
+        $this->assertSame(12, count($charts['trend']['labels']));
+        $this->assertSame(12, count($charts['trend']['incoming']));
+        $this->assertSame(12, count($charts['trend']['outgoing']));
+    }
+
+    public function test_chart_sarpras_global_berisi_jurusan_dan_tren_masuk_keluar(): void
+    {
+        $item = $this->item('RPL');
+        $item->forceFill(['current_status' => 'aktif'])->save();
+
+        $sarpras = User::factory()->sarpras()->create();
+
+        IncomingItem::create([
+            'transaction_number' => 'TRX-IN-'.uniqid(),
+            'item_id' => $item->id,
+            'quantity' => 6,
+            'source' => 'pembelian',
+            'entry_date' => now()->format('Y-m-d'),
+            'user_id' => $sarpras->id,
+        ]);
+        OutgoingItem::create([
+            'transaction_number' => 'TRX-OUT-'.uniqid(),
+            'item_id' => $item->id,
+            'quantity' => 2,
+            'reason' => 'pengeluaran',
+            'exit_date' => now()->format('Y-m-d'),
+            'user_id' => $sarpras->id,
+        ]);
+        $this->item('TKJ');
+        $this->item('Umum');
+
+        $response = $this->actingAs($sarpras)->get(route('home'));
+
+        $response->assertOk();
+
+        $charts = $response->viewData('charts');
+        $this->assertNotNull($charts['departments']);
+        $this->assertContains('RPL', $charts['departments']['labels']);
+        $this->assertContains('TKJ', $charts['departments']['labels']);
+        $this->assertSame(3, array_sum($charts['departments']['data']));
+
+        $this->assertSame(6, $charts['trend']['incoming'][11]);
+        $this->assertSame(2, $charts['trend']['outgoing'][11]);
+        $this->assertSame(0, $charts['trend']['incoming'][0]);
     }
 }

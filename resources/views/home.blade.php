@@ -325,4 +325,140 @@
         </div>
     </div>
 </div>
+
+{{-- Grafik Dashboard (Section 6) --}}
+<div class="row g-5 g-xl-8 mt-2">
+    @if(count($charts['conditions']['labels']))
+        <div class="col-md-6 col-xl-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header border-0 pt-6">
+                    <h3 class="fw-bolder text-dark">Kondisi Aset</h3>
+                </div>
+                <div class="card-body d-flex flex-column align-items-center justify-content-center">
+                    <div style="height: 250px; width: 100%;"><canvas id="chartKondisi"></canvas></div>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    @if(count($charts['locations']['labels']))
+        <div class="col-md-6 col-xl-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header border-0 pt-6">
+                    <h3 class="fw-bolder text-dark">Distribusi Aset per Lokasi</h3>
+                </div>
+                <div class="card-body d-flex flex-column align-items-center justify-content-center">
+                    <div style="height: 250px; width: 100%;"><canvas id="chartLokasi"></canvas></div>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    @if($charts['departments'] && count($charts['departments']['labels']))
+        <div class="col-md-6 col-xl-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header border-0 pt-6">
+                    <h3 class="fw-bolder text-dark">Persebaran Aset per Jurusan</h3>
+                </div>
+                <div class="card-body d-flex flex-column align-items-center justify-content-center">
+                    <div style="height: 250px; width: 100%;"><canvas id="chartJurusan"></canvas></div>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header border-0 pt-6">
+                <h3 class="fw-bolder text-dark">Tren Barang Masuk & Keluar</h3>
+            </div>
+            <div class="card-body">
+                <div style="height: 280px;"><canvas id="chartTren"></canvas></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@push('scripts')
+    <script src="{{ asset('plugins/chartjs/chart.umd.js') }}"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const palette = ['#4e73df', '#1cc88a', '#f6c23e', '#e74a3b', '#36b9cc', '#858796', '#6f42c1', '#fd7e14'];
+            const data = @json($charts);
+
+            function makeChart(id, config) {
+                const el = document.getElementById(id);
+                if (!el) return;
+                new Chart(el, config);
+            }
+
+            makeChart('chartKondisi', {
+                type: 'doughnut',
+                data: {
+                    labels: data.conditions.labels,
+                    datasets: [{
+                        data: data.conditions.data,
+                        backgroundColor: palette,
+                        borderWidth: 2
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+            });
+
+            makeChart('chartLokasi', {
+                type: 'pie',
+                data: {
+                    labels: data.locations.labels,
+                    datasets: [{
+                        data: data.locations.data,
+                        backgroundColor: palette,
+                        borderWidth: 2
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+            });
+
+            if (data.departments) {
+                makeChart('chartJurusan', {
+                    type: 'doughnut',
+                    data: {
+                        labels: data.departments.labels,
+                        datasets: [{
+                            data: data.departments.data,
+                            backgroundColor: palette,
+                            borderWidth: 2
+                        }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+                });
+            }
+
+            makeChart('chartTren', {
+                type: 'line',
+                data: {
+                    labels: data.trend.labels,
+                    datasets: [
+                        {
+                            label: 'Barang Masuk',
+                            data: data.trend.incoming,
+                            borderColor: '#1cc88a',
+                            backgroundColor: 'rgba(28, 200, 138, 0.15)',
+                            fill: true,
+                            tension: 0.3
+                        },
+                        {
+                            label: 'Barang Keluar',
+                            data: data.trend.outgoing,
+                            borderColor: '#e74a3b',
+                            backgroundColor: 'rgba(231, 74, 59, 0.15)',
+                            fill: true,
+                            tension: 0.3
+                        }
+                    ]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+            });
+        });
+    </script>
+@endpush
 @endsection
