@@ -19,29 +19,7 @@ Route::middleware(['auth', 'role'])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
     // Home / Landing status setelah login
-    Route::get('/home', function (\Illuminate\Http\Request $request) {
-        $user = auth()->user();
-
-        if ($request->expectsJson()) {
-            return response()->json([
-                'message' => 'Selamat datang di Sistem Informasi Inventaris dan Logistik Sekolah',
-                'user' => [
-                    'name' => $user->name,
-                    'username' => $user->username,
-                    'email' => $user->email,
-                    'role' => $user->role,
-                    'department' => $user->department,
-                ],
-            ]);
-        }
-
-        // Statistik ringkas dashboard sesuai role
-        $totalItems = \App\Models\Item::count();
-        $totalLocations = \App\Models\Location::count();
-        $pendingSubmissions = \App\Models\Submission::whereIn('status', ['submitted', 'reviewed_sarpras'])->count();
-
-        return view('home', compact('user', 'totalItems', 'totalLocations', 'pendingSubmissions'));
-    })->name('home');
+    Route::get('/home', [\App\Http\Controllers\HomeController::class, 'index'])->name('home');
 
     // Modul Laporan (Dapat diakses seluruh role dengan filter otomatis sesuai wewenang)
     Route::get('/reports', [\App\Http\Controllers\ReportController::class, 'index'])->name('reports.index');
