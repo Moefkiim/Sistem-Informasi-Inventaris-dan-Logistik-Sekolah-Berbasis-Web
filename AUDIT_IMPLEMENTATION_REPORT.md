@@ -30,7 +30,7 @@ berstatus Selesai penuh, 5 section Sebagian, dan 13 section belum disentuh sama 
 | 10 | Search dan filter | P2 | **Sebagian** | Ada di inventory sarpras + loans + activity logs; **tidak ada** di lokasi, barang masuk, barang keluar, distribusi, pengajuan sarpras |
 | 11 | Export PDF/Excel | P2 | **Belum disentuh** | Tidak ada dependency PDF/Excel di `composer.json`; hanya print via `window.print()` |
 | 12 | QR Code (P3) | P3 | **Belum disentuh** | Nol baris `qrcode`/`barcode` di seluruh repo — memang sesuai batasan scope |
-| 13 | Audit keamanan | P0 | **Sebagian** | Role middleware + mass-assignment guard kuat; `Item.stock` sudah dikeluarkan dari `$fillable` (BUG-6, commit `a7d9f2d`); tidak ada proteksi rate-limit di endpoint mutasi |
+| 13 | Audit keamanan | P0 | **Sebagian** | Role middleware + mass-assignment guard kuat; `Item.stock` sudah dikeluarkan dari `$fillable` (BUG-6, commit `bc9a3ed`); tidak ada proteksi rate-limit di endpoint mutasi |
 | 14 | Audit database | P1 | **Sebagian** | FK & index tersedia; `submissions.department`, `submissions.created_at`, `documents.department` tanpa index |
 | 15 | UI/UX | P2 | **Sebagian** | Layout responsif + flash + empty state; belum ada loading state, sorting kolom, atau bulk action |
 | 16 | Dokumentasi README | P2 | **Sebagian** | README 25 KB sangat lengkap; **tidak menyebut modul Peminjaman sama sekali** |
@@ -55,14 +55,21 @@ sudah masuk `main` (lokal). Riwayat commit terkait pekerjaan audit:
 |---|---|
 | `eb6eed1` | feat: modul peminjaman, identitas aset, audit trail (21 file — file yang sebelumnya untracked) |
 | `dac980b` | docs: laporan audit ini (20 section) |
-| `e467414` | style: pint pada 8 file baru (perubahan whitespace saja) |
-| `bbd7f5e` | docs: koreksi BUG-8 (klaim salah) + bukti perbandingan angka pint |
-| `a7d9f2d` | fix: BUG-6 — `stock` keluar dari `Item::$fillable` |
-| `6fe5c00` | fix: BUG-8 bagian copy — hapus "Keputusan Telah Dibuat" untuk pengajuan belum diputuskan |
+| `d2e1548` | style: pint pada 8 file baru (perubahan whitespace saja) |
+| `eebb67e` | docs: koreksi BUG-8 (klaim salah) + bukti perbandingan angka pint |
+| `bc9a3ed` | fix: BUG-6 — `stock` keluar dari `Item::$fillable` |
+| `aa5d05a` | fix: BUG-8 bagian copy — hapus "Keputusan Telah Dibuat" untuk pengajuan belum diputuskan |
+| (commit ini) | docs: catat BUG-3/4/5/7, perbarui status BUG-6 dan BUG-8 |
 
-Dari keenamnya, **hanya `dac980b` dan `bbd7f5e` yang sudah ada di remote** — dan keduanya justru
-terdampak karena `origin/main` bergerak sendiri ke `2688930` yang menghapus laporan ini lewat
-GitHub web. Detail konflik dan cara menyelesaikannya ada di §9 butir 1 dan §11.
+Dua catatan riwayat yang penting untuk pembaca:
+
+1. **`origin/main` bergerak sendiri.** Sementara pekerjaan berjalan, `origin/main` di-commit
+   menjadi `2688930` ("Delete AUDIT_IMPLEMENTATION_REPORT.md", lewat GitHub web, 5 Okt 18:18)
+   yang menghapus laporan ini. Lokal punya 5 commit yang belum sampai ke remote. Karena itu
+   seluruh riwayat di atas **di-rebase di atas `2688930`**, sehingga hash 4 commit terakhir
+   berbeda dari versi sebelum rebase. Isinya identik, hanya basisnya yang berubah.
+2. **Konflik modify/delete sudah diselesaikan dengan versi lokal menang** — file laporan ini
+   dipertahankan, penghapusan di remote dibatalkan. Detail di §9 butir 1 dan §11.
 
 Perubahan kode di luar commit feat: hanya dua perbaikan bug (BUG-6 dan BUG-8 bagian copy),
 keduanya terpisah per commit, tanpa fitur produk baru.
@@ -141,8 +148,8 @@ halaman itu adalah mengetik URL secara manual. Sudah diperbaiki di `layouts/app.
 |---|---|---|---|---|
 | BUG-1 | `ActivityLogController.php:40` | Route `/sarpras/activity-logs` memanggil view yang tidak pernah dibuat → 500 | **Blokir** | **Selesai** — view dibuat |
 | BUG-2 | `layouts/app.blade.php` | Tidak ada entri nav ke audit trail | Minor | **Selesai** — nav ditambahkan |
-| BUG-6 | `Item.php:15-35` | `stock` ada di `$fillable`, kelas invariant yang sama dengan `Submission.status`/`User.role` | Sedang | **Selesai** — commit `a7d9f2d` |
-| BUG-8 | `ApprovalController.php:37` | Klaim bypass approval **SALAH**; bagian UX copy saja (§3.3) | Ringan | **Selesai** — commit `6fe5c00` |
+| BUG-6 | `Item.php:15-35` | `stock` ada di `$fillable`, kelas invariant yang sama dengan `Submission.status`/`User.role` | Sedang | **Selesai** — commit `bc9a3ed` |
+| BUG-8 | `ApprovalController.php:37` | Klaim bypass approval **SALAH**; bagian UX copy saja (§3.3) | Ringan | **Selesai** — commit `aa5d05a` |
 | BUG-3 | `app/Models/Item.php` | Relasi `activeLoans()` tidak pernah dipakai (kode mati) | Ringan | Tercatat di §3.2 |
 | BUG-4 | `LoanController.php` | `borrower_user_id` terisi ID Sarpras pencatat, bukan peminjam asli | Sedang | Tercatat di §3.2 |
 | BUG-5 | `LoanController.php` | Dropdown create tidak menyaring barang yang sedang dipinjam | Ringan | Tercatat di §3.2 |
@@ -289,10 +296,10 @@ Added:     resources/views/sarpras/activity_logs/index.blade.php
 Rapian pint (commit terpisah, 8 file):
 
 ```
-Modified:  (hanya whitespace/indent, tanpa perubahan logika) — lihat commit e467414
+Modified:  (hanya whitespace/indent, tanpa perubahan logika) — lihat commit d2e1548
 ```
 
-Perbaikan BUG-6 (commit `a7d9f2d`):
+Perbaikan BUG-6 (commit `bc9a3ed`):
 
 ```
 Modified:  app/Models/Item.php                           (-1, 'stock' keluar dari $fillable)
@@ -301,7 +308,7 @@ Modified:  app/Http/Controllers/Sarpras/InventoryController.php
 Added:     tests/Feature/ItemStockMassAssignmentTest.php (4 test regresi)
 ```
 
-Perbaikan copy halaman approval, BUG-8 bagian view (commit `6fe5c00`):
+Perbaikan copy halaman approval, BUG-8 bagian view (commit `aa5d05a`):
 
 ```
 Modified:  resources/views/principal/approval/show.blade.php
@@ -358,17 +365,24 @@ Prioritas ini **tidak diselesaikan** dan saya tidak membuatnya selesai:
 
 ## 9. Risiko yang Tersisa
 
-1. **Push belum berhasil dari environment ini.** `git push` lokal gagal: `Permission denied (publickey)` — tidak ada SSH key yang terdaftar, `gh` tidak terpasang. Laporan ini sendiri menemukan penyebab kedua saat mencoba push: remote `origin/main` sudah bergerak ke `2688930` ("Delete AUDIT_IMPLEMENTATION_REPORT.md", dihapus lewat GitHub web pada 2026-10-05). Karena itu rebase akan berbenturan **modify/delete** pada file ini (remote menghapus, lokal mengubah). Push harus lewat PowerShell Windows yang kredensialnya berfungsi, dan konflik itu harus diputuskan dulu — lihat §11.
+1. **Push adalah satu-satunya langkah yang belum selesai.** `git push` dari environment ini gagal:
+   `Permission denied (publickey)` — tidak ada SSH key terdaftar, `gh` tidak terpasang.
+   Masalah kedua, yang ditemukan saat mencoba push, sudah **selesai**: remote sempat bergerak ke
+   `2688930` ("Delete AUDIT_IMPLEMENTATION_REPORT.md", via GitHub web, 5 Okt) sehingga memicu
+   konflik **modify/delete** pada file ini. Konflik sudah diselesaikan dengan versi lokal menang
+   (keputusan pengguna), seluruh 5 commit sudah di-rebase di atas `2688930`, dan `main` lokal
+   kini `ahead 5, behind 0` dengan tree bersih. Yang tersisa hanya menjalankan `git push` dari
+   PowerShell Windows — lihat §11.
 2. **Pint/style check gagal** pada 18 file (`vendor/bin/pint --test`). Angka ini **sudah dibuktikan lewat perbandingan commit**, bukan dikira-kira:
 
    | Titik ukur | File gagal |
    |---|---|
    | `2e880da` (sebelum modul peminjaman) | 19 |
    | `dac980b` (sesudah, tanpa fix) | 27 |
-   | `e467414` (sesudah fix pint) | 19 |
-   | sesudah `a7d9f2d` (sekarang) | 18 |
+   | `d2e1548` (sesudah fix pint) | 19 |
+   | sesudah `bc9a3ed` (sekarang) | 18 |
 
-   Selisih 8 file pada `dac980b` itu persis file baru dari commit `eb6eed1`, sudah saya rapikan di `e467414`.
+   Selisih 8 file pada `dac980b` itu persis file baru dari commit `eb6eed1`, sudah saya rapikan di `d2e1548`.
    `InventoryController.php` ikut turun ke 18 karena formatnya ikut terpangkas saat perbaikan BUG-6.
    Sisanya **pre-existing** (`bootstrap/app.php`, `AppServiceProvider.php`, `routes/web.php`,
    `Submission.php`, `LocationFactory.php`, dan 13 lainnya) — sudah gagal sebelum kerjaan peminjaman
@@ -376,10 +390,10 @@ Prioritas ini **tidak diselesaikan** dan saya tidak membuatnya selesai:
 3. **BUG-3, BUG-4, BUG-5, BUG-7 masih hidup** di codebase dan sengaja dibiarkan — alasan
    per item ada di §3.2. Urutan yang saya sarankan: BUG-4 (butuh keputusan desain), BUG-7
    (menyangkut format nomor data lama), BUG-5 (satu baris), BUG-3 (bersihkan kode mati).
-   **BUG-6 sudah selesai** (commit `a7d9f2d`), jadi `stock` bukan lagi risiko.
+   **BUG-6 sudah selesai** (commit `bc9a3ed`), jadi `stock` bukan lagi risiko.
    Perhatikan bahwa BUG-8 sudah dikoreksi di §3.3 — klaim bypass approval ternyata tidak
    terbukti, jadi jangan diperlakukan sebagai risiko; yang tersisa hanya copy view dan sudah
-   diperbaiki di `6fe5c00`.
+   diperbaiki di `aa5d05a`.
 4. **Skema index belum lengkap** — `submissions.department` dan `submissions.created_at` difilter di `ReportController.php:74,80` tapi tanpa index. Belum jadi bottleneck pada data skala sekolah.
 5. **`Item.current_status` punya 5 nilai enum tapi hanya 2 yang bisa dicapai** lewat UI. Nilai `'dalam_perbaikan'` dan `'disposed'` hanya bisa diset via Tinker. Section 4 baru benar-benar "Sebagian" karena ini.
 
@@ -447,14 +461,12 @@ belum dikerjakan lebih lanjut** sesuai instruksi untuk memverifikasi push dulu.
 
 ### Sisa pekerjaan, berurutan
 
-1. **Konflik push harus diputuskan lebih dulu.** Remote `origin/main` (`2688930`) menghapus
-   `AUDIT_IMPLEMENTATION_REPORT.md` lewat GitHub web, sementara lokal mengubahnya → konflik
-   modify/delete. Dua pilihan, keputusan ada di Anda:
-   - **Pertahankan file** (disarankan): `git rm --cached` tidak berlaku untuk kasus ini, tapi
-     setelah rebase konflik muncul, cukup `git checkout --ours AUDIT_IMPLEMENTATION_REPORT.md`
-     lalu `git add`, sehingga versi lokal (yang sudah dikoreksi) menang atas penghapusan.
-   - **Ikuti penghapusan**: `git rm AUDIT_IMPLEMENTATION_REPORT.md` — laporan hilang dari repo.
-2. **Push 3 commit yang menunggu** dari PowerShell Windows (kredensial berfungsi di sana):
+1. ~~Konflik push diputuskan~~ — **selesai.** Konflik modify/delete dengan `2688930` diselesaikan
+   dengan versi lokal menang, file laporan ini dipertahankan. `main` lokal: `ahead 5, behind 0`,
+   tree bersih. Langkah yang terpaksa dilewati: `git rebase --continue` pernah gagal sekali karena
+   `.git/index.lock` bentrok, sehingga commit `bc9a3ed` (BUG-6) dibuat ulang manual dari pesan
+   commit aslinya — diff-nya diverifikasi identik dengan `a7d9f2d` sebelum rebase.
+2. **Push 5 commit yang menunggu** dari PowerShell Windows (kredensial berfungsi di sana):
 
    ```powershell
    Set-ExecutionPolicy Bypass -Scope Process -Force
