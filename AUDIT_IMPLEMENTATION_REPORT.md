@@ -149,6 +149,9 @@ Perubahan inti:
 - Dashboard (`HomeController`) dan laporan/rekap (`ReportController`, termasuk tampilan,
   cetak `reports/print`, PDF, dan ekspor Excel) menghitung statistik **per unit** untuk
   item individual; consumable tetap dihitung per kode barang (commit `bd56726`).
+- Inventaris Kajur (`Kajur/InventoryController` + view index/show) menampilkan aset
+  jurusannya **per unit** — ekspansi unit di index, daftar unit + kolom unit pada
+  peminjaman aktif dan riwayat mutasi di detail (commit `1e41d37`).
 
 Bukti D3 — jumlah aset benar per unit. Di dev DB demo (BRG-LAP 2 unit, BRG-PRJ 1 unit,
 BRG-KAM 3 unit, BRG-KRT consumable), dashboard menampilkan `totalItems = 7` (6 unit fisik +
@@ -359,7 +362,7 @@ Sesi aset per-unit (7 Okt 2026, **Section 2**):
 | `2026_10_07_000002_add_asset_unit_id_to_histories_and_loans.php` | Tambah `asset_unit_id` (nullable) ke `loans`, `condition_histories`, `location_histories` |
 | `2026_10_07_000003_backfill_asset_units_from_items.php` | Backfill idempotent via `App\Services\AssetUnitBackfiller` — verifikasi count, gagal transparan bila tidak sesuai harapan |
 
-Semua sudah diverifikasi jalan pada `php artisan test` (134 test hijau saat ini).
+Semua sudah diverifikasi jalan pada `php artisan test` (137 test hijau saat ini).
 
 ---
 
@@ -448,6 +451,9 @@ c31a010  feat: ubah kondisi fisik per unit aset dengan histori condition_histori
 7156357  feat: mutasi lokasi per unit aset dengan histori location_histories (+ AssetUnitLocationTest, 7 test)
 bd56726  feat: dashboard & laporan menghitung barang individual per unit (cetak/PDF/Excel,
             + AssetUnitReportTest, 4 test; D3/D5 §2.6)
+1c93a73  docs: laporan audit sebagai bukti D3/D5 untuk Section 2 aset per-unit
+1e41d37  feat: inventaris Kajur menampilkan aset per unit jurusan (index ekspansi unit +
+            detail daftar unit/peminjaman/histori per unit; + KajurTenantIsolationTest 5 test)
 ```
 
 ---
@@ -456,7 +462,7 @@ bd56726  feat: dashboard & laporan menghitung barang individual per unit (cetak/
 
 ```
 $ php artisan test
-Tests:    134 passed (528 assertions)
+Tests:    137 passed (545 assertions)
 ```
 
 | Test file | Jumlah | Cakupan |
@@ -479,8 +485,9 @@ Tests:    134 passed (528 assertions)
 | `AssetUnitConditionTest` | 7 | **Section 2**: ubah kondisi per unit → `condition_histories` ber-`asset_unit_id`, kondisi unit & item disinkronkan, histori append-only |
 | `AssetUnitLocationTest` | 7 | **Section 2**: mutasi lokasi per unit → `location_histories` ber-`asset_unit_id`, `items.location_id` disinkronkan dari unit pertama, histori tetap ada |
 | `AssetUnitReportTest` | 4 | **Section 2 (D3/D5)**: dashboard menghitung individu per unit (totalItems=7, chart kondisi/lokasi per unit), consumable 1× sekali, laporan cetak mengekspansi unit, scoping Kajur pada ekspansi unit |
+| `KajurTenantIsolationTest` | 5 | **Section 2 (M5)**: Kajur hanya melihat inventaris jurusannya (403 lintas jurusan / tanpa department), index Kajur mengekspansi unit (No. Unit/Seri/kondisi/status/lokasi per unit), consumable satu baris, detail menampilkan daftar unit + histori per unit |
 
-Semua 134 lulus. Test kunci sebagai regression guard:
+Semua 137 lulus. Test kunci sebagai regression guard:
 
 - `test_sarpras_can_open_activity_logs_page` — **BUG-1**. Sebelum view dibuat, gagal "View not found".
 - `ItemStockMassAssignmentTest::stock cannot be set via mass assignment on create` — **BUG-6**.
