@@ -32,6 +32,36 @@
             </div>
         </div>
 
+        @if($item->isIndividual() && $item->assetUnits && $item->assetUnits->isNotEmpty())
+            <div class="mb-5">
+                <h6 class="fw-bolder text-uppercase fs-8 text-primary mb-3"><i class="bi bi-hdd-stack me-1"></i> Daftar Unit Aset ({{ $item->assetUnits->count() }})</h6>
+                <div class="table-responsive">
+                    <table class="table table-sm table-row-bordered table-row-gray-100 align-middle">
+                        <thead class="fw-bold text-muted fs-8">
+                            <tr>
+                                <th>No. Unit</th>
+                                <th>No. Seri</th>
+                                <th>Kondisi</th>
+                                <th>Status</th>
+                                <th>Lokasi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($item->assetUnits as $unit)
+                                <tr>
+                                    <td class="font-monospace">{{ $unit->unit_inventory_number }}</td>
+                                    <td>{{ $unit->serial_number ?: '-' }}</td>
+                                    <td><x-condition-badge :condition="$unit->current_condition" /></td>
+                                    <td class="text-capitalize">{{ str_replace('_', ' ', $unit->current_status) }}</td>
+                                    <td>{{ $unit->location?->name ?: 'Belum ditetapkan' }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        @endif
+
         @if($item->activeLoans && $item->activeLoans->isNotEmpty())
             <div class="mb-5">
                 <h6 class="fw-bolder text-uppercase fs-8 text-primary mb-3"><i class="bi bi-person-check me-1"></i> Peminjaman Aktif</h6>
@@ -39,6 +69,7 @@
                     <table class="table table-sm table-row-bordered table-row-gray-100 align-middle">
                         <thead class="fw-bold text-muted">
                             <tr>
+                                <th>No. Unit</th>
                                 <th>Nomor</th>
                                 <th>Peminjam</th>
                                 <th>Status</th>
@@ -49,6 +80,7 @@
                         <tbody>
                             @foreach($item->activeLoans as $loan)
                                 <tr>
+                                    <td class="font-monospace">{{ $loan->assetUnit?->unit_inventory_number ?: '-' }}</td>
                                     <td class="font-monospace">{{ $loan->loan_number }}</td>
                                     <td>
                                         {{ $loan->borrower_name }}
@@ -80,6 +112,7 @@
                     <table class="table table-sm table-row-bordered">
                         <thead>
                             <tr class="fw-bold text-muted fs-7">
+                                <th>Unit</th>
                                 <th>Dari Lokasi</th>
                                 <th>Ke Lokasi</th>
                                 <th>Waktu</th>
@@ -88,12 +121,13 @@
                         <tbody>
                             @forelse($item->locationHistories as $lh)
                                 <tr>
+                                    <td class="font-monospace">{{ $lh->assetUnit?->unit_inventory_number ?: 'Barang (keseluruhan)' }}</td>
                                     <td>{{ $lh->fromLocation?->name ?: '-' }}</td>
                                     <td><strong class="text-primary">{{ $lh->toLocation->name }}</strong></td>
                                     <td>{{ $lh->moved_at->format('d/m/Y H:i') }}</td>
                                 </tr>
                             @empty
-                                <tr><td colspan="3" class="text-muted">Belum ada riwayat mutasi lokasi.</td></tr>
+                                <tr><td colspan="4" class="text-muted">Belum ada riwayat mutasi lokasi.</td></tr>
                             @endforelse
                         </tbody>
                     </table>
@@ -106,6 +140,7 @@
                     <table class="table table-sm table-row-bordered">
                         <thead>
                             <tr class="fw-bold text-muted fs-7">
+                                <th>Unit</th>
                                 <th>Status Lama</th>
                                 <th>Status Baru</th>
                                 <th>Waktu</th>
@@ -114,12 +149,13 @@
                         <tbody>
                             @forelse($item->conditionHistories as $ch)
                                 <tr>
+                                    <td class="font-monospace">{{ $ch->assetUnit?->unit_inventory_number ?: 'Barang (keseluruhan)' }}</td>
                                     <td class="text-capitalize">{{ str_replace('_', ' ', $ch->from_condition) }}</td>
                                     <td class="text-capitalize fw-bold text-dark">{{ str_replace('_', ' ', $ch->to_condition) }}</td>
                                     <td>{{ $ch->recorded_at->format('d/m/Y H:i') }}</td>
                                 </tr>
                             @empty
-                                <tr><td colspan="3" class="text-muted">Belum ada riwayat pergantian kondisi.</td></tr>
+                                <tr><td colspan="4" class="text-muted">Belum ada riwayat pergantian kondisi.</td></tr>
                             @endforelse
                         </tbody>
                     </table>

@@ -22,7 +22,7 @@ class InventoryController extends Controller
         $department = $user->department;
 
         $items = Item::where('department', $department)
-            ->with(['location'])
+            ->with(['location', 'assetUnits.location'])
             ->latest()
             ->paginate(10);
 
@@ -43,7 +43,16 @@ class InventoryController extends Controller
             abort(403, 'Akses ditolak: Anda hanya berhak melihat inventaris jurusan Anda sendiri.');
         }
 
-        $item->load(['location', 'locationHistories.fromLocation', 'locationHistories.toLocation', 'conditionHistories', 'activeLoans.borrower']);
+        $item->load([
+            'location',
+            'locationHistories.assetUnit',
+            'locationHistories.fromLocation',
+            'locationHistories.toLocation',
+            'conditionHistories.assetUnit',
+            'activeLoans.borrower',
+            'activeLoans.assetUnit',
+            'assetUnits.location',
+        ]);
 
         return view('kajur.inventory.show', compact('item'));
     }
