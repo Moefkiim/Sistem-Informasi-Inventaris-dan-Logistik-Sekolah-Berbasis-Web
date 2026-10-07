@@ -23,6 +23,31 @@
                     </div>
                 </div>
 
+                @if($item->assetUnits && $item->assetUnits->isNotEmpty())
+                    <div class="separator separator-dashed my-5"></div>
+                    <h5 class="fw-bolder mb-3 text-dark"><i class="bi bi-hdd-stack me-1 text-primary"></i> Daftar Unit Aset ({{ $item->assetUnits->count() }})</h5>
+                    <div class="table-responsive mb-1">
+                        <table class="table table-sm table-row-bordered table-row-gray-100 align-middle">
+                            <thead class="fw-bold text-muted fs-8">
+                                <tr>
+                                    <th>No. Unit</th>
+                                    <th>Kondisi</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($item->assetUnits as $unit)
+                                    <tr>
+                                        <td class="font-monospace">{{ $unit->unit_inventory_number }}</td>
+                                        <td><x-condition-badge :condition="$unit->current_condition" /></td>
+                                        <td class="text-capitalize">{{ str_replace('_', ' ', $unit->current_status) }}</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @endif
+
                 @if($item->activeLoans && $item->activeLoans->isNotEmpty())
                     <div class="mt-5">
                         <h6 class="fw-bolder text-uppercase fs-8 text-primary mb-3"><i class="bi bi-person-check me-1"></i> Peminjaman Aktif</h6>
@@ -90,6 +115,16 @@
                 <h5 class="fw-bolder mb-3 text-dark"><i class="bi bi-activity me-1 text-warning"></i> Ubah Kondisi Fisik</h5>
                 <form action="{{ route('sarpras.inventory.updateCondition', $item) }}" method="POST">
                     @csrf
+                    @if($item->isIndividual() && $item->assetUnits && $item->assetUnits->isNotEmpty())
+                        <div class="mb-3">
+                            <select name="asset_unit_id" class="form-select form-select-solid form-select-sm" required>
+                                <option value="">-- Pilih Unit Aset --</option>
+                                @foreach($item->assetUnits as $unit)
+                                    <option value="{{ $unit->id }}">{{ $unit->unit_inventory_number }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    @endif
                     <div class="mb-3">
                         <select name="to_condition" class="form-select form-select-solid form-select-sm" required>
                             <option value="baik" {{ $item->current_condition === 'baik' ? 'selected' : '' }}>Baik</option>
@@ -152,11 +187,12 @@
                     <div class="tab-pane fade" id="tab_kondisi" role="tabpanel">
                         <table class="table table-row-bordered fs-7 gy-3">
                             <thead class="bg-light fw-bold">
-                                <tr><th>Kondisi Asal</th><th>Kondisi Baru</th><th>Pencatat</th><th>Catatan</th><th>Waktu</th></tr>
+                                <tr><th>Unit</th><th>Kondisi Asal</th><th>Kondisi Baru</th><th>Pencatat</th><th>Catatan</th><th>Waktu</th></tr>
                             </thead>
                             <tbody>
                                 @forelse($item->conditionHistories as $ch)
                                     <tr>
+                                        <td class="font-monospace">{{ $ch->assetUnit?->unit_inventory_number ?: '-' }}</td>
                                         <td>{{ str_replace('_', ' ', $ch->from_condition) }}</td>
                                         <td class="fw-bolder">{{ str_replace('_', ' ', $ch->to_condition) }}</td>
                                         <td>{{ $ch->user?->name }}</td>
@@ -164,7 +200,7 @@
                                         <td>{{ $ch->recorded_at->format('d/m/Y H:i') }}</td>
                                     </tr>
                                 @empty
-                                    <tr><td colspan="5" class="text-center text-muted">Belum ada histori kondisi.</td></tr>
+                                    <tr><td colspan="6" class="text-center text-muted">Belum ada histori kondisi.</td></tr>
                                 @endforelse
                             </tbody>
                         </table>

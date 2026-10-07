@@ -12,6 +12,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class InventoryController extends Controller
@@ -117,9 +118,11 @@ class InventoryController extends Controller
     {
         $item->load([
             'location',
+            'assetUnits',
             'locationHistories.fromLocation',
             'locationHistories.toLocation',
             'locationHistories.user',
+            'conditionHistories.assetUnit',
             'conditionHistories.user',
             'incomingItems.user',
             'outgoingItems.user',
@@ -170,9 +173,16 @@ class InventoryController extends Controller
     public function updateCondition(Request $request, Item $item): RedirectResponse
     {
         $validated = $request->validate([
+            'asset_unit_id' => ['nullable', 'integer', Rule::exists('asset_units', 'id')],
             'to_condition' => ['required', 'in:baik,rusak_ringan,rusak_berat'],
             'notes' => ['nullable', 'string', 'max:255'],
         ]);
+
+        $hasUnits = $item->isIndividual() && $item->assetUnits()->exists();
+
+        if ($hasUnits) {
+            return $this->updateUnitCondition($item, $validated, $request);
+        }
 
         if ($item->current_condition === $validated['to_condition']) {
             return back()->withErrors(['msg' => 'Status kondisi fisik sama dengan kondisi saat ini.']);
@@ -201,5 +211,76 @@ class InventoryController extends Controller
         });
 
         return back()->with('success', 'Riwayat perubahan kondisi berhasil dicatat.');
+    }
+
+    /**
+     * Perubahan kondisi per unit aset individual.
+     */
+    private function updateUnitCondition(Item $item, array $validated, Request $request): RedirectResponse
+    {
+        if (empty($validated['asset_unit_id'])) {
+            throw ValidationException::withMessages([
+                'asset_unit_id' => 'Silakan pilih unit aset yang diubah kondisinya.',
+            ]);
+        }
+
+        $unit = $item->assetUnits()->find((int) $validated['asset_unit_id']);
+
+        if (! $unit) {
+            throw ValidationException::withMessages([
+                'asset_unit_id' => 'Unit aset tidak valid untuk barang ini.',
+            ]);
+        }
+
+        if ($unit->current_condition === $validated['to_condition']) {
+            return back()->withErrors(['msg' => 'Kondisi unit aset sama dengan kondisi saat ini.']);
+        }
+
+        DB::transaction(function () use ($item, $unit, $validated, $request) {
+            ConditionHistory::create([
+                'item_id' => $item->id,
+                'asset_unit_id' => $unit->id,
+                'from_condition' => $unit->current_condition,
+                'to_condition' => $validated['to_condition'],
+                'user_id' => $request->user()->id,
+                'notes' => $validated['notes'] ?? 'Pembaruan kondisi fisik unit aset',
+                'recorded_at' => now(),
+            ]);
+
+            $unit->update(['current_condition' => $validated['to_condition']]);
+
+            // Kondisi agregat item mengikuti kondisi terburuk antar unit agar
+            // tampilan master tetap bermakna.
+            $item->update(['current_condition' => $this->worstUnitCondition($item)]);
+
+            ActivityLog::log(
+                'item_condition_updated',
+                "Kondisi unit {$unit->unit_inventory_number} ({$item->name}) diubah: "
+                    ."{$unit->getOriginal('current_condition')} → {$validated['to_condition']}",
+                $unit,
+                ['current_condition' => $unit->getOriginal('current_condition')],
+                ['current_condition' => $validated['to_condition']],
+                $item->code
+            );
+        });
+
+        return back()->with('success', 'Riwayat perubahan kondisi unit berhasil dicatat.');
+    }
+
+    private function worstUnitCondition(Item $item): string
+    {
+        $worst = 'baik';
+
+        foreach ($item->assetUnits()->get(['current_condition']) as $unit) {
+            if ($unit->current_condition === 'rusak_berat') {
+                return 'rusak_berat';
+            }
+
+            if ($unit->current_condition === 'rusak_ringan') {
+                $worst = 'rusak_ringan';
+            }
+        }
+
+        return $worst;
     }
 }
