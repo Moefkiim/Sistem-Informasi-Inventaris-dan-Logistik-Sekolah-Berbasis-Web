@@ -14,13 +14,13 @@ Setiap klaim disertai bukti `file:line`. Bagian yang belum dikerjakan ditandai e
 ## 0. Ringkasan Eksekutif: Status 20 Section
 
 Pekerjaan yang benar-benar ada di repo ini (verifikasi Oct 2026) — setelah sesi verifikasi lanjutan
-6 Okt — berstatus **7 dari 16 section Selesai penuh, 8 Sebagian, dan 1 belum disentuh** (Section 12
-QR dilarang oleh `AGENTS.md` §4). Pekerjaan terbuka yang tersisa: aset per-unit (§2).
+6 Okt — berstatus **8 dari 16 section Selesai penuh, 7 Sebagian, dan 1 belum disentuh** (Section 12
+QR dilarang oleh `AGENTS.md` §4).
 
 | # | Bagian | Prioritas | Status | Bukti |
 |---|--------|-----------|--------|-------|
 | 1 | Alur pengajuan draft → approval | P0 | **Selesai** | `Kajur/SubmissionController.php`, `Sarpras/SubmissionController.php`, `Principal/ApprovalController.php` — guard transisi + tabel `submission_histories` (Section 8) + blok "Riwayat Proses" di 3 halaman detail |
-| 2 | Identitas aset individual | P1 | **Sebagian** | `2026_10_05_000001_*.php`, `Item.php:17-33`, form create — kolom ada, tapi model data masih agregat 1 baris = banyak unit fisik |
+| 2 | Identitas aset individual | P1 | **Selesai** | tabel `asset_units` (1 baris per unit fisik) + backfill idempotent (`2026_10_07_000003`), peminjaman/mutasi kondisi/lokasi per unit, dashboard & laporan menghitung per unit — bukti D3/D5 di §2.6 |
 | 3 | Modul Peminjaman & Pengembalian | P0 | **Selesai** | `LoanController.php`, `Loan.php`, `loans` migration, `LoanFactory`, 3 view, `LoanWorkflowTest.php` (29 test) + `recorded_by` (BUG-4) |
 | 4 | Pemisahan kondisi vs status | P1 | **Sebagian** | `current_status` enum ada (`000001:38-46`), hanya di-set oleh `LoanController.php:186,232`; tidak ada UI untuk status `'dalam_perbaikan'`/`'disposed'` |
 | 5 | Stok minimum | P1 | **Sebagian** | Kolom + helper `Item.php:60-77`, validasi, input form — tapi **tidak ada** alerting/filter/list badge yang memakainya |
@@ -36,7 +36,7 @@ QR dilarang oleh `AGENTS.md` §4). Pekerjaan terbuka yang tersisa: aset per-unit
 | 15 | UI/UX | P2 | **Sebagian** | Layout responsif + flash + empty state; belum ada loading state, sorting kolom, atau bulk action |
 | 16 | Dokumentasi README | P2 | **Sebagian** | README 25 KB sangat lengkap; **tidak menyebut modul Peminjaman sama sekali** |
 
-Ringkasan: **Selesai 6, Sebagian 9, Belum disentuh 1** (dari 16 section yang dilaporkan; section 17-20
+Ringkasan: **Selesai 8, Sebagian 7, Belum disentuh 1** (dari 16 section yang dilaporkan; section 17-20
 tidak ada di prompt klarifikasi ini dan tidak diklaim).
 
 ### Yang terjadi pada 2 section yang saya laporkan "Sebagian"
@@ -120,6 +120,57 @@ Tombol "PDF" dan "Excel" di halaman Laporan & Rekap; keduanya mewarisi semua fil
 kop laporan, meta, tabel, kolom tanda tangan); Excel via PhpSpreadsheet (header tebal +
 autosize kolom). Data list dari query yang sama dengan tampilan layar, sehingga selalu
 terisi otomatis dari database.
+
+### 2.6 Aset per-unit dan identitas fisik (Section 2, commit `1d28aba`–`bd56726`)
+
+Section 2 kini **Selesai**: identitas aset yang tadinya menyatu di baris agregat `items`
+(`inventory_number`/`serial_number` + `stock` = sekumpulan unit fisik) dipindah ke tabel
+anak `asset_units` — satu baris per unit fisik. Item individual tetap memiliki baris
+agregat `items` (kode/jenis/stok), sedangkan unit fisiknya hidup di `asset_units` dengan
+identitas, kondisi, status, dan lokasinya sendiri. Item consumable tidak dibuatkan unit.
+
+Perubahan inti:
+
+- Migrasi `2026_10_07_000001_create_asset_units_table`: tabel `asset_units` (`item_id`,
+  `unit_inventory_number`, `serial_number`, `current_condition`/`current_status`,
+  `location_id`), diikuti `2026_10_07_000002_add_asset_unit_id_to_histories_and_loans`
+  yang menghubungkan `loans`, `condition_histories`, `location_histories` ke unit.
+- Backfill idempotent `2026_10_07_000003` + `App\Services\AssetUnitBackfiller`: item
+  individual lama dibuatkan satu unit per satuan stok (dev demo: `expected=6 created=6`),
+  peminjaman yang masih terbuka dipetakan ke unit yang sesuai, dan tidak menghapus data
+  apa pun. Aman pada DB kosong (no-op) maupun DB berisi; rerun aman karena item yang
+  sudah ber-unit dilewati.
+- Peminjaman (`Sarpras/LoanController`) kini membidik `asset_units` tertentu: unit yang
+  dipinjam berpindah status ke `dipinjam` (commit `9341cc7`).
+- Mutasi kondisi (`InventoryController::updateCondition`) menulis `condition_histories`
+  ber-`asset_unit_id`; mutasi lokasi (`updateLocation`) menulis `location_histories`
+  ber-`asset_unit_id` dan menyinkronkan `items.location_id` dari unit pertama
+  (commit `c31a010`, `7156357`).
+- Dashboard (`HomeController`) dan laporan/rekap (`ReportController`, termasuk tampilan,
+  cetak `reports/print`, PDF, dan ekspor Excel) menghitung statistik **per unit** untuk
+  item individual; consumable tetap dihitung per kode barang (commit `bd56726`).
+
+Bukti D3 — jumlah aset benar per unit. Di dev DB demo (BRG-LAP 2 unit, BRG-PRJ 1 unit,
+BRG-KAM 3 unit, BRG-KRT consumable), dashboard menampilkan `totalItems = 7` (6 unit fisik +
+1 kode consumable), kondisi `aktif 6 / dipinjam 1`, lokasi `Lab RPL 3 / Tanpa Lokasi 4`,
+jurusan `RPL 4 / TKJ 3`. Perilaku ini dikunci test `AssetUnitReportTest`,
+`DashboardScopingTest`, dan laporan (cetak/Excel, scoping Kajur).
+
+Bukti D5 — perbandingan sebelum/sesudah per-unit:
+
+| Metrik | Sebelum (semantik agregat) | Sesudah (per unit) | Keterangan |
+|---|---|---|---|
+| totalItems | 4 (baris `items`) | **7** (6 unit + 1 consumable) | LAP×2, PRJ×1, KAM×3, KRT×1 |
+| kondisi aktif | 3 | 6 | unit LAP×2 + KAM×3 + KRT |
+| kondisi dipinjam | 1 | 1 | unit PRJ |
+| lokasi Lab RPL | 2 | 3 | unit LAP×2 + PRJ |
+| lokasi Tanpa Lokasi | 2 | 4 | unit KAM×3 + KRT |
+| jurusan RPL | 3 | 4 | LAP×2 + PRJ + KRT |
+| jurusan TKJ | 1 | 3 | KAM×3 |
+
+Sebelumnya barang individual dihitung 1× per kode barang sehingga stok 3 unit kamera hanya
+terbaca "1"; kini dihitung per unit fisik agar ketersediaan, kondisi, dan sebaran lokasi
+terlihat per unit.
 
 ### 2.1 Halaman Riwayat Aktivitas (`/sarpras/activity-logs`)
 
@@ -300,7 +351,15 @@ Satu set dari sesi sebelum ini ikut ter-commit, plus dua migrasi baru dari sesi 
 | `2026_10_06_000001_add_recorded_by_to_loans_table.php` | **BUG-4**: kolom `recorded_by` (pencatat transaksi), backfill `recorded_by = borrower_user_id`, lalu `borrower_user_id = NULL` agar diisi peminjam asli |
 | `2026_10_06_000002_create_submission_histories_table.php` | **Section 8**: tabel `submission_histories` append-only (from_status, to_status, actor_user_id, notes, recorded_at; index `(submission_id, recorded_at)`) |
 
-Semua sudah diverifikasi jalan pada `php artisan test` (93 test hijau saat ini).
+Sesi aset per-unit (7 Okt 2026, **Section 2**):
+
+| File | Isi |
+|---|---|
+| `2026_10_07_000001_create_asset_units_table.php` | Tabel `asset_units` — identitas fisik per unit (`unit_inventory_number`, `serial_number`), `current_condition`/`current_status` dan `location_id` sendiri per unit, FK ke `items` |
+| `2026_10_07_000002_add_asset_unit_id_to_histories_and_loans.php` | Tambah `asset_unit_id` (nullable) ke `loans`, `condition_histories`, `location_histories` |
+| `2026_10_07_000003_backfill_asset_units_from_items.php` | Backfill idempotent via `App\Services\AssetUnitBackfiller` — verifikasi count, gagal transparan bila tidak sesuai harapan |
+
+Semua sudah diverifikasi jalan pada `php artisan test` (134 test hijau saat ini).
 
 ---
 
@@ -375,8 +434,20 @@ db48328  fix: BUG-7 — helper generateDocumentNumber() urut&race-safe di Logist
 4ca0511  feat: Section 8 — tabel submission_histories + pencatatan di 6 titik transisi,
            blok "Riwayat Proses Pengajuan" di 3 halaman detail (10 test baru)
 83dd94c  feat: Section 11 — export laporan PDF (dompdf) & Excel (.xlsx) server-side
-           (composer: barryvdh/laravel-dompdf ^3.1, phpoffice/phpspreadsheet ^5.10;
-            Route reports.pdf/reports.excel; 6 test baru)
+            (composer: barryvdh/laravel-dompdf ^3.1, phpoffice/phpspreadsheet ^5.10;
+             Route reports.pdf/reports.excel; 6 test baru)
+```
+
+Sesi aset per-unit — **Section 2** (7 Okt 2026, semua ter-push, CI hijau):
+
+```
+d4b4f66  test: perbaiki tanggal pada DocumentNumberSequentialTest (stabilitas CI)
+1d28aba  feat: tabel asset_units + backfill idempotent data items lama (+ AssetUnitBackfillTest, 5 test)
+9341cc7  feat: peminjaman per unit aset — status unit berpindah, dropdown memilih unit (+ LoanPerUnitTest, 8 test)
+c31a010  feat: ubah kondisi fisik per unit aset dengan histori condition_histories (+ AssetUnitConditionTest, 7 test)
+7156357  feat: mutasi lokasi per unit aset dengan histori location_histories (+ AssetUnitLocationTest, 7 test)
+bd56726  feat: dashboard & laporan menghitung barang individual per unit (cetak/PDF/Excel,
+            + AssetUnitReportTest, 4 test; D3/D5 §2.6)
 ```
 
 ---
@@ -385,7 +456,7 @@ db48328  fix: BUG-7 — helper generateDocumentNumber() urut&race-safe di Logist
 
 ```
 $ php artisan test
-Tests:    103 passed (407 assertions)
+Tests:    134 passed (528 assertions)
 ```
 
 | Test file | Jumlah | Cakupan |
@@ -403,8 +474,13 @@ Tests:    103 passed (407 assertions)
 | `WorkflowTransitionTest` | 6 | Rantai draft→submitted→reviewed→approved, guard transisi, mass-assignment, **+ 2 test copy halaman approval** |
 | `ItemStockMassAssignmentTest` | 4 | **Regression guard BUG-6**: `stock` tidak bisa diset/diubah lewat mass-assignment, assignment eksplisit tetap jalan |
 | `DistributionStockTest`, `DocumentAuthTest`, `KajurTenantIsolationTest`, `AuthenticationAndRoleAccessTest`, `ExampleTest` ×2 | 17 | Distribusi/stok, auth dokumen, isolasi tenant, otorisasi role |
+| `AssetUnitBackfillTest` | 5 | **Section 2**: backfill item individual → unit, idempotent (rerun `expected=6 created=0`), no-op DB kosong, mapping identitas (inventory/serial) & status/condition terwarisi, loan terbuka ter-petakan |
+| `LoanPerUnitTest` | 8 | **Section 2**: peminjaman membidik unit spesifik, status unit berpindah, unit tersedia disaring, return mengembalikan unit, guard unit rusak/tidak aktif, dropdown memilih unit |
+| `AssetUnitConditionTest` | 7 | **Section 2**: ubah kondisi per unit → `condition_histories` ber-`asset_unit_id`, kondisi unit & item disinkronkan, histori append-only |
+| `AssetUnitLocationTest` | 7 | **Section 2**: mutasi lokasi per unit → `location_histories` ber-`asset_unit_id`, `items.location_id` disinkronkan dari unit pertama, histori tetap ada |
+| `AssetUnitReportTest` | 4 | **Section 2 (D3/D5)**: dashboard menghitung individu per unit (totalItems=7, chart kondisi/lokasi per unit), consumable 1× sekali, laporan cetak mengekspansi unit, scoping Kajur pada ekspansi unit |
 
-Semua 103 lulus. Test kunci sebagai regression guard:
+Semua 134 lulus. Test kunci sebagai regression guard:
 
 - `test_sarpras_can_open_activity_logs_page` — **BUG-1**. Sebelum view dibuat, gagal "View not found".
 - `ItemStockMassAssignmentTest::stock cannot be set via mass assignment on create` — **BUG-6**.
@@ -412,10 +488,11 @@ Semua 103 lulus. Test kunci sebagai regression guard:
 - `WorkflowTransitionTest::approval page shows correct copy per status` — **BUG-8 (bagian copy)**.
   Memastikan halaman tidak lagi menampilkan "Keputusan Telah Dibuat" untuk `draft`/`submitted`.
 
-Tidak ada test yang gagal atau di-skip. `vendor/bin/pint --test` masih gagal di **18 file**,
-semuanya pre-existing sejak sebelum modul Peminjaman (daftar file identik dengan baseline
-`2e880da`); file yang disentuh pada sesi verifikasi lanjutan selalu dirapikan pint per-file
-sehingga tidak ada file baru yang ikut masuk daftar gagal.
+Tidak ada test yang gagal atau di-skip. `vendor/bin/pint --test` masih gagal di **11 file**,
+semuanya pre-existing sejak sebelum modul Peminjaman; file yang disentuh pada sesi verifikasi
+lanjutan dan sesi aset per-unit selalu dirapikan pint per-file sehingga tidak ada file baru yang
+ikut masuk daftar gagal (file baru sesi per-unit lolos pint: `AssetUnitReportTest`,
+`inventory_rows.blade.php`, `HomeController`, `ReportController`).
 
 **Status CI (TASK 1 prompt CI & demo).** Sebelum perbaikan, `composer install` di workflow akan
 gagal karena `phpoffice/phpspreadsheet 5.10.0` mewajibkan `ext-gd` (juga zip/iconv/simplexml/
@@ -443,7 +520,8 @@ Prioritas ini **tidak diselesaikan** dan saya tidak membuatnya selesai:
 | Section | Kenapa belum |
 |---|---|
 | 12 — QR Code | Sesuai `AGENTS.md` §4, barcode/QR code **dilarang keras** tanpa persetujuan eksplisit. Sengaja tidak dikerjakan. |
-| 2 — Aset per-unit | Butuh tabel anak (satu baris per unit fisik). Ongkos perubahan skema besar — kolom identitas yang sekarang ada pada baris agregat, idealnya dipindah ke `asset_units`. Saya tidak ingin memutus data yang sudah ada tanpa persetujuan. |
+
+Section 2 (Aset per-unit) sudah keluar dari daftar ini — implementasi dan buktinya ada di §2.6.
 
 ---
 
@@ -457,20 +535,22 @@ Prioritas ini **tidak diselesaikan** dan saya tidak membuatnya selesai:
    ("Delete AUDIT_IMPLEMENTATION_REPORT.md", via GitHub web, 5 Okt) sehingga memicu konflik
    **modify/delete** pada file ini. Konflik diselesaikan dengan versi lokal menang (keputusan
    pengguna), seluruh commit di-rebase di atas `2688930`, dan file ini tetap ada di remote.
-2. **Pint/style check gagal** pada 18 file (`vendor/bin/pint --test`). Angka ini **sudah dibuktikan lewat perbandingan commit**, bukan dikira-kira:
+2. **Pint/style check gagal** pada **11 file** (`vendor/bin/pint --test`). Angka ini diambil ulang
+   7 Okt 2026. Seluruhnya pre-existing (file-file yang disentuh sesi per-unit lolos pint); `pint`
+   **tidak** dijalankan di CI, jadi tidak memblokir pipeline.
 
    | Titik ukur | File gagal |
    |---|---|
    | `2e880da` (sebelum modul peminjaman) | 19 |
    | `dac980b` (sesudah, tanpa fix) | 27 |
    | `d2e1548` (sesudah fix pint) | 19 |
-   | sesudah `bc9a3ed` (sekarang) | 18 |
+   | sesudah sesi verifikasi lanjutan | 18 |
+   | sesudah sesi aset per-unit (sekarang) | 11 |
 
-   Selisih 8 file pada `dac980b` itu persis file baru dari commit `eb6eed1`, sudah saya rapikan di `d2e1548`.
-   `InventoryController.php` ikut turun ke 18 karena formatnya ikut terpangkas saat perbaikan BUG-6.
-   Sisanya **pre-existing** (`bootstrap/app.php`, `AppServiceProvider.php`, `routes/web.php`,
-   `Submission.php`, `LocationFactory.php`, dan 13 lainnya) — sudah gagal sebelum kerjaan peminjaman
-   dimulai. Tidak ada file baru yang masuk daftar gagal. `pint` **tidak** dijalankan di CI, jadi tidak memblokir pipeline.
+   Selisih turun dari 18 → 11 karena file yang tersisa hanya yang memang pre-existing
+   (`bootstrap/app.php`, `AppServiceProvider.php`, `routes/web.php`, `DocumentController.php`,
+   `Sarpras/LocationController.php`, `Sarpras/UserController.php`, `ItemFactory`,
+   `LocationFactory`, `ReportScopingTest`, dan 2 migrasi lama).
 3. **BUG-3, BUG-4, BUG-5, BUG-7 sudah diperbaiki** di sesi verifikasi lanjutan
    (commit `b6099b3`, `db48328`, `5d67ea0`), dan **BUG-6 sudah selesai** (commit `bc9a3ed`).
    `stock` bukan lagi risiko; relasi `activeLoans()` kini dipakai; barang yang dipinjam sudah
@@ -543,8 +623,9 @@ duplikat di kolom itu (mustahil sebelumnya karena kolomnya baru), tidak ada masa
 
 ## 11. Status Section yang Dirapot Tidak Disentuh
 
-Bagian 3 (Peminjaman) dan sebagian 2, 4, 5, 7 ikut ter-commit. **Section 1, 9, 10, 11, 13, 14, 15, 16
-belum dikerjakan lebih lanjut** (Section 6 sudah diselesaikan di commit `5623c7d` + `80166c4`).
+Bagian 2, 3, 6, 7, 8, 9 dan 11 sudah ter-commit (Section 2 dan 3 dijelaskan di §2; Section 6 di
+commit `5623c7d` + `80166c4`; Section 8 di `4ca0511`; Section 7 di sesi pertama; nomor dokumen
+Section 9 di `db48328`). **Section 1, 4, 5, 10, 13, 14, 15, 16 belum dikerjakan lebih lanjut.**
 
 ### Status langkah teknis
 
@@ -566,5 +647,5 @@ belum dikerjakan lebih lanjut** (Section 6 sudah diselesaikan di commit `5623c7d
 
 ### Sisa pekerjaan berikutnya
 
-3. **Section 2 — Aset per-unit / per-serial** (butuh keputusan skema `asset_units`).
+3. **Section 2 — Aset per-unit / per-serial** — **SELESAI** 7 Okt 2026 (commit `1d28aba`–`bd56726`, bukti §2.6; CI hijau).
 4. **Section 12 — QR Code** tetap dilarang tanpa persetujuan eksplisit (`AGENTS.md` §4).
