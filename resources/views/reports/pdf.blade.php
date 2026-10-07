@@ -42,9 +42,11 @@
                 <tr>
                     <th>#</th>
                     <th>Kode Barang</th>
+                    <th>No. Unit</th>
+                    <th>No. Seri</th>
                     <th>Nama Barang</th>
                     <th>Kategori</th>
-                    <th>Stok</th>
+                    <th>Jumlah/Stok</th>
                     <th>Kondisi</th>
                     <th>Lokasi</th>
                     <th>Jurusan</th>
@@ -94,16 +96,25 @@
         <tbody>
             @forelse($data as $idx => $row)
                 @if($type === 'inventory')
-                    <tr>
-                        <td>{{ $idx + 1 }}</td>
-                        <td>{{ $row->code }}</td>
-                        <td>{{ $row->name }}</td>
-                        <td>{{ $row->category }}</td>
-                        <td>{{ $row->stock }} {{ $row->unit }}</td>
-                        <td>{{ ucfirst(str_replace('_', ' ', $row->current_condition)) }}</td>
-                        <td>{{ $row->location->name ?? '-' }}</td>
-                        <td>{{ $row->department ?? 'Umum' }}</td>
-                    </tr>
+                    @php
+                        $isUnit = $row->isIndividual() && $row->assetUnits !== null && $row->assetUnits->isNotEmpty();
+                        $unitRows = $isUnit ? $row->assetUnits : collect([null]);
+                        $rowNo = $loop->index + 1;
+                    @endphp
+                    @foreach($unitRows as $unit)
+                        <tr>
+                            <td>{{ $rowNo++ }}</td>
+                            <td>{{ $row->code }}</td>
+                            <td>{{ $unit?->unit_inventory_number ?: ($row->inventory_number ?: '-') }}</td>
+                            <td>{{ $unit?->serial_number ?: ($row->serial_number ?: '-') }}</td>
+                            <td>{{ $row->name }}</td>
+                            <td>{{ $row->category }}</td>
+                            <td>{{ $unit ? '1 '.$row->unit : $row->stock.' '.$row->unit }}</td>
+                            <td>{{ ucfirst(str_replace('_', ' ', $unit?->current_condition ?: $row->current_condition)) }}</td>
+                            <td>{{ $unit?->location?->name ?: $row->location?->name ?: '-' }}</td>
+                            <td>{{ $row->department ?: 'Umum' }}</td>
+                        </tr>
+                    @endforeach
                 @elseif($type === 'incoming')
                     <tr>
                         <td>{{ $idx + 1 }}</td>
@@ -147,7 +158,7 @@
                 @endif
             @empty
                 <tr class="empty-row">
-                    <td colspan="8">Tidak ada data laporan.</td>
+                    <td colspan="10">Tidak ada data laporan.</td>
                 </tr>
             @endforelse
         </tbody>

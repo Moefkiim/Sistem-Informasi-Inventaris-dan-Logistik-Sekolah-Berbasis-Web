@@ -61,22 +61,10 @@
             @if($type === 'inventory')
                 <table class="table align-middle table-row-dashed fs-7 gy-4">
                     <thead class="bg-light fw-bold text-muted text-uppercase">
-                        <tr><th>Kode</th><th>Nama Barang</th><th>Kategori</th><th>Stok</th><th>Kondisi</th><th>Lokasi</th><th>Jurusan</th></tr>
+                        <tr><th>Kode</th><th>No. Unit</th><th>No. Seri</th><th>Nama Barang</th><th>Kategori</th><th>Jumlah/Stok</th><th>Kondisi</th><th>Lokasi</th><th>Jurusan</th></tr>
                     </thead>
                     <tbody class="fw-bold text-gray-700">
-                        @forelse($data as $row)
-                            <tr>
-                                <td>{{ $row->code }}</td>
-                                <td>{{ $row->name }}</td>
-                                <td>{{ $row->category }}</td>
-                                <td>{{ $row->stock }} {{ $row->unit }}</td>
-                                <td>{{ strtoupper(str_replace('_', ' ', $row->current_condition)) }}</td>
-                                <td>{{ $row->location?->name ?: '-' }}</td>
-                                <td>{{ $row->department ?: 'Umum' }}</td>
-                            </tr>
-                        @empty
-                            <tr><td colspan="7" class="text-center text-muted py-6">Tidak ada data untuk periode ini.</td></tr>
-                        @endforelse
+                        @include('reports.partials.inventory_rows')
                     </tbody>
                 </table>
             @elseif($type === 'incoming')

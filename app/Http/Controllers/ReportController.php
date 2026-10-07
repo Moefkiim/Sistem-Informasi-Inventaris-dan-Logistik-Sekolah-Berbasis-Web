@@ -83,6 +83,14 @@ class ReportController extends Controller
         $rows = [];
 
         foreach ($data as $record) {
+            if ($type === 'inventory') {
+                foreach ($this->inventoryRows($record) as $row) {
+                    $rows[] = $this->excelRow('inventory', $row);
+                }
+
+                continue;
+            }
+
             $rows[] = $this->excelRow($type, $record);
         }
 
@@ -199,7 +207,7 @@ class ReportController extends Controller
 
             case 'inventory':
             default:
-                $query = Item::with(['location'])->latest();
+                $query = Item::with(['location', 'assetUnits.location'])->latest();
                 if ($department) {
                     $query->where('department', $department);
                 }
@@ -219,8 +227,50 @@ class ReportController extends Controller
             'outgoing' => ['No. Transaksi', 'Nama Barang', 'Jumlah', 'Alasan Keluar', 'Tanggal Keluar', 'Pencatat'],
             'distribution' => ['No. Distribusi', 'Nama Barang', 'Jumlah', 'Lokasi Tujuan', 'Jurusan Penerima', 'Tanggal'],
             'submission' => ['No. Pengajuan', 'Judul', 'Jurusan', 'Pengaju', 'Status', 'Tanggal'],
-            default => ['Kode Barang', 'Nama Barang', 'Kategori', 'Stok', 'Kondisi', 'Lokasi', 'Jurusan'],
+            default => ['Kode Barang', 'No. Unit', 'No. Seri', 'Nama Barang', 'Kategori', 'Jumlah/Stok', 'Kondisi', 'Lokasi', 'Jurusan'],
         };
+    }
+
+    /**
+     * Item individual dengan unit dipecah menjadi satu baris per unit;
+     * consumable / item legacy tetap satu baris.
+     */
+    private function inventoryRows(Item $item): array
+    {
+        $asRow = function (?string $unitNo, ?string $serial, int $stock, string $condition, $location) use ($item) {
+            return (object) [
+                'code' => $item->code,
+                'unit_no' => $unitNo,
+                'serial_number' => $serial,
+                'name' => $item->name,
+                'category' => $item->category,
+                'stock' => $stock,
+                'unit' => $item->unit,
+                'current_condition' => $condition,
+                'location' => $location,
+                'department' => $item->department,
+            ];
+        };
+
+        if ($item->isIndividual() && $item->assetUnits && $item->assetUnits->isNotEmpty()) {
+            return $item->assetUnits
+                ->map(fn ($unit) => $asRow(
+                    $unit->unit_inventory_number,
+                    $unit->serial_number,
+                    1,
+                    $unit->current_condition,
+                    $unit->location
+                ))
+                ->all();
+        }
+
+        return [$asRow(
+            $item->inventory_number,
+            $item->serial_number,
+            (int) $item->stock,
+            $item->current_condition,
+            $item->location
+        )];
     }
 
     /**
@@ -263,9 +313,11 @@ class ReportController extends Controller
             ],
             default => [
                 $record->code,
+                (string) ($record->unit_no ?? ''),
+                (string) ($record->serial_number ?? ''),
                 $record->name,
                 $record->category,
-                (int) $record->stock.' '.$record->unit,
+                $record->stock.' '.$record->unit,
                 ucfirst(str_replace('_', ' ', $record->current_condition)),
                 $record->location->name ?? '-',
                 $record->department ?: 'Umum',

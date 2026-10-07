@@ -44,9 +44,7 @@ class HomeController extends Controller
 
         $department = $this->resolveDepartment($user);
 
-        $totalItems = Item::query()
-            ->when($department !== null, fn ($q) => $q->where('items.department', $department))
-            ->count();
+        $totalItems = $this->countAssets($department);
 
         $totalLocations = Location::query()
             ->when($department !== null, fn ($q) => $q->where('department', $department))
@@ -79,39 +77,64 @@ class HomeController extends Controller
     }
 
     /**
+     * Aset dihitung per unit untuk aset individual; consumable dihitung 1 per
+     * master barang. Aset individual legacy (belum punya unit) dihitung 1.
+     */
+    private function countAssets(?string $department): int
+    {
+        $assets = Item::query()
+            ->with(['assetUnits'])
+            ->when($department !== null, fn ($q) => $q->where('items.department', $department))
+            ->get();
+
+        return (int) $assets->sum(function (Item $item) {
+            return $item->isIndividual() && $item->assetUnits->isNotEmpty()
+                ? $item->assetUnits->count()
+                : 1;
+        });
+    }
+
+    /**
      * Data agregat untuk grafik dashboard; mengikuti scoping department yang sama.
      */
     private function chartData(?string $department): array
     {
         $items = Item::query()
-            ->when($department !== null, fn ($q) => $q->where('items.department', $department));
+            ->with(['location', 'assetUnits.location'])
+            ->when($department !== null, fn ($q) => $q->where('items.department', $department))
+            ->orderBy('id')
+            ->get();
 
-        $conditionCounts = (clone $items)
-            ->selectRaw('current_status as key, count(*) as total')
-            ->groupBy('current_status')
-            ->pluck('total', 'key');
+        $statusCounts = [];
+        $locationCounts = [];
+        $departmentCounts = [];
+
+        foreach ($items as $item) {
+            // Aset individual dihitung per unit; lainnya dihitung 1 per master.
+            $rows = $item->isIndividual() && $item->assetUnits->isNotEmpty()
+                ? $item->assetUnits
+                : collect([null]);
+
+            foreach ($rows as $unit) {
+                $status = $unit?->current_status ?? $item->current_status;
+                $location = $unit?->location?->name ?? $item->location?->name ?? 'Tanpa Lokasi';
+                $departmentKey = $item->department ?: 'Umum';
+
+                $statusCounts[$status] = ($statusCounts[$status] ?? 0) + 1;
+                $locationCounts[$location] = ($locationCounts[$location] ?? 0) + 1;
+                $departmentCounts[$departmentKey] = ($departmentCounts[$departmentKey] ?? 0) + 1;
+            }
+        }
 
         $conditionsLabels = [];
         $conditionsData = [];
         foreach (self::STATUS_LABELS as $key => $label) {
-            if (! $conditionCounts->has($key)) {
+            if (! isset($statusCounts[$key])) {
                 continue;
             }
             $conditionsLabels[] = $label;
-            $conditionsData[] = (int) $conditionCounts->get($key);
+            $conditionsData[] = (int) $statusCounts[$key];
         }
-
-        $locationCounts = (clone $items)
-            ->selectRaw("COALESCE(locations.name, 'Tanpa Lokasi') as key, count(*) as total")
-            ->leftJoin('locations', 'items.location_id', '=', 'locations.id')
-            ->groupBy('key')
-            ->pluck('total', 'key');
-
-        $departmentCounts = $department === null
-            ? (clone $items)->selectRaw("COALESCE(items.department, 'Umum') as key, count(*) as total")
-                ->groupBy('key')
-                ->pluck('total', 'key')
-            : collect();
 
         return [
             'conditions' => [
@@ -119,12 +142,12 @@ class HomeController extends Controller
                 'data' => $conditionsData,
             ],
             'locations' => [
-                'labels' => array_values($locationCounts->keys()->all()),
-                'data' => array_values($locationCounts->map(fn ($v) => (int) $v)->all()),
+                'labels' => array_keys($locationCounts),
+                'data' => array_values($locationCounts),
             ],
             'departments' => $department === null ? [
-                'labels' => array_values($departmentCounts->keys()->all()),
-                'data' => array_values($departmentCounts->map(fn ($v) => (int) $v)->all()),
+                'labels' => array_keys($departmentCounts),
+                'data' => array_values($departmentCounts),
             ] : null,
             'trend' => $this->monthlyTrend($department),
         ];
