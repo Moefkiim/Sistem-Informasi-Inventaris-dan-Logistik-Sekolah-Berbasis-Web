@@ -93,6 +93,16 @@
                 <h5 class="fw-bolder mb-3 text-dark"><i class="bi bi-geo-alt me-1 text-primary"></i> Mutasi Lokasi</h5>
                 <form action="{{ route('sarpras.inventory.updateLocation', $item) }}" method="POST">
                     @csrf
+                    @if($item->isIndividual() && $item->assetUnits && $item->assetUnits->isNotEmpty())
+                        <div class="mb-3">
+                            <select name="asset_unit_id" class="form-select form-select-solid form-select-sm" required>
+                                <option value="">-- Pilih Unit Aset --</option>
+                                @foreach($item->assetUnits as $unit)
+                                    <option value="{{ $unit->id }}">{{ $unit->unit_inventory_number }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    @endif
                     <div class="mb-3">
                         <select name="to_location_id" class="form-select form-select-solid form-select-sm" required>
                             <option value="">-- Pilih Lokasi Baru --</option>
@@ -166,11 +176,12 @@
                     <div class="tab-pane fade show active" id="tab_lokasi" role="tabpanel">
                         <table class="table table-row-bordered fs-7 gy-3">
                             <thead class="bg-light fw-bold">
-                                <tr><th>Dari</th><th>Ke Lokasi</th><th>Pencatat</th><th>Catatan</th><th>Waktu</th></tr>
+                                <tr><th>Unit</th><th>Dari</th><th>Ke Lokasi</th><th>Pencatat</th><th>Catatan</th><th>Waktu</th></tr>
                             </thead>
                             <tbody>
                                 @forelse($item->locationHistories as $lh)
                                     <tr>
+                                        <td class="font-monospace">{{ $lh->assetUnit?->unit_inventory_number ?: '-' }}</td>
                                         <td>{{ $lh->fromLocation?->name ?: '-' }}</td>
                                         <td class="fw-bolder text-primary">{{ $lh->toLocation->name }}</td>
                                         <td>{{ $lh->user?->name }}</td>
@@ -178,7 +189,7 @@
                                         <td>{{ $lh->moved_at->format('d/m/Y H:i') }}</td>
                                     </tr>
                                 @empty
-                                    <tr><td colspan="5" class="text-center text-muted">Belum ada histori lokasi.</td></tr>
+                                    <tr><td colspan="6" class="text-center text-muted">Belum ada histori lokasi.</td></tr>
                                 @endforelse
                             </tbody>
                         </table>

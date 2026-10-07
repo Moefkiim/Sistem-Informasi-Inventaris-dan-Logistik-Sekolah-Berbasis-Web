@@ -121,6 +121,7 @@ class InventoryController extends Controller
             'assetUnits',
             'locationHistories.fromLocation',
             'locationHistories.toLocation',
+            'locationHistories.assetUnit',
             'locationHistories.user',
             'conditionHistories.assetUnit',
             'conditionHistories.user',
@@ -137,9 +138,16 @@ class InventoryController extends Controller
     public function updateLocation(Request $request, Item $item): RedirectResponse
     {
         $validated = $request->validate([
+            'asset_unit_id' => ['nullable', 'integer', Rule::exists('asset_units', 'id')],
             'to_location_id' => ['required', Rule::exists('locations', 'id')->whereNull('deleted_at')],
             'notes' => ['nullable', 'string', 'max:255'],
         ]);
+
+        $hasUnits = $item->isIndividual() && $item->assetUnits()->exists();
+
+        if ($hasUnits) {
+            return $this->updateUnitLocation($item, $validated, $request);
+        }
 
         if ($item->location_id == $validated['to_location_id']) {
             return back()->withErrors(['msg' => 'Lokasi tujuan sama dengan lokasi saat ini.']);
@@ -168,6 +176,61 @@ class InventoryController extends Controller
         });
 
         return back()->with('success', 'Lokasi barang berhasil diperbarui dan histori mutasi tercatat.');
+    }
+
+    /**
+     * Pemindahan lokasi per unit aset individual.
+     */
+    private function updateUnitLocation(Item $item, array $validated, Request $request): RedirectResponse
+    {
+        if (empty($validated['asset_unit_id'])) {
+            throw ValidationException::withMessages([
+                'asset_unit_id' => 'Silakan pilih unit aset yang dipindahkan lokasinya.',
+            ]);
+        }
+
+        $unit = $item->assetUnits()->find((int) $validated['asset_unit_id']);
+
+        if (! $unit) {
+            throw ValidationException::withMessages([
+                'asset_unit_id' => 'Unit aset tidak valid untuk barang ini.',
+            ]);
+        }
+
+        if ($unit->location_id == $validated['to_location_id']) {
+            return back()->withErrors(['msg' => 'Lokasi tujuan sama dengan lokasi unit saat ini.']);
+        }
+
+        DB::transaction(function () use ($item, $unit, $validated, $request) {
+            LocationHistory::create([
+                'item_id' => $item->id,
+                'asset_unit_id' => $unit->id,
+                'from_location_id' => $unit->location_id,
+                'to_location_id' => $validated['to_location_id'],
+                'user_id' => $request->user()->id,
+                'notes' => $validated['notes'] ?? 'Pemindahan lokasi unit aset',
+                'moved_at' => now(),
+            ]);
+
+            $unit->update(['location_id' => $validated['to_location_id']]);
+
+            // Lokasi agregat item mengikuti unit pertama agar master tetap bermakna.
+            $primaryLocationId = $item->assetUnits()
+                ->orderBy('id')
+                ->value('location_id');
+            $item->update(['location_id' => $primaryLocationId]);
+
+            ActivityLog::log(
+                'item_location_updated',
+                "Lokasi unit {$unit->unit_inventory_number} ({$item->name}) dipindahkan",
+                $unit,
+                ['location_id' => $unit->getOriginal('location_id')],
+                ['location_id' => $validated['to_location_id']],
+                $item->code
+            );
+        });
+
+        return back()->with('success', 'Lokasi unit berhasil diperbarui dan histori mutasi tercatat.');
     }
 
     public function updateCondition(Request $request, Item $item): RedirectResponse
