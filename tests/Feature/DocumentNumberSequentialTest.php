@@ -24,6 +24,7 @@ class DocumentNumberSequentialTest extends TestCase
     {
         $sarpras = $this->sarpras();
         $item = Item::factory()->create(['stock' => 0]);
+        $stamp = now()->format('Ymd');
 
         for ($i = 0; $i < 4; $i++) {
             $this->actingAs($sarpras)
@@ -31,7 +32,7 @@ class DocumentNumberSequentialTest extends TestCase
                     'item_id' => $item->id,
                     'quantity' => 1,
                     'source' => 'pembelian',
-                    'entry_date' => '2026-10-06',
+                    'entry_date' => now()->format('Y-m-d'),
                 ])
                 ->assertSessionHas('success');
         }
@@ -39,10 +40,10 @@ class DocumentNumberSequentialTest extends TestCase
         $numbers = IncomingItem::orderBy('id')->pluck('transaction_number')->all();
 
         $this->assertSame([
-            'IN-20261006-0001',
-            'IN-20261006-0002',
-            'IN-20261006-0003',
-            'IN-20261006-0004',
+            "IN-{$stamp}-0001",
+            "IN-{$stamp}-0002",
+            "IN-{$stamp}-0003",
+            "IN-{$stamp}-0004",
         ], $numbers);
     }
 
@@ -50,13 +51,14 @@ class DocumentNumberSequentialTest extends TestCase
     {
         $sarpras = $this->sarpras();
         $item = Item::factory()->create(['stock' => 100]);
+        $stamp = now()->format('Ymd');
 
         for ($i = 0; $i < 3; $i++) {
             $this->actingAs($sarpras)
                 ->post(route('sarpras.logistics.outgoing.store'), [
                     'item_id' => $item->id,
                     'quantity' => 1,
-                    'exit_date' => '2026-10-06',
+                    'exit_date' => now()->format('Y-m-d'),
                     'reason' => 'Habis pakai',
                 ])
                 ->assertSessionHas('success');
@@ -65,9 +67,9 @@ class DocumentNumberSequentialTest extends TestCase
         $numbers = OutgoingItem::orderBy('id')->pluck('transaction_number')->all();
 
         $this->assertSame([
-            'OUT-20261006-0001',
-            'OUT-20261006-0002',
-            'OUT-20261006-0003',
+            "OUT-{$stamp}-0001",
+            "OUT-{$stamp}-0002",
+            "OUT-{$stamp}-0003",
         ], $numbers);
     }
 
@@ -76,6 +78,7 @@ class DocumentNumberSequentialTest extends TestCase
         $sarpras = $this->sarpras();
         $item = Item::factory()->create(['stock' => 100]);
         $location = Location::factory()->create();
+        $stamp = now()->format('Ymd');
 
         for ($i = 0; $i < 3; $i++) {
             $this->actingAs($sarpras)
@@ -83,7 +86,7 @@ class DocumentNumberSequentialTest extends TestCase
                     'item_id' => $item->id,
                     'quantity' => 1,
                     'to_location_id' => $location->id,
-                    'distribution_date' => '2026-10-06',
+                    'distribution_date' => now()->format('Y-m-d'),
                 ])
                 ->assertSessionHas('success');
         }
@@ -91,9 +94,9 @@ class DocumentNumberSequentialTest extends TestCase
         $numbers = Distribution::orderBy('id')->pluck('distribution_number')->all();
 
         $this->assertSame([
-            'DIST-20261006-0001',
-            'DIST-20261006-0002',
-            'DIST-20261006-0003',
+            "DIST-{$stamp}-0001",
+            "DIST-{$stamp}-0002",
+            "DIST-{$stamp}-0003",
         ], $numbers);
     }
 
@@ -101,13 +104,14 @@ class DocumentNumberSequentialTest extends TestCase
     {
         $sarpras = $this->sarpras();
         $item = Item::factory()->create(['stock' => 0]);
+        $stamp = now()->format('Ymd');
 
         IncomingItem::create([
-            'transaction_number' => 'IN-20261006-A3F2',
+            'transaction_number' => "IN-{$stamp}-A3F2",
             'item_id' => $item->id,
             'quantity' => 1,
             'source' => 'bantuan',
-            'entry_date' => '2026-10-06',
+            'entry_date' => now()->format('Y-m-d'),
             'user_id' => $sarpras->id,
         ]);
 
@@ -116,13 +120,13 @@ class DocumentNumberSequentialTest extends TestCase
                 'item_id' => $item->id,
                 'quantity' => 1,
                 'source' => 'pembelian',
-                'entry_date' => '2026-10-06',
+                'entry_date' => now()->format('Y-m-d'),
             ])
             ->assertSessionHas('success');
 
         $numbers = IncomingItem::orderBy('id')->pluck('transaction_number')->all();
 
-        $this->assertSame(['IN-20261006-A3F2', 'IN-20261006-0001'], $numbers);
+        $this->assertSame(["IN-{$stamp}-A3F2", "IN-{$stamp}-0001"], $numbers);
         $this->assertSame(2, count(array_unique($numbers)));
     }
 
@@ -130,6 +134,7 @@ class DocumentNumberSequentialTest extends TestCase
     {
         $sarpras = $this->sarpras();
         $item = Item::factory()->create(['stock' => 0]);
+        $stamp = now()->format('Ymd');
 
         for ($i = 0; $i < 50; $i++) {
             $this->actingAs($sarpras)
@@ -137,7 +142,7 @@ class DocumentNumberSequentialTest extends TestCase
                     'item_id' => $item->id,
                     'quantity' => 1,
                     'source' => 'pembelian',
-                    'entry_date' => '2026-10-06',
+                    'entry_date' => now()->format('Y-m-d'),
                 ]);
         }
 
@@ -145,7 +150,7 @@ class DocumentNumberSequentialTest extends TestCase
 
         $this->assertSame(50, count($numbers));
         $this->assertSame(50, count(array_unique($numbers)));
-        $this->assertSame('IN-20261006-0001', min($numbers));
-        $this->assertSame('IN-20261006-0050', max($numbers));
+        $this->assertSame("IN-{$stamp}-0001", min($numbers));
+        $this->assertSame("IN-{$stamp}-0050", max($numbers));
     }
 }
