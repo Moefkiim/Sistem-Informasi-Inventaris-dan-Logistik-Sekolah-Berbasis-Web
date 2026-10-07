@@ -117,4 +117,22 @@ class Item extends Model
     {
         return $this->hasMany(Loan::class)->whereIn('status', ['dipinjam', 'disetujui', 'menunggu']);
     }
+
+    public function assetUnits(): HasMany
+    {
+        return $this->hasMany(AssetUnit::class)->latest('id');
+    }
+
+    /**
+     * Jumlah aset efektif untuk agregasi laporan/dashboard:
+     * consumable = 1 entri (stok), individual = jumlah unit fisik.
+     */
+    public function assetCount(): int
+    {
+        if ($this->isConsumable()) {
+            return 1;
+        }
+
+        return $this->assetUnits()->count();
+    }
 }

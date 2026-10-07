@@ -37,6 +37,7 @@ class Loan extends Model
         'borrower_department',
         'recorded_by',
         'item_id',
+        'asset_unit_id',
         'quantity',
         'loan_date',
         'due_date',
@@ -68,6 +69,11 @@ class Loan extends Model
     public function item(): BelongsTo
     {
         return $this->belongsTo(Item::class)->withTrashed();
+    }
+
+    public function assetUnit(): BelongsTo
+    {
+        return $this->belongsTo(AssetUnit::class)->withTrashed();
     }
 
     public function borrower(): BelongsTo

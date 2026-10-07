@@ -9,6 +9,7 @@ class ConditionHistory extends Model
 {
     protected $fillable = [
         'item_id',
+        'asset_unit_id',
         'from_condition',
         'to_condition',
         'user_id',
@@ -37,6 +38,11 @@ class ConditionHistory extends Model
     public function item(): BelongsTo
     {
         return $this->belongsTo(Item::class);
+    }
+
+    public function assetUnit(): BelongsTo
+    {
+        return $this->belongsTo(AssetUnit::class)->withTrashed();
     }
 
     public function user(): BelongsTo
