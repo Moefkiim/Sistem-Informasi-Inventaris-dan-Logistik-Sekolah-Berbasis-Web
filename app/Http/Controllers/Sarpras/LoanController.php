@@ -4,12 +4,14 @@ namespace App\Http\Controllers\Sarpras;
 
 use App\Http\Controllers\Controller;
 use App\Models\ActivityLog;
+use App\Models\AssetUnit;
 use App\Models\ConditionHistory;
 use App\Models\Item;
 use App\Models\Loan;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -42,7 +44,8 @@ class LoanController extends Controller
                     ->orWhereHas('item', fn ($i) => $i->where('name', 'like', "%{$search}%")
                         ->orWhere('code', 'like', "%{$search}%")
                         ->orWhere('inventory_number', 'like', "%{$search}%")
-                        ->orWhere('serial_number', 'like', "%{$search}%"));
+                        ->orWhere('serial_number', 'like', "%{$search}%"))
+                    ->orWhereHas('assetUnit', fn ($u) => $u->where('unit_inventory_number', 'like', "%{$search}%"));
             });
         }
 
@@ -87,7 +90,37 @@ class LoanController extends Controller
             ->orderBy('name')
             ->get();
 
-        return view('sarpras.loans.create', compact('items', 'borrowers'));
+        $unitMap = $this->loanableUnitMap($items);
+
+        return view('sarpras.loans.create', compact('items', 'borrowers', 'unitMap'));
+    }
+
+    /**
+     * Peta unit aset yang masih dapat dipinjam per item (hanya aset individual).
+     */
+    private function loanableUnitMap(Collection $items): array
+    {
+        $unitMap = [];
+        $individualItemIds = $items
+            ->where('item_type', 'individual')
+            ->pluck('id');
+
+        if ($individualItemIds->isEmpty()) {
+            return $unitMap;
+        }
+
+        AssetUnit::whereIn('item_id', $individualItemIds)
+            ->whereDoesntHave('loans', fn ($q) => $q->whereIn('status', ['dipinjam', 'disetujui']))
+            ->orderBy('unit_inventory_number')
+            ->get(['id', 'item_id', 'unit_inventory_number'])
+            ->each(function (AssetUnit $unit) use (&$unitMap) {
+                $unitMap[(int) $unit->item_id][] = [
+                    'id' => (int) $unit->id,
+                    'label' => $unit->unit_inventory_number,
+                ];
+            });
+
+        return $unitMap;
     }
 
     /**
@@ -100,6 +133,7 @@ class LoanController extends Controller
             'borrower_department' => ['nullable', 'string', 'max:100'],
             'borrower_user_id' => ['nullable', 'integer', Rule::exists('users', 'id')],
             'item_id' => ['required', Rule::exists('items', 'id')->whereNull('deleted_at')],
+            'asset_unit_id' => ['nullable', 'integer', Rule::exists('asset_units', 'id')],
             'quantity' => ['required', 'integer', 'min:1'],
             'loan_date' => ['required', 'date'],
             'due_date' => ['required', 'date', 'after_or_equal:loan_date'],
@@ -112,24 +146,56 @@ class LoanController extends Controller
                 ->lockForUpdate()
                 ->firstOrFail();
 
+            $unit = null;
+            $quantity = $validated['quantity'];
+
             // Validasi ketersediaan stok/aset
             if ($item->isIndividual()) {
-                $activeLoanCount = Loan::where('item_id', $item->id)
-                    ->whereIn('status', ['dipinjam', 'disetujui'])
-                    ->sum('quantity');
+                $quantity = 1;
+                $selectedUnitId = $validated['asset_unit_id'] ?? null;
 
-                if ($activeLoanCount >= $item->stock) {
-                    throw ValidationException::withMessages([
-                        'item_id' => 'Aset sedang dipinjam atau tidak tersedia.',
-                    ]);
+                if ($unitCount = (int) $item->assetUnits()->count()) {
+                    // Barang sudah berbasis unit: wajib pilih unit spesifik.
+                    if ($selectedUnitId === null) {
+                        throw ValidationException::withMessages([
+                            'asset_unit_id' => 'Silakan pilih unit aset yang dipinjam.',
+                        ]);
+                    }
+
+                    $unit = $item->assetUnits()->find((int) $selectedUnitId);
+
+                    if (! $unit) {
+                        throw ValidationException::withMessages([
+                            'asset_unit_id' => 'Unit aset tidak valid untuk barang ini.',
+                        ]);
+                    }
+
+                    $engaged = Loan::where('asset_unit_id', $unit->id)
+                        ->whereIn('status', ['dipinjam', 'disetujui'])
+                        ->exists();
+
+                    if ($engaged) {
+                        throw ValidationException::withMessages([
+                            'asset_unit_id' => 'Unit aset sedang dipinjam atau tidak tersedia.',
+                        ]);
+                    }
+                } else {
+                    // Data lama tanpa unit: tetap gunakan cek ketersediaan per item.
+                    $activeLoanCount = Loan::where('item_id', $item->id)
+                        ->whereIn('status', ['dipinjam', 'disetujui'])
+                        ->sum('quantity');
+
+                    if ($activeLoanCount >= $item->stock) {
+                        throw ValidationException::withMessages([
+                            'item_id' => 'Aset sedang dipinjam atau tidak tersedia.',
+                        ]);
+                    }
                 }
-            } else {
-                // Consumable: cek stok cukup (tidak dikurangi dulu, baru dikurangi saat dikembalikan/status dipinjam)
-                if ($validated['quantity'] > $item->stock) {
-                    throw ValidationException::withMessages([
-                        'quantity' => 'Stok tidak mencukupi. Stok saat ini: '.$item->stock,
-                    ]);
-                }
+            } elseif ($quantity > $item->stock) {
+                // Consumable: cek stok cukup (tidak dikurangi dulu, baru dikurangi saat disetujui/dipinjam)
+                throw ValidationException::withMessages([
+                    'quantity' => 'Stok tidak mencukupi. Stok saat ini: '.$item->stock,
+                ]);
             }
 
             $loanNumber = $this->generateLoanNumber();
@@ -141,12 +207,13 @@ class LoanController extends Controller
                 'borrower_department' => $validated['borrower_department'] ?? null,
                 'recorded_by' => $request->user()->id, // Sarpras yang mencatat
                 'item_id' => $item->id,
-                'quantity' => $validated['quantity'],
+                'asset_unit_id' => $unit?->id,
+                'quantity' => $quantity,
                 'loan_date' => $validated['loan_date'],
                 'due_date' => $validated['due_date'],
                 'purpose' => $validated['purpose'],
                 'status' => 'menunggu',
-                'condition_on_loan' => $item->current_condition,
+                'condition_on_loan' => $unit?->current_condition ?? $item->current_condition,
                 'notes' => $validated['notes'] ?? null,
             ]);
 
@@ -169,7 +236,7 @@ class LoanController extends Controller
      */
     public function show(Loan $loan): View
     {
-        $loan->load(['item.location', 'borrower', 'recordedBy', 'approvedBy', 'returnedTo']);
+        $loan->load(['item.location', 'assetUnit', 'borrower', 'recordedBy', 'approvedBy', 'returnedTo']);
 
         return view('sarpras.loans.show', compact('loan'));
     }
@@ -202,6 +269,11 @@ class LoanController extends Controller
             // Update status aset individual
             if ($item->isIndividual()) {
                 $item->update(['current_status' => 'dipinjam']);
+
+                if ($loan->asset_unit_id) {
+                    AssetUnit::where('id', $loan->asset_unit_id)
+                        ->update(['current_status' => 'dipinjam']);
+                }
             }
 
             $loan->status = 'dipinjam';
@@ -240,6 +312,11 @@ class LoanController extends Controller
             $item = Item::where('id', $loan->item_id)->lockForUpdate()->firstOrFail();
             $oldStatus = $loan->status;
 
+            $unit = null;
+            if ($item->isIndividual() && $loan->asset_unit_id) {
+                $unit = AssetUnit::where('id', $loan->asset_unit_id)->lockForUpdate()->first();
+            }
+
             // Kembalikan stok untuk consumable
             if ($item->isConsumable()) {
                 $item->increment('stock', $loan->quantity);
@@ -248,19 +325,30 @@ class LoanController extends Controller
             // Update status aset individual
             if ($item->isIndividual()) {
                 $item->update(['current_status' => 'aktif']);
+
+                if ($unit) {
+                    $unit->update(['current_status' => 'aktif']);
+                }
             }
 
             // Catat kondisi fisik jika berubah
-            if ($validated['condition_on_return'] !== $item->current_condition) {
+            $fromCondition = $unit?->current_condition ?? $item->current_condition;
+
+            if ($validated['condition_on_return'] !== $fromCondition) {
                 ConditionHistory::create([
                     'item_id' => $item->id,
-                    'from_condition' => $item->current_condition,
+                    'asset_unit_id' => $loan->asset_unit_id,
+                    'from_condition' => $fromCondition,
                     'to_condition' => $validated['condition_on_return'],
                     'user_id' => $request->user()->id,
                     'notes' => 'Kondisi setelah pengembalian peminjaman '.$loan->loan_number,
                     'recorded_at' => now(),
                 ]);
                 $item->update(['current_condition' => $validated['condition_on_return']]);
+
+                if ($unit) {
+                    $unit->update(['current_condition' => $validated['condition_on_return']]);
+                }
             }
 
             $loan->status = 'dikembalikan';

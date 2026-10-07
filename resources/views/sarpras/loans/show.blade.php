@@ -64,6 +64,13 @@
                             {{ $loan->item?->code }} &bull;
                             {{ $loan->quantity }} {{ $loan->item?->unit ?? 'unit' }}
                         </p>
+                        @if($loan->assetUnit)
+                            <div class="mt-1">
+                                <span class="badge badge-light-primary font-monospace">
+                                    <i class="fas fa-hdd me-1"></i>{{ $loan->assetUnit->unit_inventory_number }}
+                                </span>
+                            </div>
+                        @endif
                     </div>
                     <div class="col-md-4">
                         <h6 class="text-muted text-uppercase fs-8 mb-2">Tanggal Pinjam</h6>
@@ -298,6 +305,10 @@
                             @if($loan->item->inventory_number)
                                 <tr><td class="text-muted fw-normal">No. Inventaris</td>
                                     <td class="font-monospace fw-bold text-end">{{ $loan->item->inventory_number }}</td></tr>
+                            @endif
+                            @if($loan->assetUnit)
+                                <tr><td class="text-muted fw-normal">Unit Aset</td>
+                                    <td class="font-monospace fw-bold text-end">{{ $loan->assetUnit->unit_inventory_number }}</td></tr>
                             @endif
                             <tr><td class="text-muted fw-normal">Nama</td>
                                 <td class="text-end">{{ $loan->item->name }}</td></tr>

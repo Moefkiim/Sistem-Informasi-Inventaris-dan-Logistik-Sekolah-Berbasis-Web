@@ -93,6 +93,8 @@
                                         data-unit="{{ $item->unit }}"
                                         data-condition="{{ $item->current_condition }}"
                                         data-status="{{ $item->current_status }}"
+                                        data-has-units="{{ isset($unitMap[$item->id]) ? 1 : 0 }}"
+                                        data-units="{{ json_encode($unitMap[$item->id] ?? []) }}"
                                         {{ (int) old('item_id') === (int) $item->id ? 'selected' : '' }}>
                                     [{{ $item->code }}] {{ $item->name }} — stok {{ $item->stock }} {{ $item->unit }}
                                 </option>
@@ -102,6 +104,18 @@
 
                         <div id="item-info" class="mt-3 p-3 bg-light rounded border" style="display: none">
                             <div id="item-info-text" class="fs-7 text-muted"></div>
+                        </div>
+
+                        <div id="unit-block" class="mt-3 bg-light rounded border" style="display: none">
+                            <div class="p-3">
+                                <label class="form-label required" for="unit_id">Pilih Unit Aset</label>
+                                <select name="asset_unit_id" id="unit_id"
+                                        class="form-select form-select-solid @error('asset_unit_id') is-invalid @enderror">
+                                    <option value="">-- Pilih Unit --</option>
+                                </select>
+                                <div class="form-text">Aset individual dipinjam per unit. Pilih unit spesifik yang diserahkan.</div>
+                                @error('asset_unit_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                            </div>
                         </div>
                     </div>
                     <div class="col-md-4">
@@ -173,6 +187,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const loanDate     = document.getElementById('loan_date');
     const dueDate      = document.getElementById('due_date');
     const durationInfo = document.getElementById('duration-info');
+    const unitBlock    = document.getElementById('unit-block');
+    const unitSelect   = document.getElementById('unit_id');
 
     if (!itemSelect) return;
 
@@ -196,6 +212,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (!itemSelect.value || !option || !option.dataset.type) {
             infoBox.style.display = 'none';
+            unitBlock.style.display = 'none';
             qtyInput.removeAttribute('readonly');
             qtyInput.removeAttribute('max');
             qtyHint.textContent = 'Jumlah barang yang dipinjam.';
@@ -222,7 +239,19 @@ document.addEventListener('DOMContentLoaded', function () {
             qtyInput.max = 1;
             qtyInput.readOnly = true;
             qtyHint.textContent = 'Aset individual selalu dipinjam sebagai 1 unit.';
+
+            if (option.dataset.hasUnits === '1') {
+                const units = JSON.parse(option.dataset.units || '[]');
+                unitSelect.innerHTML = '<option value="">-- Pilih Unit --</option>'
+                    + units.map(function (u) {
+                        return '<option value="' + u.id + '">' + u.label + '</option>';
+                    }).join('');
+                unitBlock.style.display = 'block';
+            } else {
+                unitBlock.style.display = 'none';
+            }
         } else {
+            unitBlock.style.display = 'none';
             qtyInput.max = stock;
             qtyInput.readOnly = false;
             qtyHint.textContent = 'Maksimal ' + stock + ' ' + unit + ' (stok saat ini).';

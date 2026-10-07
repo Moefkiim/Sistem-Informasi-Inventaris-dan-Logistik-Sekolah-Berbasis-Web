@@ -122,7 +122,7 @@
                             </td>
                             <td>
                                 <div class="fw-bolder text-dark">{{ $loan->item?->name ?? 'Barang telah dihapus' }}</div>
-                                <div class="text-muted fs-7 font-monospace">{{ $loan->item?->code }}</div>
+                                <div class="text-muted fs-7 font-monospace">{{ $loan->item?->code }} @if($loan->assetUnit) &bull; {{ $loan->assetUnit->unit_inventory_number }} @endif</div>
                                 <span class="badge badge-light-secondary">
                                     {{ $loan->quantity }} {{ $loan->item?->unit ?? 'unit' }}
                                 </span>
