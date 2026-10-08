@@ -30,6 +30,12 @@ class Loan extends Model
      */
     public const STATUS_ACTIVE = ['menunggu', 'disetujui', 'dipinjam'];
 
+    /**
+     * Status peminjaman saat barang berada di tangan peminjam
+     * (membuat status aset/unit menjadi 'dipinjam').
+     */
+    public const STATUS_BORROWED = ['dipinjam', 'terlambat'];
+
     protected $fillable = [
         'loan_number',
         'borrower_user_id',
@@ -142,7 +148,7 @@ class Loan extends Model
      */
     public function isReturnable(): bool
     {
-        return in_array($this->status, ['dipinjam', 'terlambat'], true);
+        return in_array($this->status, self::STATUS_BORROWED, true);
     }
 
     /**

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\AssetUnit;
 use App\Models\Item;
+use App\Models\Loan;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -49,16 +50,28 @@ class AssetUnitBackfiller
 
                 $expected[$item->id] = $unitCount;
 
+                // Ambil jumlah loan aktif ('dipinjam' / 'terlambat') milik item
+                $activeLoanCount = DB::table('loans')
+                    ->where('item_id', $item->id)
+                    ->whereIn('status', Loan::STATUS_BORROWED)
+                    ->whereNull('asset_unit_id')
+                    ->count();
+
                 $units = [];
                 for ($index = 1; $index <= $unitCount; $index++) {
-                    $units[] = AssetUnit::create($this->unitPayload($item, $index));
+                    $status = $this->determineUnitStatus($item, $index, $activeLoanCount);
+                    $units[] = AssetUnit::create($this->unitPayload($item, $index, $status));
                 }
 
                 $created += count($units);
                 $itemUnits[$item->id] = array_map(fn ($unit) => (int) $unit->id, $units);
 
                 // items.stock untuk individual = jumlah unit aktif yang terdaftar.
-                $item->forceFill(['stock' => $unitCount])->saveQuietly();
+                $itemUpdate = ['stock' => $unitCount];
+                if ($item->current_status === 'dipinjam' && $activeLoanCount === 0) {
+                    $itemUpdate['current_status'] = 'aktif';
+                }
+                $item->forceFill($itemUpdate)->saveQuietly();
             }
 
             $backfilledLoans = $this->backfillHistoriesAndLoans($itemUnits);
@@ -110,11 +123,27 @@ class AssetUnitBackfiller
     }
 
     /**
+     * Tentukan status unit hasil migrasi.
+     * Jika item berstatus 'dipinjam', hanya unit sejumlah loan aktif yang
+     * berstatus 'dipinjam' (dibatasi jumlah unit), sisanya 'aktif'.
+     * Untuk status selain 'dipinjam' (mis. dalam_perbaikan, tidak_aktif, disposed),
+     * salin status item ke seluruh unit.
+     */
+    private function determineUnitStatus(Item $item, int $index, int $activeLoanCount): string
+    {
+        if ($item->current_status === 'dipinjam') {
+            return $index <= $activeLoanCount ? 'dipinjam' : 'aktif';
+        }
+
+        return (string) $item->current_status;
+    }
+
+    /**
      * Data payload satu unit hasil migrasi. Unit ke-1 membawa identitas asli item
      * (inventory_number, serial_number); unit berikutnya memakai nomor sintetis
      * {kode_barang}-{NNN} dan semua unit ditandai is_legacy_migrated = true.
      */
-    private function unitPayload(Item $item, int $index): array
+    private function unitPayload(Item $item, int $index, ?string $status = null): array
     {
         $number = $index === 1 && ! empty($item->inventory_number)
             ? $item->inventory_number
@@ -125,7 +154,7 @@ class AssetUnitBackfiller
             'unit_inventory_number' => $number,
             'serial_number' => $index === 1 ? $item->serial_number : null,
             'current_condition' => $item->current_condition,
-            'current_status' => $item->current_status,
+            'current_status' => $status ?? $item->current_status,
             'location_id' => $item->location_id,
             'is_legacy_migrated' => true,
         ];
@@ -142,39 +171,56 @@ class AssetUnitBackfiller
     /**
      * D1: histori lama milik item individual yang punya unit dipetakan ke unit #1
      * (unit yang membawa identitas). Row consumable / ambigu tetap NULL.
+     * Loan aktif dipetakan urut ke unit masing-masing agar unit berstatus 'dipinjam'
+     * konsisten dengan loan aktifnya. Sisa loan dan riwayat mutasi dipetakan ke unit #1.
      */
     private function backfillHistoriesAndLoans(array $itemUnits): int
     {
-        $firstUnitByItem = [];
-        foreach ($itemUnits as $itemId => $unitIds) {
-            $firstUnitByItem[$itemId] = $unitIds[0];
-        }
-
-        if ($firstUnitByItem === []) {
+        if ($itemUnits === []) {
             return 0;
         }
 
         $backfilledLoans = 0;
-        foreach ($firstUnitByItem as $itemId => $unitId) {
-            $loans = DB::table('loans')
+        foreach ($itemUnits as $itemId => $unitIds) {
+            $firstUnitId = $unitIds[0];
+            $unitTotal = count($unitIds);
+
+            // 1. Petakan loan aktif ke unit masing-masing (unit #1 ke active loan 1, unit #2 ke active loan 2, dst.)
+            $activeLoans = DB::table('loans')
+                ->where('item_id', $itemId)
+                ->whereIn('status', Loan::STATUS_BORROWED)
+                ->whereNull('asset_unit_id')
+                ->orderBy('id')
+                ->get();
+
+            $unitIndex = 0;
+            foreach ($activeLoans as $loan) {
+                $targetUnitId = $unitIndex < $unitTotal ? $unitIds[$unitIndex] : $firstUnitId;
+                DB::table('loans')->where('id', $loan->id)->update(['asset_unit_id' => $targetUnitId]);
+                $backfilledLoans++;
+                $unitIndex++;
+            }
+
+            // 2. Petakan sisa loan lama (menunggu, disetujui, dikembalikan, ditolak) ke unit #1
+            $otherLoans = DB::table('loans')
                 ->where('item_id', $itemId)
                 ->whereNull('asset_unit_id')
                 ->get();
 
-            foreach ($loans as $loan) {
-                DB::table('loans')->where('id', $loan->id)->update(['asset_unit_id' => $unitId]);
+            foreach ($otherLoans as $loan) {
+                DB::table('loans')->where('id', $loan->id)->update(['asset_unit_id' => $firstUnitId]);
                 $backfilledLoans++;
             }
 
             DB::table('condition_histories')
                 ->where('item_id', $itemId)
                 ->whereNull('asset_unit_id')
-                ->update(['asset_unit_id' => $unitId]);
+                ->update(['asset_unit_id' => $firstUnitId]);
 
             DB::table('location_histories')
                 ->where('item_id', $itemId)
                 ->whereNull('asset_unit_id')
-                ->update(['asset_unit_id' => $unitId]);
+                ->update(['asset_unit_id' => $firstUnitId]);
         }
 
         return $backfilledLoans;
