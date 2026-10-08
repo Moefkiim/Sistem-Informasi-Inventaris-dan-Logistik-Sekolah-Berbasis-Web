@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Builder;
 
 class AssetUnit extends Model
 {
@@ -27,11 +28,28 @@ class AssetUnit extends Model
      * Label baku status unit aset (urutan penampilan sama seperti items).
      */
     public const STATUS_LABELS = [
-        'aktif' => 'Aktif',
-        'dipinjam' => 'Dipinjam',
-        'dalam_perbaikan' => 'Dalam Perbaikan',
-        'tidak_aktif' => 'Tidak Aktif',
-        'disposed' => 'Dihapuskan',
+        'aktif'          => 'Aktif',
+        'dipinjam'       => 'Dipinjam',
+        'dalam_perbaikan'=> 'Dalam Perbaikan',
+        'tidak_aktif'    => 'Tidak Aktif',
+        'disposed'       => 'Dihapuskan',
+    ];
+
+    /**
+     * Status unit yang mengizinkan peminjaman baru.
+     * Unit dengan status lain TIDAK boleh dipinjam.
+     */
+    public const LOANABLE_STATUSES = ['aktif'];
+
+    /**
+     * Status warna badge untuk tampilan UI.
+     */
+    public const STATUS_BADGE_COLORS = [
+        'aktif'          => 'success',
+        'dipinjam'       => 'info',
+        'dalam_perbaikan'=> 'warning',
+        'tidak_aktif'    => 'secondary',
+        'disposed'       => 'danger',
     ];
 
     protected function casts(): array
@@ -61,6 +79,41 @@ class AssetUnit extends Model
     public function activeLoans(): HasMany
     {
         return $this->hasMany(Loan::class)->whereIn('status', ['dipinjam', 'disetujui', 'menunggu']);
+    }
+
+    // === Helper Methods ===
+
+    /**
+     * Apakah unit ini tersedia untuk dipinjam?
+     * Syarat: status harus 'aktif' DAN tidak ada loan aktif (dipinjam/disetujui).
+     */
+    public function isAvailableForLoan(): bool
+    {
+        if (! in_array($this->current_status, self::LOANABLE_STATUSES, true)) {
+            return false;
+        }
+
+        return ! $this->loans()
+            ->whereIn('status', ['dipinjam', 'disetujui'])
+            ->exists();
+    }
+
+    /**
+     * Apakah unit sedang aktif (status 'aktif')?
+     */
+    public function isActive(): bool
+    {
+        return $this->current_status === 'aktif';
+    }
+
+    /**
+     * Scope: unit yang dapat dipinjam (status aktif, tanpa loan aktif).
+     */
+    public function scopeLoanable(Builder $query): Builder
+    {
+        return $query
+            ->whereIn('current_status', self::LOANABLE_STATUSES)
+            ->whereDoesntHave('loans', fn ($q) => $q->whereIn('status', ['dipinjam', 'disetujui']));
     }
 
     public function locationHistories(): HasMany

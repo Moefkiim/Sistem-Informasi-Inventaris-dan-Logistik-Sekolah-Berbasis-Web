@@ -40,7 +40,7 @@
                                     <tr>
                                         <td class="font-monospace">{{ $unit->unit_inventory_number }}</td>
                                         <td><x-condition-badge :condition="$unit->current_condition" /></td>
-                                        <td class="text-capitalize">{{ str_replace('_', ' ', $unit->current_status) }}</td>
+                                        <td><x-unit-status-badge :status="$unit->current_status" /></td>
                                     </tr>
                                 @endforeach
                             </tbody>

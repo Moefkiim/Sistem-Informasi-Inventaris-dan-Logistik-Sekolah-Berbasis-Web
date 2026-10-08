@@ -110,7 +110,7 @@ class LoanController extends Controller
         }
 
         AssetUnit::whereIn('item_id', $individualItemIds)
-            ->whereDoesntHave('loans', fn ($q) => $q->whereIn('status', ['dipinjam', 'disetujui']))
+            ->loanable()
             ->orderBy('unit_inventory_number')
             ->get(['id', 'item_id', 'unit_inventory_number'])
             ->each(function (AssetUnit $unit) use (&$unitMap) {
@@ -167,6 +167,13 @@ class LoanController extends Controller
                     if (! $unit) {
                         throw ValidationException::withMessages([
                             'asset_unit_id' => 'Unit aset tidak valid untuk barang ini.',
+                        ]);
+                    }
+
+                    // Blokir unit yang tidak dalam status loanable (dalam_perbaikan, tidak_aktif, disposed)
+                    if (! in_array($unit->current_status, AssetUnit::LOANABLE_STATUSES, true)) {
+                        throw ValidationException::withMessages([
+                            'asset_unit_id' => 'Unit aset tidak tersedia (status: '.str_replace('_', ' ', $unit->current_status).').',
                         ]);
                     }
 
