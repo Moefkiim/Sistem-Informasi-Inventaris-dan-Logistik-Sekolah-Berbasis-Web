@@ -134,6 +134,132 @@ class AssetUnitBackfillTest extends TestCase
         $this->assertSame(0, AssetUnit::where('item_id', $item->id)->count());
     }
 
+    public function test_individual_item_with_stock_greater_than_one_and_borrowed_status_only_marks_loaned_unit_as_borrowed(): void
+    {
+        $user = User::factory()->sarpras()->create();
+        $item = $this->individualItem([
+            'code' => 'BRG-LPT',
+            'stock' => 3,
+            'current_status' => 'dipinjam',
+        ]);
+
+        $loan = Loan::factory()->create([
+            'item_id' => $item->id,
+            'quantity' => 1,
+            'status' => 'dipinjam',
+            'recorded_by' => $user->id,
+        ]);
+
+        app(AssetUnitBackfiller::class)->run();
+
+        $units = AssetUnit::where('item_id', $item->id)->orderBy('id')->get();
+        $this->assertCount(3, $units);
+
+        $borrowedUnits = $units->where('current_status', 'dipinjam');
+        $activeUnits = $units->where('current_status', 'aktif');
+
+        $this->assertCount(1, $borrowedUnits);
+        $this->assertCount(2, $activeUnits);
+        $this->assertSame($units[0]->id, $borrowedUnits->first()->id);
+        $this->assertSame($units[0]->id, Loan::whereKey($loan->id)->value('asset_unit_id'));
+    }
+
+    public function test_individual_item_borrowed_without_active_loans_backfills_all_units_as_active(): void
+    {
+        $item = $this->individualItem([
+            'code' => 'BRG-CAM',
+            'stock' => 3,
+            'current_status' => 'dipinjam',
+        ]);
+
+        app(AssetUnitBackfiller::class)->run();
+
+        $units = AssetUnit::where('item_id', $item->id)->orderBy('id')->get();
+        $this->assertCount(3, $units);
+        $this->assertSame(['aktif', 'aktif', 'aktif'], $units->pluck('current_status')->all());
+        $this->assertSame('aktif', $item->fresh()->current_status);
+    }
+
+    public function test_corrective_migration_fixes_legacy_migrated_units_without_active_loans(): void
+    {
+        $user = User::factory()->sarpras()->create();
+        $item = $this->individualItem([
+            'code' => 'BRG-TAB',
+            'stock' => 3,
+        ]);
+
+        // Simulasikan state "salah" (3 unit 'dipinjam' dengan is_legacy_migrated = true)
+        $unit1 = AssetUnit::create([
+            'item_id' => $item->id,
+            'unit_inventory_number' => 'BRG-TAB-001',
+            'current_condition' => 'baik',
+            'current_status' => 'dipinjam',
+            'is_legacy_migrated' => true,
+        ]);
+        $unit2 = AssetUnit::create([
+            'item_id' => $item->id,
+            'unit_inventory_number' => 'BRG-TAB-002',
+            'current_condition' => 'baik',
+            'current_status' => 'dipinjam',
+            'is_legacy_migrated' => true,
+        ]);
+        $unit3 = AssetUnit::create([
+            'item_id' => $item->id,
+            'unit_inventory_number' => 'BRG-TAB-003',
+            'current_condition' => 'baik',
+            'current_status' => 'dipinjam',
+            'is_legacy_migrated' => true,
+        ]);
+
+        // 1 loan aktif terhubung ke unit 1
+        Loan::factory()->create([
+            'item_id' => $item->id,
+            'asset_unit_id' => $unit1->id,
+            'quantity' => 1,
+            'status' => 'dipinjam',
+            'recorded_by' => $user->id,
+        ]);
+
+        // Jalankan migration korektif pertama kali
+        $migration = require database_path('migrations/2026_10_08_000001_fix_legacy_migrated_asset_units_loan_status.php');
+        ob_start();
+        $migration->up();
+        ob_end_clean();
+
+        $this->assertSame('dipinjam', $unit1->fresh()->current_status);
+        $this->assertSame('aktif', $unit2->fresh()->current_status);
+        $this->assertSame('aktif', $unit3->fresh()->current_status);
+
+        // Jalankan migration korektif kedua kali (idempotent)
+        ob_start();
+        $migration->up();
+        ob_end_clean();
+
+        $this->assertSame('dipinjam', $unit1->fresh()->current_status);
+        $this->assertSame('aktif', $unit2->fresh()->current_status);
+        $this->assertSame('aktif', $unit3->fresh()->current_status);
+    }
+
+    public function test_corrective_migration_does_not_touch_manually_registered_units(): void
+    {
+        $item = $this->individualItem(['code' => 'BRG-MAN', 'stock' => 1]);
+
+        $manualUnit = AssetUnit::create([
+            'item_id' => $item->id,
+            'unit_inventory_number' => 'BRG-MAN-001',
+            'current_condition' => 'baik',
+            'current_status' => 'dipinjam',
+            'is_legacy_migrated' => false,
+        ]);
+
+        $migration = require database_path('migrations/2026_10_08_000001_fix_legacy_migrated_asset_units_loan_status.php');
+        ob_start();
+        $migration->up();
+        ob_end_clean();
+
+        $this->assertSame('dipinjam', $manualUnit->fresh()->current_status);
+    }
+
     private function individualItem(array $attributes = []): Item
     {
         $stock = $attributes['stock'] ?? 10;
