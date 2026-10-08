@@ -319,9 +319,9 @@
                             <tr><td class="text-muted fw-normal">Stok</td>
                                 <td class="text-end">{{ $loan->item->stock }} {{ $loan->item->unit }}</td></tr>
                             <tr><td class="text-muted fw-normal">Kondisi</td>
-                                <td class="text-end"><x-condition-badge :condition="$loan->item->current_condition" /></td></tr>
+                                <td class="text-end"><x-condition-badge :condition="$loan->assetUnit?->current_condition ?? $loan->item->current_condition" /></td></tr>
                             <tr><td class="text-muted fw-normal">Status</td>
-                                <td class="text-end text-capitalize">{{ $loan->item->current_status }}</td></tr>
+                                <td class="text-end"><x-unit-status-badge :status="$loan->assetUnit?->current_status ?? $loan->item->current_status" /></td></tr>
                             <tr><td class="text-muted fw-normal">Lokasi</td>
                                 <td class="text-end">{{ $loan->item->location?->name ?? '-' }}</td></tr>
                         </tbody>

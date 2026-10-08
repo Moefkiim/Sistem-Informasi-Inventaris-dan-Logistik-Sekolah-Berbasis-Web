@@ -39,16 +39,14 @@ class AssetUnitAvailabilityTest extends TestCase
     // 1. Helper isAvailableForLoan()
     // =========================================================================
 
-    /** @test */
-    public function unit_aktif_tanpa_loan_tersedia_untuk_pinjam(): void
+    public function test_unit_aktif_tanpa_loan_tersedia_untuk_pinjam(): void
     {
         $unit = AssetUnit::factory()->for($this->item)->create(['current_status' => 'aktif']);
 
         $this->assertTrue($unit->isAvailableForLoan());
     }
 
-    /** @test */
-    public function unit_aktif_dengan_loan_dipinjam_tidak_tersedia(): void
+    public function test_unit_aktif_dengan_loan_dipinjam_tidak_tersedia(): void
     {
         $unit = AssetUnit::factory()->for($this->item)->create(['current_status' => 'dipinjam']);
         Loan::factory()->create([
@@ -60,24 +58,21 @@ class AssetUnitAvailabilityTest extends TestCase
         $this->assertFalse($unit->isAvailableForLoan());
     }
 
-    /** @test */
-    public function unit_dalam_perbaikan_tidak_tersedia(): void
+    public function test_unit_dalam_perbaikan_tidak_tersedia(): void
     {
         $unit = AssetUnit::factory()->for($this->item)->create(['current_status' => 'dalam_perbaikan']);
 
         $this->assertFalse($unit->isAvailableForLoan());
     }
 
-    /** @test */
-    public function unit_tidak_aktif_tidak_tersedia(): void
+    public function test_unit_tidak_aktif_tidak_tersedia(): void
     {
         $unit = AssetUnit::factory()->for($this->item)->create(['current_status' => 'tidak_aktif']);
 
         $this->assertFalse($unit->isAvailableForLoan());
     }
 
-    /** @test */
-    public function unit_disposed_tidak_tersedia(): void
+    public function test_unit_disposed_tidak_tersedia(): void
     {
         $unit = AssetUnit::factory()->for($this->item)->create(['current_status' => 'disposed']);
 
@@ -88,8 +83,7 @@ class AssetUnitAvailabilityTest extends TestCase
     // 2. scopeLoanable() - hanya kembalikan unit yang bisa dipinjam
     // =========================================================================
 
-    /** @test */
-    public function scope_loanable_hanya_kembalikan_unit_aktif_tanpa_loan_aktif(): void
+    public function test_scope_loanable_hanya_kembalikan_unit_aktif_tanpa_loan_aktif(): void
     {
         $aktif = AssetUnit::factory()->for($this->item)->create(['current_status' => 'aktif']);
         AssetUnit::factory()->for($this->item)->create(['current_status' => 'dalam_perbaikan']);
@@ -127,32 +121,28 @@ class AssetUnitAvailabilityTest extends TestCase
         ]);
     }
 
-    /** @test */
-    public function store_menolak_unit_dalam_perbaikan(): void
+    public function test_store_menolak_unit_dalam_perbaikan(): void
     {
         $unit = AssetUnit::factory()->for($this->item)->create(['current_status' => 'dalam_perbaikan']);
 
         $this->postLoan($unit)->assertSessionHasErrors('asset_unit_id');
     }
 
-    /** @test */
-    public function store_menolak_unit_tidak_aktif(): void
+    public function test_store_menolak_unit_tidak_aktif(): void
     {
         $unit = AssetUnit::factory()->for($this->item)->create(['current_status' => 'tidak_aktif']);
 
         $this->postLoan($unit)->assertSessionHasErrors('asset_unit_id');
     }
 
-    /** @test */
-    public function store_menolak_unit_disposed(): void
+    public function test_store_menolak_unit_disposed(): void
     {
         $unit = AssetUnit::factory()->for($this->item)->create(['current_status' => 'disposed']);
 
         $this->postLoan($unit)->assertSessionHasErrors('asset_unit_id');
     }
 
-    /** @test */
-    public function store_menolak_unit_yang_sedang_dipinjam(): void
+    public function test_store_menolak_unit_yang_sedang_dipinjam(): void
     {
         $unit = AssetUnit::factory()->for($this->item)->create(['current_status' => 'dipinjam']);
         Loan::factory()->create([
@@ -168,15 +158,13 @@ class AssetUnitAvailabilityTest extends TestCase
     // 4. Konstanta dan label
     // =========================================================================
 
-    /** @test */
-    public function asset_unit_memiliki_loanable_statuses_constant(): void
+    public function test_asset_unit_memiliki_loanable_statuses_constant(): void
     {
         $this->assertNotEmpty(AssetUnit::LOANABLE_STATUSES);
         $this->assertContains('aktif', AssetUnit::LOANABLE_STATUSES);
     }
 
-    /** @test */
-    public function semua_status_enum_memiliki_label_dan_warna(): void
+    public function test_semua_status_enum_memiliki_label_dan_warna(): void
     {
         $statuses = ['aktif', 'dipinjam', 'dalam_perbaikan', 'tidak_aktif', 'disposed'];
 
