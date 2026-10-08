@@ -175,6 +175,13 @@ Sebelumnya barang individual dihitung 1× per kode barang sehingga stok 3 unit k
 terbaca "1"; kini dihitung per unit fisik agar ketersediaan, kondisi, dan sebaran lokasi
 terlihat per unit.
 
+**Asumsi migrasi legacy yang tidak bisa dihindari:**
+
+- **Kondisi dan lokasi**: Disalin ke semua unit hasil migrasi karena tidak ada data per unit sebelumnya (`is_legacy_migrated = true`).
+- **Status 'dipinjam'**: Pada backfill awal sempat disalin ke semua unit; diperbaiki agar hanya unit yang terhubung ke loan aktif (`dipinjam`/`terlambat`) yang berstatus `dipinjam`, sedangkan sisanya `aktif`. Migration korektif `2026_10_08_000001` membersihkan unit legacy tanpa loan aktif yang sempat terkunci.
+- **Item individual soft-deleted**: Tidak ikut di-backfill (`whereNull('deleted_at')`), sehingga riwayat loan dan histori mutasi miliknya tetap `asset_unit_id = NULL`.
+- **Item individual stock 0 dengan nomor inventaris**: Dibuatkan tepat 1 unit fisik (D3 fallback) agar nomor inventaris uniknya tetap tercatat di sistem unit.
+
 ### 2.1 Halaman Riwayat Aktivitas (`/sarpras/activity-logs`)
 
 `ActivityLogController` dan route-nya sudah ada, tapi **view-nya tidak pernah dibuat**. Akibatnya
