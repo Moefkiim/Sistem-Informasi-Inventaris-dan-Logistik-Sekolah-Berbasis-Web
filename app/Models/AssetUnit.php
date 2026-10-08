@@ -85,7 +85,7 @@ class AssetUnit extends Model
 
     /**
      * Apakah unit ini tersedia untuk dipinjam?
-     * Syarat: status harus 'aktif' DAN tidak ada loan aktif (dipinjam/disetujui).
+     * Syarat: status harus 'aktif' DAN tidak ada permohonan pinjaman aktif (menunggu, disetujui, dipinjam).
      */
     public function isAvailableForLoan(): bool
     {
@@ -94,7 +94,7 @@ class AssetUnit extends Model
         }
 
         return ! $this->loans()
-            ->whereIn('status', ['dipinjam', 'disetujui'])
+            ->whereIn('status', Loan::STATUS_ACTIVE)
             ->exists();
     }
 
@@ -107,13 +107,13 @@ class AssetUnit extends Model
     }
 
     /**
-     * Scope: unit yang dapat dipinjam (status aktif, tanpa loan aktif).
+     * Scope: unit yang dapat dipinjam (status aktif, tanpa loan aktif/pending).
      */
     public function scopeLoanable(Builder $query): Builder
     {
         return $query
             ->whereIn('current_status', self::LOANABLE_STATUSES)
-            ->whereDoesntHave('loans', fn ($q) => $q->whereIn('status', ['dipinjam', 'disetujui']));
+            ->whereDoesntHave('loans', fn ($q) => $q->whereIn('status', Loan::STATUS_ACTIVE));
     }
 
     public function locationHistories(): HasMany

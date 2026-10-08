@@ -173,4 +173,157 @@ class AssetUnitAvailabilityTest extends TestCase
             $this->assertArrayHasKey($status, AssetUnit::STATUS_BADGE_COLORS, "Missing badge color for: $status");
         }
     }
+
+    // =========================================================================
+    // 5. Stage 2A V2: Pending Loan Reservation & Double Booking Prevention
+    // =========================================================================
+
+    public function test_unit_aktif_dengan_pending_loan_tidak_tersedia_untuk_pinjam(): void
+    {
+        $unit = AssetUnit::factory()->for($this->item)->create(['current_status' => 'aktif']);
+
+        Loan::factory()->create([
+            'item_id'       => $this->item->id,
+            'asset_unit_id' => $unit->id,
+            'status'        => 'menunggu',
+        ]);
+
+        $this->assertFalse($unit->isAvailableForLoan());
+    }
+
+    public function test_scope_loanable_mengecualikan_unit_dengan_pending_loan(): void
+    {
+        $freeUnit = AssetUnit::factory()->for($this->item)->create(['current_status' => 'aktif']);
+        $reservedUnit = AssetUnit::factory()->for($this->item)->create(['current_status' => 'aktif']);
+
+        Loan::factory()->create([
+            'item_id'       => $this->item->id,
+            'asset_unit_id' => $reservedUnit->id,
+            'status'        => 'menunggu',
+        ]);
+
+        $loanable = AssetUnit::loanable()->pluck('id');
+
+        $this->assertTrue($loanable->contains($freeUnit->id));
+        $this->assertFalse($loanable->contains($reservedUnit->id));
+    }
+
+    public function test_store_menolak_unit_yang_sedang_memiliki_pending_loan(): void
+    {
+        $unit = AssetUnit::factory()->for($this->item)->create(['current_status' => 'aktif']);
+
+        Loan::factory()->create([
+            'item_id'       => $this->item->id,
+            'asset_unit_id' => $unit->id,
+            'status'        => 'menunggu',
+        ]);
+
+        $this->postLoan($unit)->assertSessionHasErrors('asset_unit_id');
+    }
+
+    // =========================================================================
+    // 6. Stage 2A V2: Approval Availability Re-Check & Concurrency Prevention
+    // =========================================================================
+
+    public function test_approval_menolak_jika_unit_sudah_dipinjam_oleh_loan_lain(): void
+    {
+        $unit = AssetUnit::factory()->for($this->item)->create(['current_status' => 'aktif']);
+
+        $loanA = Loan::factory()->create([
+            'item_id'       => $this->item->id,
+            'asset_unit_id' => $unit->id,
+            'status'        => 'menunggu',
+        ]);
+
+        $loanB = Loan::factory()->create([
+            'item_id'       => $this->item->id,
+            'asset_unit_id' => $unit->id,
+            'status'        => 'menunggu',
+        ]);
+
+        // Sarpras approve loanA pertama kali
+        $this->actingAs($this->sarpras)->post(route('sarpras.loans.approve', $loanA))->assertRedirect();
+        $this->assertSame('dipinjam', $loanA->fresh()->status);
+        $this->assertSame('dipinjam', $unit->fresh()->current_status);
+
+        // Sarpras mencoba approve loanB untuk unit yang sama -> WAJIB ditolak
+        $response = $this->actingAs($this->sarpras)->post(route('sarpras.loans.approve', $loanB));
+        $response->assertSessionHasErrors('msg');
+
+        // Status loanB tetap menunggu, unit tetap dipinjam oleh loanA
+        $this->assertSame('menunggu', $loanB->fresh()->status);
+        $this->assertSame('dipinjam', $unit->fresh()->current_status);
+    }
+
+    public function test_approval_menolak_jika_unit_berstatus_dalam_perbaikan(): void
+    {
+        $unit = AssetUnit::factory()->for($this->item)->create(['current_status' => 'dalam_perbaikan']);
+
+        $loan = Loan::factory()->create([
+            'item_id'       => $this->item->id,
+            'asset_unit_id' => $unit->id,
+            'status'        => 'menunggu',
+        ]);
+
+        $this->actingAs($this->sarpras)
+            ->post(route('sarpras.loans.approve', $loan))
+            ->assertSessionHasErrors('msg');
+
+        $this->assertSame('menunggu', $loan->fresh()->status);
+        $this->assertSame('dalam_perbaikan', $unit->fresh()->current_status);
+    }
+
+    // =========================================================================
+    // 7. Stage 2A V2: Condition-Based Return Transitions
+    // =========================================================================
+
+    public function test_return_rusak_berat_mengubah_unit_menjadi_dalam_perbaikan(): void
+    {
+        $unit = AssetUnit::factory()->for($this->item)->create([
+            'current_status'    => 'dipinjam',
+            'current_condition' => 'baik',
+        ]);
+
+        $loan = Loan::factory()->onLoan()->create([
+            'item_id'           => $this->item->id,
+            'asset_unit_id'     => $unit->id,
+            'condition_on_loan' => 'baik',
+        ]);
+
+        $this->actingAs($this->sarpras)
+            ->post(route('sarpras.loans.return', $loan), [
+                'condition_on_return' => 'rusak_berat',
+                'notes'               => 'Komponen utama terbakar',
+            ])
+            ->assertRedirect();
+
+        $this->assertSame('dikembalikan', $loan->fresh()->status);
+        $this->assertSame('rusak_berat', $unit->fresh()->current_condition);
+        $this->assertSame('dalam_perbaikan', $unit->fresh()->current_status);
+
+        $this->assertDatabaseHas('condition_histories', [
+            'item_id'        => $this->item->id,
+            'asset_unit_id'  => $unit->id,
+            'from_condition' => 'baik',
+            'to_condition'   => 'rusak_berat',
+        ]);
+    }
+
+    public function test_item_aggregate_status_dan_kondisi_terkalkulasi_dengan_benar(): void
+    {
+        $item = Item::factory()->individual()->create(['stock' => 2]);
+        $unit1 = AssetUnit::factory()->for($item)->create([
+            'current_status'    => 'aktif',
+            'current_condition' => 'baik',
+        ]);
+        $unit2 = AssetUnit::factory()->for($item)->create([
+            'current_status'    => 'dalam_perbaikan',
+            'current_condition' => 'rusak_berat',
+        ]);
+
+        // Karena masih ada unit1 yang aktif, status agregat tetap aktif (masih tersedia)
+        $this->assertSame('aktif', $item->recalculateAggregateStatus());
+        // Kondisi agregat mengikuti kondisi terburuk antar unit
+        $this->assertSame('rusak_berat', $item->recalculateAggregateCondition());
+    }
 }

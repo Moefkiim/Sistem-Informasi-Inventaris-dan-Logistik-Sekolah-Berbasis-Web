@@ -45,8 +45,16 @@
                         <tr>
                             <td><span class="badge badge-light-dark font-monospace">{{ $item->code }}</span></td>
                             <td class="text-dark fw-bolder">{{ $item->name }}</td>
-                            <td>{{ $item->category }}</td>
-                            <td><span class="badge badge-light-primary">{{ $item->stock }} {{ $item->unit }}</span></td>
+                            <td>
+                                <span class="badge badge-light-{{ $item->isStockEmpty() ? 'danger' : ($item->isStockLow() ? 'warning' : 'primary') }}">
+                                    {{ $item->stock }} {{ $item->unit }}
+                                </span>
+                                @if($item->isStockLow())
+                                    <span class="badge badge-light-warning fs-9 ms-1" title="Minimum: {{ $item->minimum_stock }}">Menipis</span>
+                                @elseif($item->isStockEmpty())
+                                    <span class="badge badge-light-danger fs-9 ms-1">Habis</span>
+                                @endif
+                            </td>
                             <td>{{ $item->department ?: 'Umum / Sarpras' }}</td>
                             <td>{{ $item->location?->name ?: 'Belum Ada' }}</td>
                             <td>

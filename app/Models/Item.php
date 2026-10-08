@@ -135,4 +135,95 @@ class Item extends Model
 
         return $this->assetUnits()->count();
     }
+
+    /**
+     * Hitung status operasional agregat untuk item master berbasis unit fisik.
+     */
+    public function recalculateAggregateStatus(): string
+    {
+        if (! $this->isIndividual() || ! $this->assetUnits()->exists()) {
+            return $this->current_status;
+        }
+
+        $units = $this->assetUnits()->get(['current_status']);
+        $total = $units->count();
+        if ($total === 0) {
+            return $this->current_status;
+        }
+
+        $statuses = $units->pluck('current_status')->all();
+
+        // 1. Jika ada setidaknya 1 unit yang aktif (tersedia), master item berstatus aktif.
+        if (in_array('aktif', $statuses, true)) {
+            return 'aktif';
+        }
+
+        // 2. Jika tidak ada yang aktif, dan ada yang sedang dipinjam.
+        if (in_array('dipinjam', $statuses, true)) {
+            return 'dipinjam';
+        }
+
+        // 3. Jika seluruh unit sedang dalam perbaikan.
+        if (count(array_filter($statuses, fn ($s) => $s === 'dalam_perbaikan')) === $total) {
+            return 'dalam_perbaikan';
+        }
+
+        // 4. Jika seluruh unit tidak aktif.
+        if (count(array_filter($statuses, fn ($s) => $s === 'tidak_aktif')) === $total) {
+            return 'tidak_aktif';
+        }
+
+        // 5. Jika seluruh unit dihapuskan/disposed.
+        if (count(array_filter($statuses, fn ($s) => $s === 'disposed')) === $total) {
+            return 'disposed';
+        }
+
+        return $statuses[0] ?? 'aktif';
+    }
+
+    /**
+     * Hitung kondisi fisik agregat item (kondisi terburuk antar unit).
+     */
+    public function recalculateAggregateCondition(): string
+    {
+        if (! $this->isIndividual() || ! $this->assetUnits()->exists()) {
+            return $this->current_condition;
+        }
+
+        $conditions = $this->assetUnits()->pluck('current_condition')->all();
+
+        if (in_array('rusak_berat', $conditions, true)) {
+            return 'rusak_berat';
+        }
+
+        if (in_array('rusak_ringan', $conditions, true)) {
+            return 'rusak_ringan';
+        }
+
+        return 'baik';
+    }
+
+    /**
+     * Ringkasan ketersediaan unit untuk tampilan deskriptif UI.
+     */
+    public function aggregateStatusSummary(): string
+    {
+        if (! $this->isIndividual() || ! $this->assetUnits()->exists()) {
+            return ucfirst(str_replace('_', ' ', $this->current_status));
+        }
+
+        $total = $this->assetUnits()->count();
+        $active = $this->assetUnits()->where('current_status', 'aktif')->count();
+        $borrowed = $this->assetUnits()->where('current_status', 'dipinjam')->count();
+
+        if ($borrowed === 0 && $active === $total) {
+            return 'Semua Unit Aktif';
+        }
+
+        if ($borrowed === $total) {
+            return 'Semua Unit Dipinjam';
+        }
+
+        return "{$active}/{$total} Unit Tersedia ({$borrowed} Dipinjam)";
+    }
 }

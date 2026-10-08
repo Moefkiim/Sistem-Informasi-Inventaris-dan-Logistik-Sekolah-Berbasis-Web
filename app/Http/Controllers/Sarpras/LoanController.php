@@ -178,18 +178,18 @@ class LoanController extends Controller
                     }
 
                     $engaged = Loan::where('asset_unit_id', $unit->id)
-                        ->whereIn('status', ['dipinjam', 'disetujui'])
+                        ->whereIn('status', Loan::STATUS_ACTIVE)
                         ->exists();
 
                     if ($engaged) {
                         throw ValidationException::withMessages([
-                            'asset_unit_id' => 'Unit aset sedang dipinjam atau tidak tersedia.',
+                            'asset_unit_id' => 'Unit aset sedang dipinjam atau sedang dalam proses pengajuan peminjaman.',
                         ]);
                     }
                 } else {
                     // Data lama tanpa unit: tetap gunakan cek ketersediaan per item.
                     $activeLoanCount = Loan::where('item_id', $item->id)
-                        ->whereIn('status', ['dipinjam', 'disetujui'])
+                        ->whereIn('status', Loan::STATUS_ACTIVE)
                         ->sum('quantity');
 
                     if ($activeLoanCount >= $item->stock) {
@@ -273,13 +273,56 @@ class LoanController extends Controller
                     ->decrement('stock', $loan->quantity);
             }
 
-            // Update status aset individual
+            // Update status aset individual dengan availability re-check ketat
             if ($item->isIndividual()) {
-                $item->update(['current_status' => 'dipinjam']);
-
                 if ($loan->asset_unit_id) {
-                    AssetUnit::where('id', $loan->asset_unit_id)
-                        ->update(['current_status' => 'dipinjam']);
+                    $unit = AssetUnit::where('id', $loan->asset_unit_id)
+                        ->lockForUpdate()
+                        ->first();
+
+                    if (! $unit) {
+                        throw ValidationException::withMessages([
+                            'msg' => 'Unit aset fisik tidak ditemukan.',
+                        ]);
+                    }
+
+                    // Re-check: unit harus aktif dan bukan dalam perbaikan, disposed, atau sudah dipinjam
+                    if ($unit->current_status !== 'aktif') {
+                        throw ValidationException::withMessages([
+                            'msg' => 'Unit aset tidak tersedia untuk disetujui (status saat ini: '.str_replace('_', ' ', $unit->current_status).').',
+                        ]);
+                    }
+
+                    // Re-check: pastikan tidak ada transaksi peminjaman lain yang sudah mengambil unit ini
+                    $conflictingLoan = Loan::where('asset_unit_id', $unit->id)
+                        ->where('id', '!=', $loan->id)
+                        ->whereIn('status', ['dipinjam', 'disetujui'])
+                        ->exists();
+
+                    if ($conflictingLoan) {
+                        throw ValidationException::withMessages([
+                            'msg' => 'Unit aset ini sudah disetujui atau sedang dipinjam oleh transaksi peminjaman lain.',
+                        ]);
+                    }
+
+                    $unit->update(['current_status' => 'dipinjam']);
+
+                    $item->update([
+                        'current_status' => $item->recalculateAggregateStatus(),
+                    ]);
+                } else {
+                    $activeLoanCount = Loan::where('item_id', $item->id)
+                        ->where('id', '!=', $loan->id)
+                        ->whereIn('status', ['dipinjam', 'disetujui'])
+                        ->sum('quantity');
+
+                    if ($activeLoanCount >= $item->stock) {
+                        throw ValidationException::withMessages([
+                            'msg' => 'Stok aset tidak mencukupi atau sudah dipinjam.',
+                        ]);
+                    }
+
+                    $item->update(['current_status' => 'dipinjam']);
                 }
             }
 
@@ -329,32 +372,53 @@ class LoanController extends Controller
                 $item->increment('stock', $loan->quantity);
             }
 
-            // Update status aset individual
+            // Update status & kondisi aset individual berdasarkan kondisi fisik saat kembali:
+            // - baik / rusak_ringan => status unit 'aktif'
+            // - rusak_berat => status unit 'dalam_perbaikan' (tidak otomatis aktif)
             if ($item->isIndividual()) {
-                $item->update(['current_status' => 'aktif']);
+                $targetStatus = ($validated['condition_on_return'] === 'rusak_berat')
+                    ? 'dalam_perbaikan'
+                    : 'aktif';
 
                 if ($unit) {
-                    $unit->update(['current_status' => 'aktif']);
-                }
-            }
+                    if ($validated['condition_on_return'] !== $unit->current_condition) {
+                        ConditionHistory::create([
+                            'item_id' => $item->id,
+                            'asset_unit_id' => $unit->id,
+                            'from_condition' => $unit->current_condition,
+                            'to_condition' => $validated['condition_on_return'],
+                            'user_id' => $request->user()->id,
+                            'notes' => 'Kondisi setelah pengembalian peminjaman '.$loan->loan_number,
+                            'recorded_at' => now(),
+                        ]);
+                    }
 
-            // Catat kondisi fisik jika berubah
-            $fromCondition = $unit?->current_condition ?? $item->current_condition;
+                    $unit->update([
+                        'current_status' => $targetStatus,
+                        'current_condition' => $validated['condition_on_return'],
+                    ]);
 
-            if ($validated['condition_on_return'] !== $fromCondition) {
-                ConditionHistory::create([
-                    'item_id' => $item->id,
-                    'asset_unit_id' => $loan->asset_unit_id,
-                    'from_condition' => $fromCondition,
-                    'to_condition' => $validated['condition_on_return'],
-                    'user_id' => $request->user()->id,
-                    'notes' => 'Kondisi setelah pengembalian peminjaman '.$loan->loan_number,
-                    'recorded_at' => now(),
-                ]);
-                $item->update(['current_condition' => $validated['condition_on_return']]);
+                    $item->update([
+                        'current_status' => $item->recalculateAggregateStatus(),
+                        'current_condition' => $item->recalculateAggregateCondition(),
+                    ]);
+                } else {
+                    if ($validated['condition_on_return'] !== $item->current_condition) {
+                        ConditionHistory::create([
+                            'item_id' => $item->id,
+                            'asset_unit_id' => null,
+                            'from_condition' => $item->current_condition,
+                            'to_condition' => $validated['condition_on_return'],
+                            'user_id' => $request->user()->id,
+                            'notes' => 'Kondisi setelah pengembalian peminjaman '.$loan->loan_number,
+                            'recorded_at' => now(),
+                        ]);
+                    }
 
-                if ($unit) {
-                    $unit->update(['current_condition' => $validated['condition_on_return']]);
+                    $item->update([
+                        'current_status' => $targetStatus,
+                        'current_condition' => $validated['condition_on_return'],
+                    ]);
                 }
             }
 
@@ -397,20 +461,22 @@ class LoanController extends Controller
             'notes' => ['required', 'string', 'max:500'],
         ]);
 
-        $loan->status = 'ditolak';
-        $loan->notes = $validated['notes'];
-        $loan->approved_by = auth()->id();
-        $loan->approved_at = now();
-        $loan->save();
+        DB::transaction(function () use ($loan, $validated) {
+            $loan->status = 'ditolak';
+            $loan->notes = $validated['notes'];
+            $loan->approved_by = auth()->id();
+            $loan->approved_at = now();
+            $loan->save();
 
-        ActivityLog::log(
-            'loan_rejected',
-            "Peminjaman {$loan->loan_number} ditolak: {$validated['notes']}",
-            $loan,
-            ['status' => 'menunggu'],
-            ['status' => 'ditolak'],
-            $loan->loan_number
-        );
+            ActivityLog::log(
+                'loan_rejected',
+                "Peminjaman {$loan->loan_number} ditolak: {$validated['notes']}",
+                $loan,
+                ['status' => 'menunggu'],
+                ['status' => 'ditolak'],
+                $loan->loan_number
+            );
+        });
 
         return back()->with('success', 'Permohonan peminjaman ditolak.');
     }
