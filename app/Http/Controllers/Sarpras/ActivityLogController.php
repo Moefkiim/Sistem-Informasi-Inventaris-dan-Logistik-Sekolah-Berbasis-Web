@@ -9,16 +9,18 @@ use Illuminate\View\View;
 
 class ActivityLogController extends Controller
 {
+    private const PER_PAGE_OPTIONS = [25, 50, 100];
+
     public function index(Request $request): View
     {
         $query = ActivityLog::with('user')->orderByDesc('logged_at');
 
         if ($request->filled('action')) {
-            $query->where('action', $request->action);
+            $query->where('action', $request->input('action'));
         }
 
         if ($request->filled('search')) {
-            $search = $request->search;
+            $search = $request->input('search');
             $query->where(function ($q) use ($search) {
                 $q->where('user_name', 'like', "%{$search}%")
                     ->orWhere('description', 'like', "%{$search}%")
@@ -27,16 +29,34 @@ class ActivityLogController extends Controller
         }
 
         if ($request->filled('start_date')) {
-            $query->whereDate('logged_at', '>=', $request->start_date);
+            $query->whereDate('logged_at', '>=', $request->input('start_date'));
         }
 
         if ($request->filled('end_date')) {
-            $query->whereDate('logged_at', '<=', $request->end_date);
+            $query->whereDate('logged_at', '<=', $request->input('end_date'));
         }
 
-        $logs = $query->paginate(25)->withQueryString();
-        $actions = ActivityLog::distinct()->orderBy('action')->pluck('action');
+        $perPage = (int) $request->input('per_page', 25);
+        if (! in_array($perPage, self::PER_PAGE_OPTIONS, true)) {
+            $perPage = 25;
+        }
 
-        return view('sarpras.activity_logs.index', compact('logs', 'actions'));
+        $logs = $query->paginate($perPage)->withQueryString();
+        $actionGroups = ActivityLog::groupedActionOptions(
+            ActivityLog::distinct()->orderBy('action')->pluck('action')
+        );
+
+        $hasFilters = $request->filled('search')
+            || $request->filled('action')
+            || $request->filled('start_date')
+            || $request->filled('end_date');
+
+        return view('sarpras.activity_logs.index', [
+            'logs' => $logs,
+            'actionGroups' => $actionGroups,
+            'perPageOptions' => self::PER_PAGE_OPTIONS,
+            'perPage' => $perPage,
+            'hasFilters' => $hasFilters,
+        ]);
     }
 }

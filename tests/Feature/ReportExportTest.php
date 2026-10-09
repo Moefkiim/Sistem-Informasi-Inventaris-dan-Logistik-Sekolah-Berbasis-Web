@@ -108,4 +108,32 @@ class ReportExportTest extends TestCase
 
         $response->assertSessionHasErrors('type');
     }
+
+    public function test_export_and_print_links_carry_active_filters(): void
+    {
+        $response = $this->actingAs($this->sarpras())
+            ->get(route('reports.index', [
+                'type' => 'incoming',
+                'start_date' => '2026-09-01',
+                'end_date' => '2026-09-30',
+            ]));
+
+        $response->assertOk();
+        $html = $response->getContent();
+
+        $this->assertStringContainsString('type=incoming', $html);
+        $this->assertStringContainsString('start_date=2026-09-01', $html);
+        $this->assertStringContainsString('end_date=2026-09-30', $html);
+        $this->assertStringContainsString('export=print', $html);
+    }
+
+    public function test_reports_pagination_preserves_filters(): void
+    {
+        Item::factory()->count(30)->create();
+
+        $this->actingAs($this->sarpras())
+            ->get(route('reports.index', ['type' => 'inventory', 'condition' => 'baik', 'per_page' => 25]))
+            ->assertOk()
+            ->assertSee('condition=baik', false);
+    }
 }

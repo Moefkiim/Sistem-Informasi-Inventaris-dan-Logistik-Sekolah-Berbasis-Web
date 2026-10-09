@@ -12,8 +12,45 @@
     <link href="{{ asset('assets/plugins/global/plugins.bundle.css') }}" rel="stylesheet" type="text/css" />
     <link href="{{ asset('assets/css/style.bundle.css') }}" rel="stylesheet" type="text/css" />
     <style>
-        .aside-dark .menu-section-label { color: #4b5675 !important; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08rem; padding: 0.5rem 1.4rem; text-transform: uppercase; display: block; }
+        /* Sidebar: rasio kontras teks terhadap latar #1e1e2d (aside-dark). */
+        .aside-dark .menu-section-label { color: #8a93b2 !important; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08rem; padding: 0.5rem 1.4rem; text-transform: uppercase; display: block; }
+        .aside-dark .menu .menu-link { position: relative; }
+        .aside-dark .menu .menu-title { color: #b5b5c3; transition: color 0.15s ease; }
+        .aside-dark .menu .menu-icon i { color: #7e8299; transition: color 0.15s ease; }
+        .aside-dark .menu .menu-link:hover .menu-title,
+        .aside-dark .menu .menu-link:hover .menu-icon i { color: #ffffff; }
+        .aside-dark .menu .menu-link.active { background-color: rgba(0, 158, 247, 0.14); }
+        .aside-dark .menu .menu-link.active .menu-title,
+        .aside-dark .menu .menu-link.active .menu-icon i { color: #ffffff; }
+        .aside-dark .menu .menu-link.active::before { content: ''; position: absolute; left: 0; top: 0.35rem; bottom: 0.35rem; width: 3px; border-radius: 0 3px 3px 0; background-color: #009ef7; }
         .aside-dark .menu-sub .menu-link { padding-left: 3.2rem !important; }
+        /* Kontras teks WCAG AA (target >= 4.5:1) */
+        .text-muted { color: #5e6278 !important; }
+        .text-gray-500 { color: #5e6278 !important; }
+        .text-gray-600 { color: #4b5675 !important; }
+        .text-primary { color: #0066cc !important; }
+        .text-success { color: #0f7a43 !important; }
+        .text-warning { color: #7a5f00 !important; }
+        .text-danger { color: #b3123a !important; }
+        .text-info { color: #5b2fbf !important; }
+        .btn.btn-primary { background-color: #0066cc !important; border-color: #0066cc !important; color: #fff !important; }
+        .btn.btn-primary:hover, .btn.btn-primary:focus, .btn.btn-primary:active, .btn.btn-primary.active,
+        .btn-check:checked + .btn.btn-primary, .show > .btn.btn-primary.dropdown-toggle { background-color: #0052a3 !important; border-color: #0052a3 !important; color: #fff !important; }
+        .btn.btn-light { color: #4b5675 !important; }
+        .btn.btn-light:hover { color: #0066cc !important; }
+        .btn.btn-light-primary { color: #0a58ca !important; }
+        .btn.btn-light-success { color: #0f7a43 !important; }
+        .btn.btn-light-warning { color: #7a5f00 !important; }
+        .btn.btn-light-danger { color: #b3123a !important; }
+        .btn.btn-light-info { color: #5b2fbf !important; }
+        .btn.btn-light-secondary { color: #4b5675 !important; }
+        .badge.badge-light-primary { color: #0a58ca !important; }
+        .badge.badge-light-success { color: #0f7a43 !important; }
+        .badge.badge-light-warning { color: #7a5f00 !important; }
+        .badge.badge-light-danger { color: #b3123a !important; }
+        .badge.badge-light-info { color: #5b2fbf !important; }
+        .badge.badge-light-secondary { color: #4b5675 !important; }
+        .aside-dark .text-gray-500 { color: #b5b5c3 !important; }
         .badge-role { background: linear-gradient(135deg, #009ef7, #0066cc); color: #fff; padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; }
         .user-info-card { background: linear-gradient(135deg, rgba(0,158,247,0.12), rgba(0,102,204,0.08)); border: 1px solid rgba(0,158,247,0.2); border-radius: 12px; }
     </style>
@@ -57,7 +94,7 @@
                             @if(auth()->user()->isKajur())
                                 <div class="menu-item pt-5">
                                     <div class="menu-content">
-                                        <span class="menu-section-label">Menu Kajur — {{ auth()->user()->department }}</span>
+                                        <span class="menu-section-label">Menu Kajur — {{ auth()->user()->departmentLabel() }}</span>
                                     </div>
                                 </div>
 
@@ -268,7 +305,7 @@
                             <span class="symbol-label fs-6 fw-bolder text-white" style="background: linear-gradient(135deg, #009ef7, #0066cc);">{{ strtoupper(substr(auth()->user()->name, 0, 1)) }}</span>
                         </div>
                         <div class="d-flex flex-column text-truncate flex-grow-1">
-                            <span class="text-white fw-bolder fs-7 text-truncate">{{ auth()->user()->name }}</span>
+                            <span class="text-white fw-bolder fs-7 text-truncate" title="{{ auth()->user()->name }}">{{ auth()->user()->name }}</span>
                             <span class="text-gray-500 fs-8">{{ strtoupper(str_replace('_', ' ', auth()->user()->role)) }}</span>
                         </div>
                         <form action="{{ route('logout') }}" method="POST" class="d-inline ms-2">
@@ -305,7 +342,7 @@
                                     <i class="bi bi-shield-check me-1"></i>
                                     {{ strtoupper(str_replace('_', ' ', auth()->user()->role)) }}
                                     @if(auth()->user()->department)
-                                        — {{ auth()->user()->department }}
+                                        — {{ auth()->user()->departmentLabel() }}
                                     @endif
                                 </span>
                                 <form action="{{ route('logout') }}" method="POST" class="d-inline">
