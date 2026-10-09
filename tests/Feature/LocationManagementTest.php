@@ -40,6 +40,31 @@ class LocationManagementTest extends TestCase
         ]);
     }
 
+    public function test_location_with_asset_units_cannot_be_deleted(): void
+    {
+        $sarpras = User::factory()->sarpras()->create();
+        $location = Location::factory()->create();
+        $otherLocation = Location::factory()->create();
+
+        $item = Item::factory()->create(['location_id' => $otherLocation->id]);
+        \App\Models\AssetUnit::create([
+            'item_id' => $item->id,
+            'unit_inventory_number' => 'UNIT-LOC-01',
+            'current_condition' => 'baik',
+            'current_status' => 'aktif',
+            'location_id' => $location->id,
+        ]);
+
+        $this->actingAs($sarpras)
+            ->delete(route('sarpras.locations.destroy', $location))
+            ->assertSessionHasErrors();
+
+        $this->assertDatabaseHas('locations', [
+            'id' => $location->id,
+            'deleted_at' => null,
+        ]);
+    }
+
     public function test_soft_deleted_location_not_allowed_as_target_in_inventory_move(): void
     {
         $sarpras = User::factory()->sarpras()->create();

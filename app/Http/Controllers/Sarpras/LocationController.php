@@ -14,7 +14,7 @@ class LocationController extends Controller
 {
     public function index(): View
     {
-        $locations = Location::withCount('items')->latest()->paginate(15);
+        $locations = Location::withCount(['items', 'assetUnits'])->latest()->paginate(15);
 
         return view('sarpras.locations.index', compact('locations'));
     }
@@ -36,8 +36,8 @@ class LocationController extends Controller
 
     public function destroy(Location $location): RedirectResponse
     {
-        if ($location->items()->count() > 0) {
-            return back()->withErrors(['msg' => 'Lokasi tidak dapat dihapus karena masih menampung barang inventaris.']);
+        if ($location->items()->count() > 0 || $location->assetUnits()->count() > 0) {
+            return back()->withErrors(['msg' => 'Lokasi tidak dapat dihapus karena masih menampung barang inventaris atau unit aset.']);
         }
 
         $location->delete();

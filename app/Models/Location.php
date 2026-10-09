@@ -35,4 +35,9 @@ class Location extends Model
     {
         return $this->hasMany(Item::class);
     }
+
+    public function assetUnits(): HasMany
+    {
+        return $this->hasMany(AssetUnit::class);
+    }
 }

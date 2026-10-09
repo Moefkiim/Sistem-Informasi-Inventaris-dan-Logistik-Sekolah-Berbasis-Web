@@ -86,9 +86,14 @@
                                     <td class="text-dark fw-bolder">{{ $loc->name }}</td>
                                     <td>{{ $loc->building ?: '-' }}</td>
                                     <td>{{ $loc->department ?: 'Umum' }}</td>
-                                    <td><span class="badge badge-light-primary">{{ $loc->items_count }} Jenis</span></td>
+                                    <td>
+                                        <span class="badge badge-light-primary">{{ $loc->items_count }} Jenis</span>
+                                        @if($loc->asset_units_count > 0)
+                                            <span class="badge badge-light-info ms-1">{{ $loc->asset_units_count }} Unit</span>
+                                        @endif
+                                    </td>
                                     <td class="text-end">
-                                        @if($loc->items_count === 0)
+                                        @if($loc->items_count === 0 && $loc->asset_units_count === 0)
                                             <form action="{{ route('sarpras.locations.destroy', $loc) }}" method="POST" class="d-inline">
                                                 @csrf
                                                 @method('DELETE')
