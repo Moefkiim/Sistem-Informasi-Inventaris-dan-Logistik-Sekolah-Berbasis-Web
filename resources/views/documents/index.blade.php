@@ -134,7 +134,12 @@
                     @if(auth()->user()->isSarpras())
                     <div class="mb-4">
                         <label class="form-label fw-bold">Jurusan Terkait (Opsional)</label>
-                        <input type="text" name="department" placeholder="Kosongkan jika dokumen umum" class="form-control form-control-solid" value="{{ old('department') }}">
+                        <select name="department" class="form-select form-select-solid">
+                            <option value="">-- Dokumen Umum (Semua Jurusan) --</option>
+                            @foreach(config('departments') as $code => $name)
+                                <option value="{{ $code }}" {{ old('department') == $code ? 'selected' : '' }}>{{ $name }} ({{ $code }})</option>
+                            @endforeach
+                        </select>
                     </div>
                     @endif
 

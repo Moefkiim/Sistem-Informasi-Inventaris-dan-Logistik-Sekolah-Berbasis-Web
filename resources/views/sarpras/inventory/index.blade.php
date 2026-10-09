@@ -45,6 +45,7 @@
                         <tr>
                             <td><span class="badge badge-light-dark font-monospace">{{ $item->code }}</span></td>
                             <td class="text-dark fw-bolder">{{ $item->name }}</td>
+                            <td><span class="badge badge-light-secondary">{{ $item->category }}</span></td>
                             <td>
                                 <span class="badge badge-light-{{ $item->isStockEmpty() ? 'danger' : ($item->isStockLow() ? 'warning' : 'primary') }}">
                                     {{ $item->stock }} {{ $item->unit }}
