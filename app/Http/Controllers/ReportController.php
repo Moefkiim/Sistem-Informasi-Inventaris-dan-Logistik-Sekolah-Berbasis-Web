@@ -454,6 +454,7 @@ class ReportController extends Controller
 
         $presets = [
             'Bulan ini' => [$today->copy()->startOfMonth(), $today->copy()->endOfMonth()],
+            'Triwulan ini' => [$today->copy()->startOfQuarter(), $today->copy()->endOfQuarter()],
             '30 hari terakhir' => [$today->copy()->subDays(29), $today->copy()],
             'Tahun ini' => [$today->copy()->startOfYear(), $today->copy()->endOfYear()],
         ];

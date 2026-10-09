@@ -250,6 +250,7 @@ class SubmissionController extends Controller
         $prefix = 'REQ-'.date('Ymd').'-';
 
         $last = Submission::where('submission_number', 'like', $prefix.'%')
+            ->lockForUpdate()
             ->orderByDesc('submission_number')
             ->first();
 

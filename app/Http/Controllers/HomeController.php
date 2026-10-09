@@ -10,6 +10,7 @@ use App\Models\Submission;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class HomeController extends Controller
@@ -169,17 +170,30 @@ class HomeController extends Controller
         $start = $months[0].'-01';
         $end = $months[11].'-31';
 
+        $driver = DB::connection()->getDriverName();
+        $incomingDateExpr = match ($driver) {
+            'sqlite' => "strftime('%Y-%m', entry_date)",
+            'pgsql' => "to_char(entry_date, 'YYYY-MM')",
+            default => "DATE_FORMAT(entry_date, '%Y-%m')",
+        };
+
+        $outgoingDateExpr = match ($driver) {
+            'sqlite' => "strftime('%Y-%m', exit_date)",
+            'pgsql' => "to_char(exit_date, 'YYYY-MM')",
+            default => "DATE_FORMAT(exit_date, '%Y-%m')",
+        };
+
         $incoming = IncomingItem::query()
             ->when($department !== null, fn ($q) => $q->whereHas('item', fn ($i) => $i->where('department', $department)))
             ->whereBetween('entry_date', [$start, $end])
-            ->selectRaw("strftime('%Y-%m', entry_date) as month, sum(quantity) as total")
+            ->selectRaw("{$incomingDateExpr} as month, sum(quantity) as total")
             ->groupBy('month')
             ->pluck('total', 'month');
 
         $outgoing = OutgoingItem::query()
             ->when($department !== null, fn ($q) => $q->whereHas('item', fn ($i) => $i->where('department', $department)))
             ->whereBetween('exit_date', [$start, $end])
-            ->selectRaw("strftime('%Y-%m', exit_date) as month, sum(quantity) as total")
+            ->selectRaw("{$outgoingDateExpr} as month, sum(quantity) as total")
             ->groupBy('month')
             ->pluck('total', 'month');
 
