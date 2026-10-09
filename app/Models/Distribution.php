@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Support\Departments;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -25,6 +27,16 @@ class Distribution extends Model
             'distribution_date' => 'date',
             'quantity' => 'integer',
         ];
+    }
+
+    /**
+     * Normalisasi jurusan penerima ke kode kanonik saat ditulis (bila dikenal).
+     */
+    protected function recipientDepartment(): Attribute
+    {
+        return Attribute::make(
+            set: fn (?string $value) => Departments::normalizeOrKeep($value),
+        );
     }
 
     public function item(): BelongsTo

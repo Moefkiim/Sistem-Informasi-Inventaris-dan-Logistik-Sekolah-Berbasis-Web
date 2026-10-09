@@ -23,7 +23,7 @@ class DatabaseSeeder extends Seeder
                 'email' => 'kajur.rpl@sekolah.sch.id',
                 'password' => 'password123',
                 'role' => 'kajur',
-                'department' => 'Rekayasa Perangkat Lunak',
+                'department' => 'RPL',
                 'is_active' => true,
             ]
         );

@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Sarpras;
 
 use App\Http\Controllers\Controller;
 use App\Models\Location;
+use App\Support\Departments;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class LocationController extends Controller
@@ -13,6 +15,7 @@ class LocationController extends Controller
     public function index(): View
     {
         $locations = Location::withCount('items')->latest()->paginate(15);
+
         return view('sarpras.locations.index', compact('locations'));
     }
 
@@ -22,7 +25,7 @@ class LocationController extends Controller
             'code' => ['required', 'string', 'max:50', 'unique:locations,code'],
             'name' => ['required', 'string', 'max:255'],
             'building' => ['nullable', 'string', 'max:100'],
-            'department' => ['nullable', 'string', 'max:100'],
+            'department' => ['nullable', Rule::in(Departments::codes())],
             'description' => ['nullable', 'string'],
         ]);
 

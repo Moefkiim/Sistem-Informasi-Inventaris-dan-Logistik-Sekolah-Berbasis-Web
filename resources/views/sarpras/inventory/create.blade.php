@@ -113,8 +113,12 @@
             <div class="row g-5">
                 <div class="col-md-4">
                     <label class="form-label fw-bold">Alokasi Jurusan (Kosongkan bila umum)</label>
-                    <input type="text" name="department" class="form-control form-control-solid"
-                           placeholder="Contoh: Rekayasa Perangkat Lunak" value="{{ old('department') }}">
+                    <select name="department" class="form-select form-select-solid">
+                        <option value="">-- Umum / Tidak Dikunci --</option>
+                        @foreach(config('departments') as $code => $name)
+                            <option value="{{ $code }}" {{ old('department') == $code ? 'selected' : '' }}>{{ $name }} ({{ $code }})</option>
+                        @endforeach
+                    </select>
                 </div>
                 <div class="col-md-4">
                     <label class="form-label fw-bold">Lokasi Penempatan Awal</label>

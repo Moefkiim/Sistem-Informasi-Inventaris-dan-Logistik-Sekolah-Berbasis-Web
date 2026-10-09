@@ -51,8 +51,13 @@
                         <label class="form-label" for="borrower_department">Jurusan / Unit Peminjam</label>
                         <input type="text" name="borrower_department" id="borrower_department"
                                class="form-control form-control-solid @error('borrower_department') is-invalid @enderror"
-                               placeholder="Contoh: Rekayasa Perangkat Lunak"
+                               placeholder="Contoh: RPL, TKJ, Lab IPA" list="department-list"
                                value="{{ old('borrower_department') }}">
+                        <datalist id="department-list">
+                            @foreach(config('departments') as $code => $name)
+                                <option value="{{ $code }}">{{ $name }}</option>
+                            @endforeach
+                        </datalist>
                         @error('borrower_department')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
                     <div class="col-12">

@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Support\Departments;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -68,6 +70,16 @@ class Loan extends Model
             'approved_at' => 'datetime',
             'returned_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Normalisasi jurusan peminjam ke kode kanonik saat ditulis (bila dikenal).
+     */
+    protected function borrowerDepartment(): Attribute
+    {
+        return Attribute::make(
+            set: fn (?string $value) => Departments::normalizeOrKeep($value),
+        );
     }
 
     // === Relationships ===

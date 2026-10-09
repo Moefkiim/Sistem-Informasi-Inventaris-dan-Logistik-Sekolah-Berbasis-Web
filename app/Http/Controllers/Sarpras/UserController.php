@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Sarpras;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Support\Departments;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -14,6 +15,7 @@ class UserController extends Controller
     public function index(): View
     {
         $users = User::latest()->paginate(15);
+
         return view('sarpras.users.index', compact('users'));
     }
 
@@ -25,18 +27,18 @@ class UserController extends Controller
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:6'],
             'role' => ['required', 'in:kajur,sarpras'],
-            'department' => ['required_if:role,kajur', 'nullable', 'string', 'max:100'],
+            'department' => ['required_if:role,kajur', 'nullable', Rule::in(Departments::codes())],
         ]);
 
         // role & is_active dikecualikan dari $fillable — set secara eksplisit
-        $user = new User();
-        $user->name       = $validated['name'];
-        $user->username   = $validated['username'];
-        $user->email      = $validated['email'];
-        $user->password   = $validated['password'];
-        $user->role       = $validated['role'];
+        $user = new User;
+        $user->name = $validated['name'];
+        $user->username = $validated['username'];
+        $user->email = $validated['email'];
+        $user->password = $validated['password'];
+        $user->role = $validated['role'];
         $user->department = $validated['department'] ?? null;
-        $user->is_active  = true;
+        $user->is_active = true;
         $user->save();
 
         return back()->with('success', 'Pengguna baru berhasil ditambahkan.');

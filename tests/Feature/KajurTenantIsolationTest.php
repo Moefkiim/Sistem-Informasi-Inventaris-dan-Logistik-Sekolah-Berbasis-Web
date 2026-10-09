@@ -17,11 +17,11 @@ class KajurTenantIsolationTest extends TestCase
 
     public function test_kajur_cannot_access_other_department_item(): void
     {
-        $rpl = User::factory()->kajur()->create(['department' => 'Rekayasa Perangkat Lunak']);
-        $tkj = User::factory()->kajur()->create(['department' => 'Teknik Komputer Jaringan']);
+        $rpl = User::factory()->kajur()->create(['department' => 'RPL']);
+        $tkj = User::factory()->kajur()->create(['department' => 'TKJ']);
 
-        $itemRpl = Item::factory()->create(['department' => 'Rekayasa Perangkat Lunak']);
-        $itemTkj = Item::factory()->create(['department' => 'Teknik Komputer Jaringan']);
+        $itemRpl = Item::factory()->create(['department' => 'RPL']);
+        $itemTkj = Item::factory()->create(['department' => 'TKJ']);
 
         $this->actingAs($rpl)
             ->get(route('kajur.inventory.show', $itemTkj))
@@ -37,7 +37,7 @@ class KajurTenantIsolationTest extends TestCase
     public function test_kajur_with_null_department_gets_forbidden(): void
     {
         $kajur = User::factory()->kajur()->create(['department' => null]);
-        $item = Item::factory()->create(['department' => 'Rekayasa Perangkat Lunak']);
+        $item = Item::factory()->create(['department' => 'RPL']);
 
         $this->actingAs($kajur)
             ->get(route('kajur.inventory.index'))
@@ -50,11 +50,11 @@ class KajurTenantIsolationTest extends TestCase
 
     public function test_kajur_inventory_index_expands_individual_item_into_units(): void
     {
-        $rpl = User::factory()->kajur()->create(['department' => 'Rekayasa Perangkat Lunak']);
+        $rpl = User::factory()->kajur()->create(['department' => 'RPL']);
         $location = Location::factory()->create(['name' => 'Lab RPL']);
 
         $item = Item::factory()->create([
-            'department' => 'Rekayasa Perangkat Lunak',
+            'department' => 'RPL',
             'item_type' => 'individual',
             'unit' => 'Unit',
             'stock' => 2,
@@ -75,14 +75,14 @@ class KajurTenantIsolationTest extends TestCase
         $response->assertSee('SN-01')->assertSee('SN-02');
         $response->assertSee('Rusak Ringan')->assertSee('Dipinjam');
         $response->assertSee('Lab RPL');
-        $response->assertDontSee('Teknik Komputer Jaringan');
+        $response->assertDontSee('TKJ');
     }
 
     public function test_kajur_inventory_index_shows_consumable_as_single_row(): void
     {
-        $rpl = User::factory()->kajur()->create(['department' => 'Rekayasa Perangkat Lunak']);
+        $rpl = User::factory()->kajur()->create(['department' => 'RPL']);
         Item::factory()->create([
-            'department' => 'Rekayasa Perangkat Lunak',
+            'department' => 'RPL',
             'item_type' => 'consumable',
             'unit' => 'Rim',
             'stock' => 25,
@@ -95,11 +95,11 @@ class KajurTenantIsolationTest extends TestCase
 
     public function test_kajur_inventory_show_displays_unit_list_and_unit_histories(): void
     {
-        $rpl = User::factory()->kajur()->create(['department' => 'Rekayasa Perangkat Lunak']);
+        $rpl = User::factory()->kajur()->create(['department' => 'RPL']);
         $location = Location::factory()->create(['name' => 'Lab RPL']);
 
         $item = Item::factory()->create([
-            'department' => 'Rekayasa Perangkat Lunak',
+            'department' => 'RPL',
             'item_type' => 'individual',
             'unit' => 'Unit',
             'stock' => 1,

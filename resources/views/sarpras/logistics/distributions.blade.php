@@ -46,7 +46,12 @@
 
                     <div class="mb-4">
                         <label class="form-label fw-bold">Jurusan / Unit Penerima</label>
-                        <input type="text" name="recipient_department" class="form-control form-control-solid" value="{{ old('recipient_department') }}" placeholder="Contoh: Rekayasa Perangkat Lunak / Lab IPA">
+                        <input type="text" name="recipient_department" class="form-control form-control-solid" value="{{ old('recipient_department') }}" placeholder="Contoh: RPL, TKJ, Lab IPA" list="department-list">
+                        <datalist id="department-list">
+                            @foreach(config('departments') as $code => $name)
+                                <option value="{{ $code }}">{{ $name }}</option>
+                            @endforeach
+                        </datalist>
                     </div>
 
                     <div class="mb-4">

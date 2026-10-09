@@ -51,7 +51,7 @@ class UserFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'role' => 'kajur',
-            'department' => 'Rekayasa Perangkat Lunak',
+            'department' => 'RPL',
         ]);
     }
 

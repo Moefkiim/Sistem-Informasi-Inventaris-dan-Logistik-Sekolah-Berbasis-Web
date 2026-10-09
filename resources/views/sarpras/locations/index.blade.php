@@ -36,7 +36,12 @@
 
                     <div class="mb-4">
                         <label class="form-label fw-bold">Jurusan Pemakai (Opsional)</label>
-                        <input type="text" name="department" class="form-control form-control-solid" value="{{ old('department') }}" placeholder="Rekayasa Perangkat Lunak">
+                        <select name="department" class="form-select form-select-solid">
+                            <option value="">-- Umum / Tidak Dikunci --</option>
+                            @foreach(config('departments') as $code => $name)
+                                <option value="{{ $code }}" {{ old('department') == $code ? 'selected' : '' }}>{{ $name }} ({{ $code }})</option>
+                            @endforeach
+                        </select>
                     </div>
 
                     <div class="mb-4">

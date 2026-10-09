@@ -34,7 +34,7 @@ class DemoReadinessTest extends TestCase
         $location = Location::factory()->create([
             'code' => 'LAB-RPL-01',
             'name' => 'Laboratorium RPL',
-            'department' => 'Rekayasa Perangkat Lunak',
+            'department' => 'RPL',
         ]);
 
         $item = Item::factory()->create([
@@ -46,7 +46,7 @@ class DemoReadinessTest extends TestCase
             'stock' => 1,
             'item_type' => 'individual',
             'source' => 'pembelian',
-            'department' => 'Rekayasa Perangkat Lunak',
+            'department' => 'RPL',
             'location_id' => $location->id,
             'current_condition' => 'baik',
             'current_status' => 'dipinjam',
@@ -56,7 +56,7 @@ class DemoReadinessTest extends TestCase
             'loan_number' => 'LN-20261006-0001',
             'borrower_user_id' => $this->kajur->id,
             'borrower_name' => $this->kajur->name,
-            'borrower_department' => 'Rekayasa Perangkat Lunak',
+            'borrower_department' => 'RPL',
             'recorded_by' => $this->sarpras->id,
             'item_id' => $item->id,
             'quantity' => 1,
@@ -72,7 +72,7 @@ class DemoReadinessTest extends TestCase
         $submission = Submission::create([
             'submission_number' => 'REQ-20261006-0001',
             'user_id' => $this->kajur->id,
-            'department' => 'Rekayasa Perangkat Lunak',
+            'department' => 'RPL',
             'title' => 'Pengadaan Laptop Praktik RPL',
             'purpose' => 'Menunjang kegiatan pembelajaran praktik.',
         ]);
@@ -119,7 +119,8 @@ class DemoReadinessTest extends TestCase
         $this->post('/login', ['login' => $this->kajur->username, 'password' => 'password123'])
             ->assertRedirect(route('home'));
 
-        $this->get(route('home'))->assertOk();
+        $this->get(route('home'))->assertOk()
+            ->assertViewHas('totalItems', fn ($total) => $total >= 1);
 
         $submission = Submission::where('user_id', $this->kajur->id)->firstOrFail();
         $item = Item::firstOrFail();
@@ -128,9 +129,9 @@ class DemoReadinessTest extends TestCase
         $this->get(route('kajur.submissions.show', $submission))->assertOk()->assertSee('Riwayat Proses Pengajuan');
         $this->get(route('kajur.inventory.index'))->assertOk();
         $this->get(route('kajur.inventory.show', $item))->assertOk()->assertSee('Peminjaman Aktif');
-        $this->get(route('reports.index'))->assertOk();
-        $this->get(route('reports.pdf', ['type' => 'inventory', 'department' => 'Rekayasa Perangkat Lunak']))->assertOk();
-        $this->get(route('reports.excel', ['type' => 'submission', 'department' => 'Rekayasa Perangkat Lunak']))->assertOk();
+        $this->get(route('reports.index'))->assertOk()->assertSee('BRG-RPL-0001');
+        $this->get(route('reports.pdf', ['type' => 'inventory', 'department' => 'RPL']))->assertOk();
+        $this->get(route('reports.excel', ['type' => 'submission', 'department' => 'RPL']))->assertOk();
     }
 
     public function test_akun_demo_sarpras_bisa_login_dan_mengakses_halaman(): void

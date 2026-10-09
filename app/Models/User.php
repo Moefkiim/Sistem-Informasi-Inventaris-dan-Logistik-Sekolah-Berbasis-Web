@@ -3,9 +3,11 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Support\Departments;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -29,6 +31,24 @@ class User extends Authenticatable
             'password' => 'hashed',
             'is_active' => 'boolean',
         ];
+    }
+
+    /**
+     * Normalisasi jurusan ke kode kanonik (config/departments.php) saat ditulis.
+     */
+    protected function department(): Attribute
+    {
+        return Attribute::make(
+            set: fn (?string $value) => Departments::normalizeOrKeep($value),
+        );
+    }
+
+    /**
+     * Label jurusan lengkap untuk tampilan.
+     */
+    public function departmentLabel(): ?string
+    {
+        return Departments::label($this->department);
     }
 
     public function isKajur(): bool

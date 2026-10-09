@@ -8,6 +8,7 @@ use App\Models\ConditionHistory;
 use App\Models\Item;
 use App\Models\Location;
 use App\Models\LocationHistory;
+use App\Support\Departments;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -64,7 +65,7 @@ class InventoryController extends Controller
             'source' => ['required', 'in:pembelian,bantuan'],
             'acquisition_year' => ['nullable', 'integer', 'min:1900', 'max:'.(date('Y') + 1)],
             'acquisition_price' => ['nullable', 'numeric', 'min:0'],
-            'department' => ['nullable', 'string'],
+            'department' => ['nullable', Rule::in(Departments::codes())],
             'location_id' => ['nullable', Rule::exists('locations', 'id')->whereNull('deleted_at')],
             'current_condition' => ['required', 'in:baik,rusak_ringan,rusak_berat'],
             'description' => ['nullable', 'string'],

@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Support\Departments;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -43,6 +45,24 @@ class Item extends Model
     }
 
     // === Helper: Tipe Barang ===
+
+    /**
+     * Normalisasi jurusan ke kode kanonik (config/departments.php) saat ditulis.
+     */
+    protected function department(): Attribute
+    {
+        return Attribute::make(
+            set: fn (?string $value) => Departments::normalizeOrKeep($value),
+        );
+    }
+
+    /**
+     * Label jurusan lengkap untuk tampilan.
+     */
+    public function departmentLabel(): ?string
+    {
+        return Departments::label($this->department);
+    }
 
     public function isIndividual(): bool
     {
