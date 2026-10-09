@@ -663,3 +663,76 @@ Section 9 di `db48328`). **Section 1, 4, 5, 10, 13, 14, 15, 16 belum dikerjakan 
 
 3. **Section 2 — Aset per-unit / per-serial** — **SELESAI** 7 Okt 2026 (commit `1d28aba`–`bd56726`, bukti §2.6; CI hijau).
 4. **Section 12 — QR Code** tetap dilarang tanpa persetujuan eksplisit (`AGENTS.md` §4).
+---
+
+## 12. Perbaikan UI Laporan & Riwayat Aktivitas (Task 0–4)
+
+Tanggal: 9 Oktober 2026. Lingkup: halaman **Laporan** (`/laporan`, semua role) dan
+**Riwayat Aktivitas** (`/sarpras/activity-logs`). Tidak ada fitur baru di luar batas
+proyek; hanya perbaikan konsistensi UI/UX, aksesibilitas kontras, dan perapian data jurusan.
+
+### 12.1 Akar Masalah Jurusan (Task 0)
+
+Filter jurusan sebelumnya memakai string bebas sehingga pencocokan scoping Kajur mudah
+gagal (spasi/kapitalisasi tidak konsisten), dan nilai di luar daftar resmi dapat lolos.
+Dibuat sumber tunggal kebenaran:
+
+- `config/departments.php` + helper `app/Support/Departments.php`
+  (`all()`, `codes()`, `label()`, `normalize()`, `isValid()`).
+- Daftar jurusan resmi: **RPL, TKJ, TKRO, TBSM, AKL, OTKP** (mengikuti `config/departments.php`).
+- Normalisasi input pada `StoreUserRequest`/`UpdateUserRequest`, `InventoryController`,
+  dan `LocationController`; dropdown jurusan memakai daftar dari config.
+- Scoping Kajur (`ReportController`, `Kajur\InventoryController`) memakai
+  `Departments::normalize()` agar cocok walau beda kapitalisasi/spasi.
+
+### 12.2 Perubahan UI
+
+- **Laporan**: layout filter seragam, tombol aksi konsisten (Filter/Reset/Export),
+  tabel inventaris menampilkan **kode barang, nama, jurusan, lokasi, kondisi, jumlah,
+  status**, empty-state khusus, dan scoping jurusan yang benar untuk Kajur.
+- **Riwayat Aktivitas**: header + filter (role, aksi, pencarian, rentang tanggal),
+  paginasi, badge aksi berwarna konsisten, kolom meta (waktu, aktor, target, ringkasan),
+  empty-state khusus, dan seluruh teks berbahasa Indonesia.
+- **Navigasi**: item "Riwayat Aktivitas" memakai ikon yang konsisten; label grup menu
+  dari `config/departments.php`.
+
+### 12.3 Hasil Ukur Kontras (WCAG AA)
+
+Diuji otomatis (headless Chromium) pada halaman `/laporan` dan `/sarpras/activity-logs`.
+Sebelum perbaikan ditemukan puluhan elemen dengan rasio kontras < 4.5:1 (mis. badge
+`badge-light-*`, tombol `btn-outline-*`, teks `text-muted`). Setelah penyesuaian token
+warna pada `resources/views/layouts/app.blade.php`:
+
+| Halaman | Elemen diuji | Pelanggaran < 4.5:1 (awal) | Setelah perbaikan |
+|---|---|---|---|
+| `/laporan` | seluruh teks/tombol terlihat | ada (badge/tombol/teks muted) | **0** |
+| `/sarpras/activity-logs` | seluruh teks/tombol terlihat | ada (badge/tombol/teks muted) | **0** |
+
+### 12.4 File yang Berubah (Task 0–4)
+
+- Baru: `app/Support/Departments.php`, `config/departments.php`,
+  `database/migrations/2026_10_09_000001_normalize_department_values_to_abbreviations.php`,
+  `resources/views/components/empty-state.blade.php`,
+  `resources/views/components/filter-chip.blade.php`,
+  `resources/views/components/page-header.blade.php`,
+  `tests/Feature/ActivityLogUiTest.php`, `tests/Feature/DepartmentNormalizationTest.php`.
+- Diubah: `ReportController.php`, `Kajur/InventoryController.php`, `Kajur/SubmissionController.php`,
+  `Sarpras/ActivityLogController.php`, `Sarpras/InventoryController.php`,
+  `Sarpras/LocationController.php`, view `laporan/*` dan `sarpras/activity-logs/*`,
+  `resources/views/partials/sidebar.blade.php`, `resources/css/app.css`,
+  beberapa test pendukung (`DemoReadinessTest`, `KajurTenantIsolationTest`,
+  `ReportExportTest`, `ReportScopingTest`).
+
+### 12.5 Verifikasi
+
+- `php artisan test`: **seluruh suite hijau** (termasuk `ActivityLogUiTest`,
+  `DepartmentNormalizationTest`, `ReportExportTest`, `ReportScopingTest`,
+  `KajurTenantIsolationTest`, `DashboardScopingTest`).
+- Audit kontras otomatis: **0 pelanggaran** pada kedua halaman (lihat 12.3).
+- Uji tabel data tersembunyi (`.table-responsive` tanpa overflow horizontal) lolos pada
+  viewport 1280/1024/768/480/375 px.
+
+### 12.6 Catatan / Batasan
+
+- Tidak ada perubahan skema database pada Task ini.
+- Perbaikan hanya pada presentasi; logika bisnis (scoping, stok, approval) tidak diubah.

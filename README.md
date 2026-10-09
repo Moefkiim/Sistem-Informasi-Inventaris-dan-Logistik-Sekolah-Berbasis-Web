@@ -258,7 +258,23 @@ Aplikasi siap dibuka pada peramban web di tautan: `http://127.0.0.1:8000`.
 ### Membuat Akun Pengguna Baru
 Pendaftaran akun secara mandiri (*self-registration*) ditiadakan untuk menjaga keamanan. Seluruh akun pengguna baru (Kajur/Staf) dibuat secara eksklusif oleh pihak **Sarpras** melalui menu **Manajemen Pengguna** (`/sarpras/users`).
 
+### Daftar Jurusan Resmi
+
+Sumber tunggal daftar jurusan berada di `config/departments.php` (helper `app/Support/Departments.php`). Kode jurusan dipakai untuk scoping data Kajur dan validasi input:
+
+| Kode | Nama Jurusan |
+|---|---|
+| `RPL` | Rekayasa Perangkat Lunak |
+| `TKJ` | Teknik Komputer dan Jaringan |
+| `TKRO` | Teknik Kendaraan Ringan Otomotif |
+| `TBSM` | Teknik Bisnis Sepeda Motor |
+| `AKL` | Akuntansi dan Keuangan Lembaga |
+| `OTKP` | Otomatisasi dan Tata Kelola Perkantoran |
+
+> Untuk menambah jurusan, cukup ubah `config/departments.php`; seluruh dropdown, validasi, dan scoping laporan otomatis mengikuti.
+
 ---
+
 
 ## 7. Menjalankan Test
 
