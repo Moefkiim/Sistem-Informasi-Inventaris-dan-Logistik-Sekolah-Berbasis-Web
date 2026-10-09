@@ -94,11 +94,11 @@
                             @forelse($incomingLogs as $log)
                                 <tr>
                                     <td><span class="text-dark fw-bolder">{{ $log->transaction_number }}</span></td>
-                                    <td>{{ $log->item->name }}</td>
-                                    <td><span class="badge badge-light-success">+{{ $log->quantity }} {{ $log->item->unit }}</span></td>
+                                    <td>{{ $log->item?->name ?? 'Barang Telah Dihapus' }}</td>
+                                    <td><span class="badge badge-light-success">+{{ $log->quantity }} {{ $log->item?->unit ?? 'Unit' }}</span></td>
                                     <td>{{ $log->source_origin ?: $log->source }}</td>
                                     <td>{{ $log->entry_date->format('d/m/Y') }}</td>
-                                    <td>{{ $log->user->name }}</td>
+                                    <td>{{ $log->user?->name ?? 'Sistem' }}</td>
                                 </tr>
                             @empty
                                 <tr><td colspan="6" class="text-center text-muted py-6">Belum ada catatan barang masuk.</td></tr>

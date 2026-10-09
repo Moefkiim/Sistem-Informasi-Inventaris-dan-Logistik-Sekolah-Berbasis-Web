@@ -37,7 +37,7 @@ class LocationHistory extends Model
 
     public function item(): BelongsTo
     {
-        return $this->belongsTo(Item::class);
+        return $this->belongsTo(Item::class)->withTrashed();
     }
 
     public function assetUnit(): BelongsTo
@@ -47,12 +47,12 @@ class LocationHistory extends Model
 
     public function fromLocation(): BelongsTo
     {
-        return $this->belongsTo(Location::class, 'from_location_id');
+        return $this->belongsTo(Location::class, 'from_location_id')->withTrashed();
     }
 
     public function toLocation(): BelongsTo
     {
-        return $this->belongsTo(Location::class, 'to_location_id');
+        return $this->belongsTo(Location::class, 'to_location_id')->withTrashed();
     }
 
     public function user(): BelongsTo

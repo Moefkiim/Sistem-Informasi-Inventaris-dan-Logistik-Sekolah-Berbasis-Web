@@ -106,9 +106,9 @@
                             @forelse($distributions as $dist)
                                 <tr>
                                     <td><span class="text-dark fw-bolder">{{ $dist->distribution_number }}</span></td>
-                                    <td>{{ $dist->item->name }}</td>
-                                    <td><span class="badge badge-light-primary">{{ $dist->quantity }} {{ $dist->item->unit }}</span></td>
-                                    <td>{{ $dist->toLocation->name }}</td>
+                                    <td>{{ $dist->item?->name ?? 'Barang Telah Dihapus' }}</td>
+                                    <td><span class="badge badge-light-primary">{{ $dist->quantity }} {{ $dist->item?->unit ?? 'Unit' }}</span></td>
+                                    <td>{{ $dist->toLocation?->name ?? 'Lokasi Telah Dihapus' }}</td>
                                     <td>{{ $dist->recipient_name ?: ($dist->recipient_department ?: '-') }}</td>
                                     <td>{{ $dist->distribution_date->format('d/m/Y') }}</td>
                                 </tr>
