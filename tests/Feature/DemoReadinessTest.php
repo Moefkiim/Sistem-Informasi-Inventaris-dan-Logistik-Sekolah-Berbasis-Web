@@ -4,9 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Item;
 use App\Models\Loan;
-use App\Models\Location;
 use App\Models\Submission;
-use App\Models\SubmissionItem;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -21,6 +19,12 @@ class DemoReadinessTest extends TestCase
 
     private User $kepsek;
 
+    private Item $item;
+
+    private Loan $loan;
+
+    private Submission $submission;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -31,69 +35,11 @@ class DemoReadinessTest extends TestCase
         $this->sarpras = User::where('username', 'sarpras')->firstOrFail();
         $this->kepsek = User::where('username', 'kepsek')->firstOrFail();
 
-        $location = Location::factory()->create([
-            'code' => 'LAB-RPL-01',
-            'name' => 'Laboratorium RPL',
-            'department' => 'RPL',
-        ]);
-
-        $item = Item::factory()->create([
-            'code' => 'BRG-RPL-0001',
-            'inventory_number' => 'INV-RPL-0001',
-            'name' => 'Laptop Asus Vivobook Pro',
-            'category' => 'Elektronik',
-            'unit' => 'Unit',
-            'stock' => 1,
-            'item_type' => 'individual',
-            'source' => 'pembelian',
-            'department' => 'RPL',
-            'location_id' => $location->id,
-            'current_condition' => 'baik',
-            'current_status' => 'dipinjam',
-        ]);
-
-        Loan::create([
-            'loan_number' => 'LN-20261006-0001',
-            'borrower_user_id' => $this->kajur->id,
-            'borrower_name' => $this->kajur->name,
-            'borrower_department' => 'RPL',
-            'recorded_by' => $this->sarpras->id,
-            'item_id' => $item->id,
-            'quantity' => 1,
-            'loan_date' => now()->toDateString(),
-            'due_date' => now()->addDays(7)->toDateString(),
-            'purpose' => 'Praktik kerja siswa kelas XII',
-            'status' => 'dipinjam',
-            'condition_on_loan' => 'baik',
-            'approved_by' => $this->sarpras->id,
-            'approved_at' => now(),
-        ]);
-
-        $submission = Submission::create([
-            'submission_number' => 'REQ-20261006-0001',
-            'user_id' => $this->kajur->id,
-            'department' => 'RPL',
-            'title' => 'Pengadaan Laptop Praktik RPL',
-            'purpose' => 'Menunjang kegiatan pembelajaran praktik.',
-        ]);
-        $submission->forceFill([
-            'status' => 'reviewed_sarpras',
-            'sarpras_user_id' => $this->sarpras->id,
-            'sarpras_notes' => 'Stok tersedia. Diteruskan ke Kepala Sekolah.',
-            'reviewed_at' => now(),
-        ])->save();
-
-        SubmissionItem::create([
-            'submission_id' => $submission->id,
-            'item_name' => 'Laptop Asus Vivobook Pro',
-            'quantity' => 10,
-            'unit' => 'Unit',
-            'estimated_price' => 8500000,
-        ]);
-
-        $submission->recordStatusChange(null, 'draft', $this->kajur);
-        $submission->recordStatusChange('draft', 'submitted', $this->kajur);
-        $submission->recordStatusChange('submitted', 'reviewed_sarpras', $this->sarpras, 'Stok tersedia.');
+        $this->item = Item::where('code', 'BRG-RPL-0001')->firstOrFail();
+        $this->loan = Loan::where('status', 'dipinjam')->firstOrFail();
+        $this->submission = Submission::where('user_id', $this->kajur->id)
+            ->where('status', 'reviewed_sarpras')
+            ->firstOrFail();
     }
 
     public function test_demo_akun_terprovisi_dengan_role_dan_status_aktif(): void
@@ -122,13 +68,10 @@ class DemoReadinessTest extends TestCase
         $this->get(route('home'))->assertOk()
             ->assertViewHas('totalItems', fn ($total) => $total >= 1);
 
-        $submission = Submission::where('user_id', $this->kajur->id)->firstOrFail();
-        $item = Item::firstOrFail();
-
         $this->get(route('kajur.submissions.index'))->assertOk();
-        $this->get(route('kajur.submissions.show', $submission))->assertOk()->assertSee('Riwayat Proses Pengajuan');
+        $this->get(route('kajur.submissions.show', $this->submission))->assertOk()->assertSee('Riwayat Proses Pengajuan');
         $this->get(route('kajur.inventory.index'))->assertOk();
-        $this->get(route('kajur.inventory.show', $item))->assertOk()->assertSee('Peminjaman Aktif');
+        $this->get(route('kajur.inventory.show', $this->item))->assertOk()->assertSee('Peminjaman Aktif');
         $this->get(route('reports.index'))->assertOk()->assertSee('BRG-RPL-0001');
         $this->get(route('reports.pdf', ['type' => 'inventory', 'department' => 'RPL']))->assertOk();
         $this->get(route('reports.excel', ['type' => 'submission', 'department' => 'RPL']))->assertOk();
@@ -141,17 +84,13 @@ class DemoReadinessTest extends TestCase
 
         $this->get(route('home'))->assertOk();
 
-        $item = Item::firstOrFail();
-        $loan = Loan::firstOrFail();
-        $submission = Submission::firstOrFail();
-
         $this->get(route('sarpras.inventory.index'))->assertOk();
-        $this->get(route('sarpras.inventory.show', $item))->assertOk()->assertSee('Peminjaman Aktif');
+        $this->get(route('sarpras.inventory.show', $this->item))->assertOk()->assertSee('Peminjaman Aktif');
         $this->get(route('sarpras.loans.index'))->assertOk();
         $this->get(route('sarpras.loans.create'))->assertOk();
-        $this->get(route('sarpras.loans.show', $loan))->assertOk();
+        $this->get(route('sarpras.loans.show', $this->loan))->assertOk();
         $this->get(route('sarpras.submissions.index'))->assertOk();
-        $this->get(route('sarpras.submissions.show', $submission))->assertOk()->assertSee('Riwayat Proses Pengajuan');
+        $this->get(route('sarpras.submissions.show', $this->submission))->assertOk()->assertSee('Riwayat Proses Pengajuan');
         $this->get(route('sarpras.activity_logs.index'))->assertOk();
         $this->get(route('sarpras.locations.index'))->assertOk();
         $this->get(route('sarpras.logistics.incoming'))->assertOk();
@@ -169,10 +108,8 @@ class DemoReadinessTest extends TestCase
 
         $this->get(route('home'))->assertOk();
 
-        $submission = Submission::firstOrFail();
-
         $this->get(route('kepala_sekolah.approval.index'))->assertOk();
-        $this->get(route('kepala_sekolah.approval.show', $submission))->assertOk()->assertSee('Riwayat Proses Pengajuan');
+        $this->get(route('kepala_sekolah.approval.show', $this->submission))->assertOk()->assertSee('Riwayat Proses Pengajuan');
         $this->get(route('reports.index'))->assertOk();
         $this->get(route('reports.pdf', ['type' => 'submission']))->assertOk();
         $this->get(route('reports.excel', ['type' => 'incoming']))->assertOk();
