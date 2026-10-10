@@ -56,6 +56,14 @@ return new class extends Migration
 
     public function down(): void
     {
+        // Indeks unik inventory_number harus dilepas sebelum kolomnya, jika
+        // tidak rollback gagal di SQLite ("error in index ... after drop column").
+        if (Schema::hasIndex('items', ['inventory_number'], 'unique')) {
+            Schema::table('items', function (Blueprint $table) {
+                $table->dropUnique(['inventory_number']);
+            });
+        }
+
         Schema::table('items', function (Blueprint $table) {
             $table->dropColumn([
                 'inventory_number',

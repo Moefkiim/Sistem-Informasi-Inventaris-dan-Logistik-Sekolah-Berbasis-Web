@@ -28,19 +28,19 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('submissions', function (Blueprint $table) {
-            $table->dropIndex(['submissions_status_index']);
+            $table->dropIndex('submissions_status_index');
         });
         Schema::table('incoming_items', function (Blueprint $table) {
-            $table->dropIndex(['incoming_items_item_id_entry_date_index']);
+            $table->dropIndex('incoming_items_item_id_entry_date_index');
         });
         Schema::table('outgoing_items', function (Blueprint $table) {
-            $table->dropIndex(['outgoing_items_item_id_exit_date_index']);
+            $table->dropIndex('outgoing_items_item_id_exit_date_index');
         });
         Schema::table('distributions', function (Blueprint $table) {
-            $table->dropIndex(['distributions_item_id_distribution_date_index']);
+            $table->dropIndex('distributions_item_id_distribution_date_index');
         });
         Schema::table('items', function (Blueprint $table) {
-            $table->dropIndex(['items_department_index']);
+            $table->dropIndex('items_department_index');
         });
     }
 };

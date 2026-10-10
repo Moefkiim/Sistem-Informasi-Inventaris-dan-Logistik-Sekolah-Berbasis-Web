@@ -33,6 +33,14 @@ return new class extends Migration
 
     public function down(): void
     {
+        foreach (['loans', 'condition_histories', 'location_histories'] as $table) {
+            // Indeks eksplisit harus dilepas sebelum kolomnya, jika tidak
+            // rollback gagal di SQLite ("error in index ... after drop column").
+            if (Schema::hasIndex($table, ['asset_unit_id'])) {
+                Schema::table($table, fn (Blueprint $t) => $t->dropIndex(['asset_unit_id']));
+            }
+        }
+
         Schema::table('loans', function (Blueprint $table) {
             $table->dropConstrainedForeignId('asset_unit_id');
         });
