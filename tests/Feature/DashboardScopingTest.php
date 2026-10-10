@@ -175,4 +175,58 @@ class DashboardScopingTest extends TestCase
         $this->assertSame(2, $charts['trend']['outgoing'][11]);
         $this->assertSame(0, $charts['trend']['incoming'][0]);
     }
+
+    public function test_tren_bulanan_menghitung_data_akhir_bulan_tanpa_tanggal_31(): void
+    {
+        // Februari (28 hari) sebagai bulan berjalan membuktikan rentang tidak
+        // memakai asumsi tanggal '-31' yang invalid di MySQL.
+        $this->travelTo(\Carbon\Carbon::parse('2026-02-10 08:00:00'));
+
+        $item = $this->item('RPL');
+        $item->forceFill(['current_status' => 'aktif'])->save();
+
+        $sarpras = User::factory()->sarpras()->create();
+
+        // Akhir bulan 30 hari (November) di dalam rentang 12 bulan.
+        IncomingItem::create([
+            'transaction_number' => 'TRX-IN-NOV',
+            'item_id' => $item->id,
+            'quantity' => 4,
+            'source' => 'pembelian',
+            'entry_date' => '2025-11-30',
+            'user_id' => $sarpras->id,
+        ]);
+
+        // Akhir bulan berjalan (Februari 2026, 28 hari).
+        IncomingItem::create([
+            'transaction_number' => 'TRX-IN-FEB',
+            'item_id' => $item->id,
+            'quantity' => 3,
+            'source' => 'pembelian',
+            'entry_date' => '2026-02-28',
+            'user_id' => $sarpras->id,
+        ]);
+
+        OutgoingItem::create([
+            'transaction_number' => 'TRX-OUT-NOV',
+            'item_id' => $item->id,
+            'quantity' => 1,
+            'reason' => 'pengeluaran',
+            'exit_date' => '2025-11-30',
+            'user_id' => $sarpras->id,
+        ]);
+
+        $response = $this->actingAs($sarpras)->get(route('home'));
+
+        $response->assertOk();
+
+        $charts = $response->viewData('charts');
+
+        // months[0] = 2025-03 ... months[8] = 2025-11 ... months[11] = 2026-02.
+        $this->assertSame('Nov 25', $charts['trend']['labels'][8]);
+        $this->assertSame('Feb 26', $charts['trend']['labels'][11]);
+        $this->assertSame(4, $charts['trend']['incoming'][8]);
+        $this->assertSame(3, $charts['trend']['incoming'][11]);
+        $this->assertSame(1, $charts['trend']['outgoing'][8]);
+    }
 }

@@ -8,9 +8,9 @@ use App\Models\Location;
 use App\Models\OutgoingItem;
 use App\Models\Submission;
 use App\Models\User;
+use App\Support\DbDate;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class HomeController extends Controller
@@ -167,33 +167,24 @@ class HomeController extends Controller
             $labels[] = $date->translatedFormat('M y');
         }
 
-        $start = $months[0].'-01';
-        $end = $months[11].'-31';
-
-        $driver = DB::connection()->getDriverName();
-        $incomingDateExpr = match ($driver) {
-            'sqlite' => "strftime('%Y-%m', entry_date)",
-            'pgsql' => "to_char(entry_date, 'YYYY-MM')",
-            default => "DATE_FORMAT(entry_date, '%Y-%m')",
-        };
-
-        $outgoingDateExpr = match ($driver) {
-            'sqlite' => "strftime('%Y-%m', exit_date)",
-            'pgsql' => "to_char(exit_date, 'YYYY-MM')",
-            default => "DATE_FORMAT(exit_date, '%Y-%m')",
-        };
+        // Rentang 12 bulan memakai Carbon agar akhir bulan selalu valid
+        // (mis. Februari 28/29 hari), bukan asumsi tanggal '-31'.
+        // Batas akhir memakai akhir hari agar baris pada tanggal terakhir ikut
+        // terjaring (kolom datetime menyimpan komponen waktu).
+        $start = now()->startOfMonth()->subMonths(11)->startOfMonth()->toDateTimeString();
+        $end = now()->endOfMonth()->endOfDay()->toDateTimeString();
 
         $incoming = IncomingItem::query()
             ->when($department !== null, fn ($q) => $q->whereHas('item', fn ($i) => $i->where('department', $department)))
             ->whereBetween('entry_date', [$start, $end])
-            ->selectRaw("{$incomingDateExpr} as month, sum(quantity) as total")
+            ->selectRaw(DbDate::monthKey('entry_date').' as month, sum(quantity) as total')
             ->groupBy('month')
             ->pluck('total', 'month');
 
         $outgoing = OutgoingItem::query()
             ->when($department !== null, fn ($q) => $q->whereHas('item', fn ($i) => $i->where('department', $department)))
             ->whereBetween('exit_date', [$start, $end])
-            ->selectRaw("{$outgoingDateExpr} as month, sum(quantity) as total")
+            ->selectRaw(DbDate::monthKey('exit_date').' as month, sum(quantity) as total')
             ->groupBy('month')
             ->pluck('total', 'month');
 
