@@ -227,6 +227,13 @@
                                 </div>
 
                                 <div class="menu-item">
+                                    <a class="menu-link {{ request()->routeIs('sarpras.realizations.*') ? 'active' : '' }}" href="{{ route('sarpras.realizations.index') }}">
+                                        <span class="menu-icon"><i class="bi bi-box-arrow-down fs-3"></i></span>
+                                        <span class="menu-title">Realisasi Pengajuan</span>
+                                    </a>
+                                </div>
+
+                                <div class="menu-item">
                                     <a class="menu-link {{ request()->routeIs('sarpras.users.*') ? 'active' : '' }}" href="{{ route('sarpras.users.index') }}">
                                         <span class="menu-icon"><i class="bi bi-people fs-3"></i></span>
                                         <span class="menu-title">Manajemen Pengguna</span>
