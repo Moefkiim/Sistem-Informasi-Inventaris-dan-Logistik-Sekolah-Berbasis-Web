@@ -33,6 +33,7 @@ class Submission extends Model
         return [
             'reviewed_at' => 'datetime',
             'decided_at' => 'datetime',
+            'realized_at' => 'datetime',
         ];
     }
 
@@ -59,6 +60,11 @@ class Submission extends Model
     public function principalUser(): BelongsTo
     {
         return $this->belongsTo(User::class, 'principal_user_id');
+    }
+
+    public function realizedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'realized_by');
     }
 
     public function items(): HasMany
@@ -94,6 +100,7 @@ class Submission extends Model
             'reviewed_sarpras' => 'Diverifikasi Sarpras',
             'approved' => 'Disetujui',
             'rejected' => 'Ditolak',
+            'realized' => 'Terealisasi',
             'cancelled' => 'Dibatalkan',
             default => ucfirst((string) $status),
         };
@@ -120,6 +127,11 @@ class Submission extends Model
         return $this->hasMany(Submission::class, 'revision_of_id');
     }
 
+    public function incomingItems(): HasMany
+    {
+        return $this->hasMany(IncomingItem::class)->latest('entry_date');
+    }
+
     /**
      * Riwayat penolakan terakhir (oleh Sarpras atau Kepala Sekolah).
      */
@@ -133,6 +145,16 @@ class Submission extends Model
     public function isRejected(): bool
     {
         return $this->status === 'rejected';
+    }
+
+    public function isRealized(): bool
+    {
+        return $this->status === 'realized';
+    }
+
+    public function canBeRealizedBySarpras(): bool
+    {
+        return $this->status === 'approved';
     }
 
     public function recordStatusChange(

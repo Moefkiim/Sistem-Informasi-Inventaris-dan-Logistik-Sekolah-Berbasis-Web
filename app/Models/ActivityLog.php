@@ -50,6 +50,7 @@ class ActivityLog extends Model
         'submission_approved' => 'Pengajuan Disetujui',
         'submission_rejected' => 'Pengajuan Ditolak',
         'submission_revised' => 'Draf Revisi Dibuat',
+        'submission_realized' => 'Pengajuan Terealisasi',
         'loan_created' => 'Peminjaman Dibuat',
         'loan_approved' => 'Peminjaman Disetujui',
         'loan_returned' => 'Peminjaman Dikembalikan',
