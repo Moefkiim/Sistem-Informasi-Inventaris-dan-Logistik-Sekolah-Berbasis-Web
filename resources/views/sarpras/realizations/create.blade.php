@@ -97,7 +97,7 @@
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">Pilih Barang Inventaris</label>
-                            <select class="form-select @error("lines.{$index}.item_id") is-invalid @enderror" name="lines[{{ $index }}][item_id]" data-mode-panel="existing">
+                            <select class="form-select @error("lines.{$index}.item_id") is-invalid @enderror" name="lines[{{ $index }}][item_id]" data-mode-panel="existing" data-control="select2" data-placeholder="-- Pilih barang --">
                                 <option value="" {{ empty(old("lines.{$index}.item_id")) ? 'selected' : '' }}>-- Pilih barang --</option>
                                 @foreach($items as $item)
                                     <option value="{{ $item->id }}" {{ old("lines.{$index}.item_id") == $item->id ? 'selected' : '' }}>
@@ -148,7 +148,7 @@
                         <div class="row g-3 mt-0">
                             <div class="col-md-4">
                                 <label class="form-label">Lokasi Awal</label>
-                                <select class="form-select @error("lines.{$index}.new_location_id") is-invalid @enderror" name="lines[{{ $index }}][new_location_id]">
+                                <select class="form-select @error("lines.{$index}.new_location_id") is-invalid @enderror" name="lines[{{ $index }}][new_location_id]" data-control="select2" data-placeholder="-- Pilih lokasi --">
                                     <option value="">-- Pilih lokasi --</option>
                                     @foreach($locations as $location)
                                         <option value="{{ $location->id }}" {{ old("lines.{$index}.new_location_id") == $location->id ? 'selected' : '' }}>{{ $location->name }}</option>

@@ -27,7 +27,7 @@ class LogisticsController extends Controller
     public function incomingIndex(): View
     {
         $incomingLogs = IncomingItem::with(['item', 'user'])->latest('entry_date')->paginate(15);
-        $items = Item::all();
+        $items = Item::query()->orderBy('name')->get(['id', 'name', 'stock', 'unit']);
 
         return view('sarpras.logistics.incoming', compact('incomingLogs', 'items'));
     }
@@ -64,7 +64,7 @@ class LogisticsController extends Controller
     public function outgoingIndex(): View
     {
         $outgoingLogs = OutgoingItem::with(['item', 'user'])->latest('exit_date')->paginate(15);
-        $items = Item::where('stock', '>', 0)->get();
+        $items = Item::query()->where('stock', '>', 0)->orderBy('name')->get(['id', 'name', 'stock', 'unit']);
 
         return view('sarpras.logistics.outgoing', compact('outgoingLogs', 'items'));
     }
@@ -122,8 +122,8 @@ class LogisticsController extends Controller
     public function distributionIndex(): View
     {
         $distributions = Distribution::with(['item', 'toLocation', 'user'])->latest('distribution_date')->paginate(15);
-        $items = Item::all();
-        $locations = Location::all();
+        $items = Item::query()->orderBy('name')->get(['id', 'name', 'stock', 'unit']);
+        $locations = Location::query()->orderBy('name')->get(['id', 'name', 'code']);
 
         return view('sarpras.logistics.distributions', compact('distributions', 'items', 'locations'));
     }

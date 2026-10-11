@@ -192,6 +192,7 @@
 
                 <div class="tab-content" id="myTabContent">
                     <div class="tab-pane fade show active" id="tab_lokasi" role="tabpanel">
+                        <div class="table-responsive">
                         <table class="table table-row-bordered fs-7 gy-3">
                             <thead class="bg-light fw-bold">
                                 <tr><th>Unit</th><th>Dari</th><th>Ke Lokasi</th><th>Pencatat</th><th>Catatan</th><th>Waktu</th></tr>
@@ -211,9 +212,11 @@
                                 @endforelse
                             </tbody>
                         </table>
+                        </div>
                     </div>
 
                     <div class="tab-pane fade" id="tab_kondisi" role="tabpanel">
+                        <div class="table-responsive">
                         <table class="table table-row-bordered fs-7 gy-3">
                             <thead class="bg-light fw-bold">
                                 <tr><th>Unit</th><th>Kondisi Asal</th><th>Kondisi Baru</th><th>Pencatat</th><th>Catatan</th><th>Waktu</th></tr>
@@ -233,9 +236,11 @@
                                 @endforelse
                             </tbody>
                         </table>
+                        </div>
                     </div>
 
                     <div class="tab-pane fade" id="tab_masuk" role="tabpanel">
+                        <div class="table-responsive">
                         <table class="table table-row-bordered fs-7 gy-3">
                             <thead class="bg-light fw-bold">
                                 <tr><th>No. Transaksi</th><th>Jumlah</th><th>Asal Sumber</th><th>Tanggal</th></tr>
@@ -253,9 +258,11 @@
                                 @endforelse
                             </tbody>
                         </table>
+                        </div>
                     </div>
 
                     <div class="tab-pane fade" id="tab_keluar" role="tabpanel">
+                        <div class="table-responsive">
                         <table class="table table-row-bordered fs-7 gy-3">
                             <thead class="bg-light fw-bold">
                                 <tr><th>No. Transaksi</th><th>Jumlah</th><th>Alasan</th><th>Tanggal</th></tr>
@@ -273,6 +280,7 @@
                                 @endforelse
                             </tbody>
                         </table>
+                        </div>
                     </div>
                 </div>
             </div>

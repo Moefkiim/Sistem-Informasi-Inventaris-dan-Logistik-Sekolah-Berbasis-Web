@@ -92,15 +92,20 @@
                                 <div class="d-flex flex-stack mb-2">
                                     <label class="form-label fw-bolder text-dark fs-6 mb-0" for="password">Password</label>
                                 </div>
-                                <input
-                                    class="form-control form-control-lg form-control-solid"
-                                    type="password"
-                                    name="password"
-                                    id="password"
-                                    placeholder="Masukkan kata sandi"
-                                    required
-                                    autocomplete="current-password"
-                                />
+                                <div class="input-group input-group-solid">
+                                    <input
+                                        class="form-control form-control-lg form-control-solid"
+                                        type="password"
+                                        name="password"
+                                        id="password"
+                                        placeholder="Masukkan kata sandi"
+                                        required
+                                        autocomplete="current-password"
+                                    />
+                                    <button type="button" class="btn btn-icon btn-active-light-primary" id="togglePassword" aria-label="Tampilkan atau sembunyikan kata sandi">
+                                        <i class="bi bi-eye fs-4"></i>
+                                    </button>
+                                </div>
                             </div>
 
                             <div class="fv-row mb-8">
@@ -126,5 +131,23 @@
     <script src="{{ asset('assets/plugins/global/plugins.bundle.js') }}"></script>
     <script src="{{ asset('assets/js/scripts.bundle.js') }}"></script>
     <script src="{{ asset('js/siils.js') }}?v={{ filemtime(public_path('js/siils.js')) }}" defer></script>
+
+    <script>
+        (function () {
+            const button = document.getElementById('togglePassword');
+            const input = document.getElementById('password');
+            if (!button || !input) return;
+            button.addEventListener('click', function () {
+                const icon = button.querySelector('i');
+                if (input.type === 'password') {
+                    input.type = 'text';
+                    icon.classList.replace('bi-eye', 'bi-eye-slash');
+                } else {
+                    input.type = 'password';
+                    icon.classList.replace('bi-eye-slash', 'bi-eye');
+                }
+            });
+        })();
+    </script>
 </body>
 </html>

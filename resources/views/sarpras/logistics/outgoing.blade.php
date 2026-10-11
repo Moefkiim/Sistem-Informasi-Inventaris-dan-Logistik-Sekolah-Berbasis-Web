@@ -16,7 +16,7 @@
 
                     <div class="mb-4">
                         <label class="form-label fw-bold required">Barang Inventaris (Stok > 0)</label>
-                        <select name="item_id" class="form-select form-select-solid" required>
+                        <select name="item_id" class="form-select form-select-solid" data-control="select2" data-placeholder="-- Pilih Barang --" required>
                             <option value="">-- Pilih Barang --</option>
                             @foreach($items as $it)
                                 <option value="{{ $it->id }}" {{ old('item_id') == $it->id ? 'selected' : '' }}>{{ $it->name }} (Stok: {{ $it->stock }} {{ $it->unit }})</option>

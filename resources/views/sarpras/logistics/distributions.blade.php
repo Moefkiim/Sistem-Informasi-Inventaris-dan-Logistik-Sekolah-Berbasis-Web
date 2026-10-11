@@ -16,7 +16,7 @@
 
                     <div class="mb-4">
                         <label class="form-label fw-bold required">Barang Inventaris</label>
-                        <select name="item_id" class="form-select form-select-solid" required>
+                        <select name="item_id" class="form-select form-select-solid" data-control="select2" data-placeholder="-- Pilih Barang --" required>
                             <option value="">-- Pilih Barang --</option>
                             @foreach($items as $it)
                                 <option value="{{ $it->id }}" {{ old('item_id') == $it->id ? 'selected' : '' }}>{{ $it->name }} (Stok: {{ $it->stock }} {{ $it->unit }})</option>
@@ -31,7 +31,7 @@
 
                     <div class="mb-4">
                         <label class="form-label fw-bold required">Lokasi Penempatan Tujuan</label>
-                        <select name="to_location_id" class="form-select form-select-solid" required>
+                        <select name="to_location_id" class="form-select form-select-solid" data-control="select2" data-placeholder="-- Pilih Lokasi --" required>
                             <option value="">-- Pilih Lokasi --</option>
                             @foreach($locations as $loc)
                                 <option value="{{ $loc->id }}" {{ old('to_location_id') == $loc->id ? 'selected' : '' }}>{{ $loc->name }} ({{ $loc->code }})</option>

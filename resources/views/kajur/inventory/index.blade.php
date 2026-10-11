@@ -84,7 +84,12 @@
                         @endforeach
                     @empty
                         <tr>
-                            <td colspan="10" class="text-center text-muted py-8">Belum ada barang inventaris yang teralokasi ke jurusan {{ $department }}.</td>
+                            <td colspan="10">
+                                <x-empty-state
+                                    icon="bi-box-seam"
+                                    title="Belum ada barang inventaris di jurusan {{ $department }}"
+                                    description="Inventaris yang teralokasi ke jurusan Anda akan tampil di sini." />
+                            </td>
                         </tr>
                     @endforelse
                 </tbody>

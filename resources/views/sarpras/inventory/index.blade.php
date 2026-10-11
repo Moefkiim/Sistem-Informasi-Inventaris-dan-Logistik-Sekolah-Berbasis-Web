@@ -69,7 +69,12 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8" class="text-center text-muted py-8">Belum ada master barang inventaris.</td>
+                            <td colspan="8">
+                                <x-empty-state
+                                    icon="bi-box-seam"
+                                    title="Belum ada master barang inventaris"
+                                    description="Tambahkan barang baru melalui menu Inventaris." />
+                            </td>
                         </tr>
                     @endforelse
                 </tbody>

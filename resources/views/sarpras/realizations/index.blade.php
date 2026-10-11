@@ -4,20 +4,19 @@
 @section('header-title', 'Pengajuan Siap Direalisasi')
 
 @section('content')
-<div class="card border-0 shadow-sm">
-    <div class="card-header border-0 pt-6">
-        <div class="card-title">
-            <h3 class="fw-bolder">Realisasi Pengajuan yang Telah Disetujui</h3>
-        </div>
-    </div>
-    <div class="card-body pt-0">
-        @if(session('success'))
-            <div class="alert alert-success d-flex align-items-center p-4 mb-5">
-                <i class="bi bi-check-circle fs-2 text-success me-3"></i>
-                <div>{{ session('success') }}</div>
-            </div>
-        @endif
+<x-page-header
+    title="Realisasi Pengajuan yang Telah Disetujui"
+    description="Pengajuan berstatus Disetujui yang menunggu dicatat sebagai Barang Masuk." />
 
+@if(session('success'))
+    <div class="alert alert-success d-flex align-items-center p-4 mb-5">
+        <i class="bi bi-check-circle fs-2 text-success me-3"></i>
+        <div>{{ session('success') }}</div>
+    </div>
+@endif
+
+<div class="card border-0 shadow-sm">
+    <div class="card-body pt-6">
         <div class="table-responsive">
             <table class="table align-middle table-row-dashed fs-6 gy-5">
                 <thead>
@@ -49,7 +48,12 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="text-center text-muted py-8">Tidak ada pengajuan yang menunggu realisasi.</td>
+                            <td colspan="7">
+                                <x-empty-state
+                                    icon="bi-inbox"
+                                    title="Tidak ada pengajuan siap direalisasi"
+                                    description="Pengajuan yang disetujui Kepala Sekolah akan muncul di sini." />
+                            </td>
                         </tr>
                     @endforelse
                 </tbody>

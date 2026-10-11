@@ -129,8 +129,8 @@ class SubmissionController extends Controller
         abort_unless($submission->canBeRealizedBySarpras(), 403, 'Pengajuan ini tidak dalam status siap direalisasi.');
 
         $submission->load(['user', 'items']);
-        $items = Item::withTrashed()->whereNull('deleted_at')->orderBy('name')->get();
-        $locations = Location::withTrashed()->whereNull('deleted_at')->orderBy('name')->get();
+        $items = Item::withTrashed()->whereNull('deleted_at')->orderBy('name')->get(['id', 'name', 'code']);
+        $locations = Location::withTrashed()->whereNull('deleted_at')->orderBy('name')->get(['id', 'name']);
 
         return view('sarpras.realizations.create', compact('submission', 'items', 'locations'));
     }

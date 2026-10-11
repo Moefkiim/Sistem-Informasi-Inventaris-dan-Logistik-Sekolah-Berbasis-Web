@@ -77,7 +77,8 @@
                     <div class="col-md-8">
                         <label class="form-label required" for="item_id">Pilih Barang</label>
                         <select name="item_id" id="item_id"
-                                class="form-select form-select-solid @error('item_id') is-invalid @enderror" required>
+                                class="form-select form-select-solid @error('item_id') is-invalid @enderror"
+                                data-control="select2" data-placeholder="-- Pilih Barang --" required>
                             <option value="">-- Pilih Barang --</option>
                             @foreach($items as $item)
                                 <option value="{{ $item->id }}"

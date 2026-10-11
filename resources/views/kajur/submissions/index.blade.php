@@ -4,18 +4,16 @@
 @section('header-title', 'Pengajuan Inventaris (Kajur)')
 
 @section('content')
+<x-page-header
+    title="Riwayat Permohonan Pengajuan Barang"
+    description="Kelola pengajuan inventaris jurusan Anda; draf dapat diubah hingga dikirim ke Sarpras.">
+    <a href="{{ route('kajur.submissions.create') }}" class="btn btn-primary">
+        <i class="bi bi-plus-lg me-1"></i> Buat Pengajuan Baru
+    </a>
+</x-page-header>
+
 <div class="card border-0 shadow-sm">
-    <div class="card-header border-0 pt-6">
-        <div class="card-title">
-            <h3 class="fw-bolder">Riwayat Permohonan Pengajuan Barang</h3>
-        </div>
-        <div class="card-toolbar">
-            <a href="{{ route('kajur.submissions.create') }}" class="btn btn-primary">
-                <i class="bi bi-plus-lg me-1"></i> Buat Pengajuan Baru
-            </a>
-        </div>
-    </div>
-    <div class="card-body pt-0">
+    <div class="card-body pt-6">
         @if(session('success'))
             <div class="alert alert-success d-flex align-items-center p-4 mb-5">
                 <i class="bi bi-check-circle fs-2 text-success me-3"></i>
@@ -80,7 +78,12 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="text-center text-muted py-8">Belum ada pengajuan inventaris yang dibuat.</td>
+                            <td colspan="6">
+                                <x-empty-state
+                                    icon="bi-clipboard-plus"
+                                    title="Belum ada pengajuan inventaris"
+                                    description="Buat pengajuan pertama Anda lewat tombol Buat Pengajuan Baru." />
+                            </td>
                         </tr>
                     @endforelse
                 </tbody>
