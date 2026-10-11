@@ -76,7 +76,6 @@ jobs:
         image: ${{ matrix.db }}
         env:
           MYSQL_ROOT_PASSWORD: password
-          MYSQL_DATABASE: siils_test
         ports:
           - 3306:3306
         options: >-
@@ -89,7 +88,7 @@ jobs:
       DB_CONNECTION: mysql
       DB_HOST: 127.0.0.1
       DB_PORT: 3306
-      DB_DATABASE: siils_test
+      DB_DATABASE: siils_ci
       DB_USERNAME: root
       DB_PASSWORD: password
 
@@ -127,8 +126,14 @@ jobs:
       - name: Generate key
         run: php artisan key:generate
 
-      - name: Migrate and seed on real database
-        run: php artisan migrate:fresh --seed --force
+      - name: Install (otomatis membuat database siils_ci, migrate, seed)
+        run: php artisan siils:install --force
+
+      - name: Periksa prasyarat setelah instalasi
+        run: php artisan siils:check
+
+      - name: Instalasi ulang (membuktikan idempoten)
+        run: php artisan siils:install --force
 
       - name: Run tests on MySQL/MariaDB
         run: php artisan test

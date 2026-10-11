@@ -736,3 +736,119 @@ warna pada `resources/views/layouts/app.blade.php`:
 
 - Tidak ada perubahan skema database pada Task ini.
 - Perbaikan hanya pada presentasi; logika bisnis (scoping, stok, approval) tidak diubah.
+
+---
+
+## 13. Instalasi Mulus (Laragon + MySQL) dan Database Nyata tanpa "Suntik" — TASK 1–10
+
+Tanggal: 11 Oktober 2026. Lingkup: mengikuti prompt `prompt-instalasi-mysql-laragon.md`
+(TASK 1–10, disediakan pemilik). Sasaran: dari clone bersih di Windows ber-Laragon, cukup beberapa perintah lalu
+aplikasi langsung jalan dengan **MySQL/MariaDB sungguhan**, seluruh data awal berasal dari
+migration + seeder yang di-commit (tanpa `tinker`/SQL manual), dan pembuktian lewat CI MySQL.
+
+> Catatan: bagian ini adalah kondisi terkini. Untuk langkah instalasi terbaru, rujuk
+> `README.md` §6 (bagian §10 laporan ini masih menyebut Node/Vite/SQLite dari era sebelum TASK 6
+> dan sudah usang).
+
+### 13.1 Status temuan I1–I9
+
+| ID | Temuan | Status | Commit | Bukti |
+|---|---|---|---|---|
+| I1 | Database default SQLite | **Selesai** | `3a6e814` | `.env.example` `DB_CONNECTION=mysql`; `config/database.php` fallback `mysql` |
+| I2 | Seeder hanya 4 akun | **Selesai** | `c4023cc` | `DemoMasterSeeder`…`DemoWorkflowSeeder`; `DemoDataSeederTest`/`DemoReadinessTest` |
+| I3 | Tiga versi PHP berbeda | **Selesai** | `f1cb87e` | `config.platform.php=8.3.0`, lock Symfony 7.4.x; CI matriks 8.3 & 8.4; `composer check-platform-reqs` |
+| I4 | Vite wajib dibangun | **Selesai** | `38c5384` | `public/js/siils.js` statis; `@vite` dihapus; `package.json`/`vite.config.js` hilang |
+| I5 | Query khusus SQLite (`strftime`, `-31`) | **Selesai** | `179b065` | `App\Support\DbDate` + rentang Carbon `endOfMonth()`; `MonthlyReportTest` |
+| I6 | README tidak ramah Windows/Laragon | **Selesai** | `c027887` | README §6: Laragon, cmd/PowerShell/bash, HeidiSQL, tabel troubleshooting |
+| I7 | Lokal & zona waktu belum Indonesia | **Selesai** | `3f7fe66` | `.env.example` `Asia/Jakarta`/`id`; `lang/id/*`; `LocalizationTest` |
+| I8 | MySQL tidak pernah diuji | **Selesai (lokal)** | `1dd2b22`+`179b065` | Job `mysql-install`; **lokal MySQL 8.4.3: 197 test hijau** (lihat §13.4) |
+| I9 | `down()` indeks & `setup` tanpa seed | **Selesai** | `b680c30` + `9ec6187` | `dropIndex` dikoreksi; `composer setup` → `siils:install` (migrate + seed) |
+
+### 13.2 Temuan BARU saat verifikasi MySQL (tidak ada di daftar I1–I9)
+
+**N1 — `siils:install` gagal membuat database di MySQL.** `ensureDatabase()` memakai
+`PDO::quote($database)` sehingga menghasilkan `CREATE DATABASE IF NOT EXISTS 'siils' ...`.
+MySQL/MariaDB **tidak menerima identifier berkutip tunggal**, sehingga keluar error
+`SQLSTATE[42000] ... 1064 ... near ''siils' CHARACTER SET ...'`. Bug ini **hanya muncul di
+MySQL/MariaDB** (SQLite tidak lewat jalur ini) dan tidak tertangkap `InstallCommandTest`
+karena test tersebut memaksa `config('database.default')='sqlite'`.
+
+- **Perbaikan** (commit `a00adba`): helper `SiilsInstall::createDatabaseStatement()` memakai
+  identifier backtick (valid di MySQL & MariaDB); nama database tetap divalidasi regex
+  `^[A-Za-z0-9_]+$` sebelum dipakai. Auto-create kini dibatasi ke `mysql`/`mariadb`.
+- **Regression guard**: `InstallCommandTest::test_statement_create_database_memakai_identifier_backtick()`.
+- **Verifikasi nyata** (MySQL 8.4.3, §13.4): drop DB → `siils:check` gagal `1049` → `siils:install`
+  membuat DB + migrate + seed (exit 0) → `siils:check` sukses → `siils:install` kedua idempoten.
+
+### 13.3 Keputusan PHP
+
+**Pilihan A** (disarankan prompt): `config.platform.php = 8.3.0`, lock memakai Symfony 7.4.x,
+diuji di PHP 8.3, 8.4, dan 8.5. Tidak ada paket yang memaksa PHP ≥ 8.4 setelah keputusan ini.
+
+### 13.4 Bukti verifikasi lokal (Windows/Laragon — MySQL nyata)
+
+Dijalankan pada **MySQL 8.4.3** (Windows, via `cmd.exe`) dengan `DB_DATABASE=siils_verify`:
+
+| Langkah | Hasil |
+|---|---|
+| `DROP DATABASE siils_verify` | exit 0 (dipastikan belum ada) |
+| `php artisan siils:check` (sebelum dibuat) | **gagal** `1049 Unknown database 'siils_verify'` (exit 1) — pesan Bahasa Indonesia |
+| `php artisan siils:install --force` | **membuat database otomatis**, 16 migration, 5 seeder — exit 0 |
+| `php artisan siils:check` (sesudah) | sukses "Semua prasyarat terpenuhi" (exit 0) |
+| `php artisan siils:install --force` (kedua) | idempoten — seeder melaporkan "sudah ada, dilewati" — exit 0 |
+| Jumlah baris per tabel | cocok persis dengan tabel README (users 5, locations 6, items 7, asset_units 11, incoming 7, outgoing 4, distributions 2, submissions 6, submission_items 7, submission_histories 16, loans 5, activity_logs 33, condition_histories 11, location_histories 9, documents 0) |
+| `php artisan test` di MySQL | **197 test hijau, 753 assertion** (exit 0) |
+| `php artisan test` di SQLite | **197 test hijau, 753 assertion** |
+
+Modul Dokumen memang kosong (`documents=0`) sesuai aturan (tidak ada berkas palsu).
+
+### 13.5 Smoke test per role
+
+Sudah terpenuhi oleh `tests/Feature/DemoReadinessTest.php` (dijalankan di seluruh suite,
+termasuk job MySQL): setelah seed, `kajur_rpl`, `sarpras`, dan `kepsek` login lalu membuka
+dashboard, inventaris, laporan, pengajuan/persetujuan, peminjaman, dan riwayat aktivitas —
+semuanya `assertOk()` dan beberapa `assertSee(...)` memverifikasi halaman tidak kosong.
+
+### 13.6 CI
+
+`.github/workflows/tests.yml` job `MySQL/MariaDB` diperbarui sesuai TASK 10: database tidak
+dibuat lebih dulu oleh service (`DB_DATABASE=siils_ci`), lalu langkah
+`siils:install --force` (menguji pembuatan otomatis) → `siils:check` → `siils:install --force`
+(membuktikan idempoten) → `php artisan test`.
+
+> **BELUM DIVERIFIKASI DI CI.** Push dari lingkungan kerja ini gagal
+> (`git@github.com: Permission denied (publickey)`; `gh` tidak tersedia), sehingga run CI
+> (hijau/merah) **tidak dapat dijalankan atau ditunjukkan**. Langkah-langkah dan perintahnya
+> sudah diverifikasi secara lokal di MySQL 8.4.3 (§13.4), tetapi **nomor run CI belum ada**.
+> Tindakan yang perlu Anda lakukan: push dari PC Windows ber-kredensial, lalu catat hasil run.
+
+### 13.7 Pencarian sisa data "suntikan"
+
+`git grep` atas seluruh berkas ter-track tidak menemukan skrip sementara, pemanggilan `tinker`,
+maupun `INSERT` SQL manual untuk data dev. Tidak ada step dokumentasi yang bergantung pada data
+yang tidak dibuat seeder. Sisa artefak era Node yang masih ada: `.npmrc` (ter-track, isinya
+`ignore-scripts=true`/`audit=true`, tidak dipakai lagi) dan `node_modules/` (gitignored, tidak
+ter-commit) — keduanya bukan data suntikan dan tidak memengaruhi instalasi tanpa Node.
+
+### 13.8 Checklist manual untuk pemilik (SEMUA "belum diverifikasi di Laragon")
+
+- [ ] Clone bersih ke `C:\laragon\www\siils` — belum diverifikasi di Laragon
+- [ ] Laragon **Start All**; PHP → Versi = 8.3/8.4; PHP → Ekstensi aktifkan `gd`, `zip`, `pdo_mysql` — belum diverifikasi di Laragon
+- [ ] `composer setup` dari Terminal Laragon — belum diverifikasi di Laragon
+- [ ] Buka `http://siils.test` — belum diverifikasi di Laragon
+- [ ] Login `kajur_rpl` / `sarpras` / `kepsek` (password `password123`) — belum diverifikasi di Laragon
+- [ ] Buka HeidiSQL (menu Database) → pilih `siils` → tabel & data demo terlihat — belum diverifikasi di Laragon
+- [ ] `php artisan siils:check` melaporkan "Semua prasyarat terpenuhi" — belum diverifikasi di Laragon
+- [ ] (Opsional, destruktif) `php artisan siils:install --fresh` — belum diverifikasi di Laragon
+
+### 13.9 Perintah berguna
+
+```bash
+php artisan siils:check              # cek prasyarat (hanya-baca)
+composer setup                       # install + .env + key + buat DB + migrate + seed
+php artisan siils:install            # idempoten
+php artisan siils:install --tanpa-demo
+php artisan siils:install --fresh    # destruktif, ditolak di production
+php artisan test                     # 197 test (SQLite lokal; MySQL di CI)
+```
+

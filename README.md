@@ -362,7 +362,7 @@ Sumber tunggal daftar jurusan berada di `config/departments.php` (helper `app/Su
 
 ## 7. Menjalankan Test
 
-Proyek ini dilengkapi suite pengujian otomatis berbasis PHPUnit (**196 test** pada **30 file**) untuk menguji alur autentikasi, pembatasan hak akses antar peran, alur bisnis, logistik, laporan, seeder demo, instalasi, dan lokalisasi. Suite yang sama dijalankan terhadap **SQLite (in-memory)** dan **MySQL/MariaDB sungguhan** di CI.
+Proyek ini dilengkapi suite pengujian otomatis berbasis PHPUnit (**197 test** pada **30 file**) untuk menguji alur autentikasi, pembatasan hak akses antar peran, alur bisnis, logistik, laporan, seeder demo, instalasi, dan lokalisasi. Suite yang sama dijalankan terhadap **SQLite (in-memory)** dan **MySQL/MariaDB sungguhan** di CI.
 
 ### Perintah Pengujian
 
@@ -447,7 +447,7 @@ php artisan test
 **Tersedia.** Repositori ini dilengkapi workflow GitHub Actions (`.github/workflows/tests.yml`) yang berjalan pada setiap `push` dan `pull_request` ke branch `main`:
 
 - **Job `SQLite`** — matriks **PHP 8.3 & 8.4**. Menjalankan `composer install`, `composer check-platform-reqs`, migrasi SQLite, lalu seluruh suite (`php artisan test`).
-- **Job `MySQL/MariaDB`** — matriks **`mysql:8.0` & `mariadb:10.11`** memakai `services` dengan healthcheck. Menjalankan `composer install`, `composer check-platform-reqs`, `php artisan migrate:fresh --seed --force` pada database sungguhan, memeriksa `php artisan siils:check`, menguji pembuatan database lewat `php artisan siils:install` (termasuk pemanggilan kedua untuk membuktikan idempotensi), lalu menjalankan seluruh suite terhadap MySQL/MariaDB.
+- **Job `MySQL/MariaDB`** — matriks **`mysql:8.0` & `mariadb:10.11`** memakai `services` dengan healthcheck. Menjalankan `composer install`, `composer check-platform-reqs`, lalu `php artisan siils:install --force` yang **membuat database secara otomatis**, memigrasi, dan mengisi data demo pada database sungguhan; dilanjutkan `php artisan siils:check`, pemanggilan `siils:install` kedua (membuktikan idempotensi), dan seluruh suite terhadap MySQL/MariaDB.
 
 Workflow memastikan regresi terdeteksi — termasuk perbedaan perilaku MySQL vs SQLite — sebelum perubahan digabung ke `main`.
 
