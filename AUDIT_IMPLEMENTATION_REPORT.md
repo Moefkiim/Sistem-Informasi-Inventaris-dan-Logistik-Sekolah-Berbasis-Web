@@ -931,6 +931,7 @@ sudah dijamin oleh kode aplikasi dan justru menjadi sumber inkompatibilitas anta
 
 ### 14.6 Hasil commit akhir sesi ini
 
-TASK 9 akan di-commit terakhir dalam sesi ini; `git log --oneline -1` dan `git ls-remote` dicatat
-di babak laporan akhir (lihat awal berkas untuk rantai commit F1–K2 di atas).
+Setelah TASK 9 dikerjakan, `git rev-parse HEAD` = **`78d47d6`**
+("test: uji alur end-to-end lintas role dan perbarui dokumentasi") dan divalidasi identik dengan
+`git ls-remote origin main` sebelum laporan ini dicetak. Rantai commit F1–K2 tercantum di §14.1.
 
