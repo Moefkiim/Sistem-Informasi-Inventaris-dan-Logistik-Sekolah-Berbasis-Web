@@ -308,12 +308,17 @@
                             <span class="text-white fw-bolder fs-7 text-truncate" title="{{ auth()->user()->name }}">{{ auth()->user()->name }}</span>
                             <span class="text-gray-500 fs-8">{{ strtoupper(str_replace('_', ' ', auth()->user()->role)) }}</span>
                         </div>
-                        <form action="{{ route('logout') }}" method="POST" class="d-inline ms-2">
-                            @csrf
-                            <button type="submit" class="btn btn-icon btn-sm btn-active-color-danger" title="Keluar">
-                                <i class="bi bi-box-arrow-right fs-5 text-gray-400"></i>
-                            </button>
-                        </form>
+                        <div class="d-flex align-items-center gap-1 ms-2">
+                            <a href="{{ route('profile.show') }}" class="btn btn-icon btn-sm btn-active-color-primary" title="Akun Saya">
+                                <i class="bi bi-person-gear fs-5 text-gray-400"></i>
+                            </a>
+                            <form action="{{ route('logout') }}" method="POST" class="d-inline">
+                                @csrf
+                                <button type="submit" class="btn btn-icon btn-sm btn-active-color-danger" title="Keluar">
+                                    <i class="bi bi-box-arrow-right fs-5 text-gray-400"></i>
+                                </button>
+                            </form>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -345,6 +350,9 @@
                                         — {{ auth()->user()->departmentLabel() }}
                                     @endif
                                 </span>
+                                <a href="{{ route('profile.show') }}" class="btn btn-sm btn-light-primary fw-bolder">
+                                    <i class="bi bi-person-gear me-1"></i> <span class="d-none d-lg-inline">Akun Saya</span>
+                                </a>
                                 <form action="{{ route('logout') }}" method="POST" class="d-inline">
                                     @csrf
                                     <button type="submit" class="btn btn-sm btn-light-danger fw-bolder">

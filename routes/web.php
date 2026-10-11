@@ -15,8 +15,12 @@ Route::middleware('guest')->group(function () {
 });
 
 // Autentikasi User (Wajib Login & Status Aktif)
-Route::middleware(['auth', 'role'])->group(function () {
+Route::middleware(['auth', 'role', 'password.changed'])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+
+    // Halaman Akun Saya & Ubah Kata Sandi (Semua Role)
+    Route::get('/profile', [\App\Http\Controllers\ProfileController::class, 'show'])->name('profile.show');
+    Route::put('/profile/password', [\App\Http\Controllers\ProfileController::class, 'updatePassword'])->middleware('throttle:6,1')->name('profile.password');
 
     // Home / Landing status setelah login
     Route::get('/home', [\App\Http\Controllers\HomeController::class, 'index'])->name('home');
