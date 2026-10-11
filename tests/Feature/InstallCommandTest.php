@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Console\Commands\SiilsInstall;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
@@ -90,5 +91,13 @@ class InstallCommandTest extends TestCase
         $this->artisan('siils:install')
             ->assertFailed()
             ->expectsOutputToContain('Nama database "bad;name" tidak valid');
+    }
+
+    public function test_statement_create_database_memakai_identifier_backtick(): void
+    {
+        $this->assertSame(
+            'CREATE DATABASE IF NOT EXISTS `siils` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci',
+            SiilsInstall::createDatabaseStatement('siils')
+        );
     }
 }

@@ -122,7 +122,7 @@ class SiilsInstall extends Command
             return true;
         }
 
-        if (! in_array($connection, ['mysql', 'mariadb', 'pgsql'], true)) {
+        if (! in_array($connection, ['mysql', 'mariadb'], true)) {
             $this->line("  ✘ Driver database \"{$connection}\" belum didukung otomatis.");
             $this->line('     Solusi: gunakan MySQL/MariaDB (default) atau SQLite.');
 
@@ -149,8 +149,7 @@ class SiilsInstall extends Command
                 PDO::ATTR_TIMEOUT => 5,
             ]);
 
-            $quoteDatabase = $pdo->quote($database);
-            $pdo->exec("CREATE DATABASE IF NOT EXISTS {$quoteDatabase} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+            $pdo->exec(self::createDatabaseStatement($database));
             $pdo = null;
 
             $this->line("  ✔ Database \"{$database}\" tersedia (dibuat bila belum ada).");
@@ -172,6 +171,16 @@ class SiilsInstall extends Command
         }
 
         return true;
+    }
+
+    /**
+     * Statement CREATE DATABASE. Nama wajib sudah lolos validasi regex
+     * ^[A-Za-z0-9_]+$ (lihat ensureDatabase), sehingga aman dibungkus backtick.
+     * Backtick adalah identifier yang valid di MySQL maupun MariaDB.
+     */
+    public static function createDatabaseStatement(string $database): string
+    {
+        return "CREATE DATABASE IF NOT EXISTS `{$database}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci";
     }
 
     private function ensureSqliteFileExists(): void
