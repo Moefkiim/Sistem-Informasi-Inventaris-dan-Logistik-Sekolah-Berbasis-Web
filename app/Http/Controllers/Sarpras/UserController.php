@@ -3,11 +3,15 @@
 namespace App\Http\Controllers\Sarpras;
 
 use App\Http\Controllers\Controller;
+use App\Models\ActivityLog;
 use App\Models\User;
 use App\Support\Departments;
+use App\Support\TemporaryPassword;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Password;
 use Illuminate\View\View;
 
 class UserController extends Controller
@@ -25,7 +29,7 @@ class UserController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'username' => ['required', 'string', 'max:50', 'unique:users,username'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
-            'password' => ['required', 'string', 'min:6'],
+            'password' => ['required', 'string', Password::min(8)->letters()->numbers()],
             'role' => ['required', 'in:kajur,sarpras'],
             'department' => ['required_if:role,kajur', 'nullable', Rule::in(Departments::codes())],
         ]);
@@ -39,9 +43,80 @@ class UserController extends Controller
         $user->role = $validated['role'];
         $user->department = $validated['department'] ?? null;
         $user->is_active = true;
+        $user->must_change_password = true;
         $user->save();
 
-        return back()->with('success', 'Pengguna baru berhasil ditambahkan.');
+        ActivityLog::log(
+            action: 'user_created',
+            description: "Pengguna {$user->name} ({$user->username}) dibuat dengan peran {$user->role}; wajib mengganti kata sandi saat login.",
+            auditable: $user,
+            label: $user->username,
+        );
+
+        return back()->with('success', 'Pengguna baru berhasil ditambahkan. Kata sandi awal wajib diganti saat login pertama.');
+    }
+
+    public function update(Request $request, User $user): RedirectResponse
+    {
+        if ($this->isProtected($user)) {
+            return back()->withErrors(['msg' => 'Anda tidak memiliki wewenang untuk mengubah akun Kepala Sekolah atau Sarpras.']);
+        }
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'department' => [
+                $user->role === 'kajur' ? 'required' : 'nullable',
+                Rule::in(Departments::codes()),
+            ],
+        ]);
+
+        $oldName = $user->name;
+        $oldDepartment = $user->department;
+
+        $user->name = $validated['name'];
+        $user->department = $user->role === 'kajur' ? $validated['department'] : null;
+        $user->save();
+
+        ActivityLog::log(
+            action: 'user_updated',
+            description: "Pengguna {$user->name} ({$user->username}) diperbarui.",
+            auditable: $user,
+            oldValues: ['name' => $oldName, 'department' => $oldDepartment],
+            newValues: ['name' => $user->name, 'department' => $user->department],
+            label: $user->username,
+        );
+
+        return back()->with('success', "Data pengguna {$user->name} berhasil diperbarui.");
+    }
+
+    public function resetPassword(User $user): RedirectResponse
+    {
+        if ($this->isProtected($user)) {
+            return back()->withErrors(['msg' => 'Anda tidak memiliki wewenang untuk mereset kata sandi akun Kepala Sekolah atau Sarpras.']);
+        }
+
+        $temporary = TemporaryPassword::generate();
+
+        // password di-cast 'hashed' sehingga nilai mentah otomatis di-hash saat disimpan
+        $user->password = $temporary;
+        $user->must_change_password = true;
+        $user->save();
+
+        $this->invalidateSessions($user);
+
+        ActivityLog::log(
+            action: 'user_password_reset',
+            description: "Kata sandi akun {$user->name} ({$user->username}) direset; wajib diganti saat login berikutnya.",
+            auditable: $user,
+            label: $user->username,
+        );
+
+        // Kata sandi sementara ditampilkan sekali lewat flash session, tidak disimpan dalam bentuk asli.
+        return back()->with('temporary_password', [
+            'name' => $user->name,
+            'username' => $user->username,
+            'password' => $temporary,
+        ]);
     }
 
     public function toggleStatus(User $user): RedirectResponse
@@ -50,7 +125,7 @@ class UserController extends Controller
             return back()->withErrors(['msg' => 'Anda tidak dapat menonaktifkan akun sendiri.']);
         }
 
-        if (in_array($user->role, ['kepala_sekolah', 'sarpras'])) {
+        if ($this->isProtected($user)) {
             return back()->withErrors(['msg' => 'Anda tidak memiliki wewenang untuk mengubah status akun Kepala Sekolah atau Sarpras.']);
         }
 
@@ -61,5 +136,21 @@ class UserController extends Controller
         $statusText = $user->is_active ? 'diaktifkan' : 'dinonaktifkan';
 
         return back()->with('success', "Status akun pengguna {$user->name} berhasil {$statusText}.");
+    }
+
+    private function isProtected(User $user): bool
+    {
+        return in_array($user->role, ['kepala_sekolah', 'sarpras'], true);
+    }
+
+    private function invalidateSessions(User $user): void
+    {
+        if (config('session.driver') !== 'database') {
+            return;
+        }
+
+        DB::table(config('session.table', 'sessions'))
+            ->where('user_id', $user->id)
+            ->delete();
     }
 }

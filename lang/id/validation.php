@@ -148,6 +148,9 @@ return [
     'custom' => [
         'password' => [
             'min' => 'Kata sandi minimal :min karakter.',
+            'letters' => 'Kata sandi harus mengandung setidaknya satu huruf.',
+            'numbers' => 'Kata sandi harus mengandung setidaknya satu angka.',
+            'mixed' => 'Kata sandi harus mengandung setidaknya satu huruf besar dan satu huruf kecil.',
         ],
     ],
 
