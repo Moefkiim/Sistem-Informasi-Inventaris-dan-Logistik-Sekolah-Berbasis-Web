@@ -91,30 +91,39 @@
 
                 <!-- Form Pindah Lokasi -->
                 <h5 class="fw-bolder mb-3 text-dark"><i class="bi bi-geo-alt me-1 text-primary"></i> Mutasi Lokasi</h5>
-                <form action="{{ route('sarpras.inventory.updateLocation', $item) }}" method="POST">
+                <form action="{{ route('sarpras.inventory.updateLocation', $item) }}" method="POST" data-disable-on-submit>
                     @csrf
                     @if($item->isIndividual() && $item->assetUnits && $item->assetUnits->isNotEmpty())
                         <div class="mb-3">
-                            <select name="asset_unit_id" class="form-select form-select-solid form-select-sm" required>
+                            <select name="asset_unit_id" class="form-select form-select-solid form-select-sm @error('asset_unit_id') is-invalid @enderror" required>
                                 <option value="">-- Pilih Unit Aset --</option>
                                 @foreach($item->assetUnits as $unit)
-                                    <option value="{{ $unit->id }}">{{ $unit->unit_inventory_number }}</option>
+                                    <option value="{{ $unit->id }}" {{ old('asset_unit_id') == $unit->id ? 'selected' : '' }}>{{ $unit->unit_inventory_number }}</option>
                                 @endforeach
                             </select>
+                            @error('asset_unit_id')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
                         </div>
                     @endif
                     <div class="mb-3">
-                        <select name="to_location_id" class="form-select form-select-solid form-select-sm" required>
+                        <select name="to_location_id" class="form-select form-select-solid form-select-sm @error('to_location_id') is-invalid @enderror" required>
                             <option value="">-- Pilih Lokasi Baru --</option>
                             @foreach($locations as $loc)
-                                <option value="{{ $loc->id }}" {{ $item->location_id == $loc->id ? 'disabled' : '' }}>
+                                <option value="{{ $loc->id }}" {{ old('to_location_id') == $loc->id ? 'selected' : '' }} {{ $item->location_id == $loc->id ? 'disabled' : '' }}>
                                     {{ $loc->name }} ({{ $loc->code }})
                                 </option>
                             @endforeach
                         </select>
+                        @error('to_location_id')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
                     </div>
                     <div class="mb-3">
-                        <input type="text" name="notes" class="form-control form-control-solid form-control-sm" placeholder="Alasan perpindahan lokasi...">
+                        <input type="text" name="notes" value="{{ old('notes') }}" class="form-control form-control-solid form-control-sm @error('notes') is-invalid @enderror" placeholder="Alasan perpindahan lokasi...">
+                        @error('notes')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
                     </div>
                     <button type="submit" class="btn btn-sm btn-primary w-100">Catat Mutasi Lokasi</button>
                 </form>
@@ -123,27 +132,36 @@
 
                 <!-- Form Update Kondisi Fisik -->
                 <h5 class="fw-bolder mb-3 text-dark"><i class="bi bi-activity me-1 text-warning"></i> Ubah Kondisi Fisik</h5>
-                <form action="{{ route('sarpras.inventory.updateCondition', $item) }}" method="POST">
+                <form action="{{ route('sarpras.inventory.updateCondition', $item) }}" method="POST" data-disable-on-submit>
                     @csrf
                     @if($item->isIndividual() && $item->assetUnits && $item->assetUnits->isNotEmpty())
                         <div class="mb-3">
-                            <select name="asset_unit_id" class="form-select form-select-solid form-select-sm" required>
+                            <select name="asset_unit_id" class="form-select form-select-solid form-select-sm @error('asset_unit_id') is-invalid @enderror" required>
                                 <option value="">-- Pilih Unit Aset --</option>
                                 @foreach($item->assetUnits as $unit)
-                                    <option value="{{ $unit->id }}">{{ $unit->unit_inventory_number }}</option>
+                                    <option value="{{ $unit->id }}" {{ old('asset_unit_id') == $unit->id ? 'selected' : '' }}>{{ $unit->unit_inventory_number }}</option>
                                 @endforeach
                             </select>
+                            @error('asset_unit_id')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
                         </div>
                     @endif
                     <div class="mb-3">
-                        <select name="to_condition" class="form-select form-select-solid form-select-sm" required>
-                            <option value="baik" {{ $item->current_condition === 'baik' ? 'selected' : '' }}>Baik</option>
-                            <option value="rusak_ringan" {{ $item->current_condition === 'rusak_ringan' ? 'selected' : '' }}>Rusak Ringan</option>
-                            <option value="rusak_berat" {{ $item->current_condition === 'rusak_berat' ? 'selected' : '' }}>Rusak Berat</option>
+                        <select name="to_condition" class="form-select form-select-solid form-select-sm @error('to_condition') is-invalid @enderror" required>
+                            <option value="baik" {{ old('to_condition', $item->current_condition) === 'baik' ? 'selected' : '' }}>Baik</option>
+                            <option value="rusak_ringan" {{ old('to_condition', $item->current_condition) === 'rusak_ringan' ? 'selected' : '' }}>Rusak Ringan</option>
+                            <option value="rusak_berat" {{ old('to_condition', $item->current_condition) === 'rusak_berat' ? 'selected' : '' }}>Rusak Berat</option>
                         </select>
+                        @error('to_condition')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
                     </div>
                     <div class="mb-3">
-                        <input type="text" name="notes" class="form-control form-control-solid form-control-sm" placeholder="Catatan kondisi fisik baru...">
+                        <input type="text" name="notes" value="{{ old('notes') }}" class="form-control form-control-solid form-control-sm @error('notes') is-invalid @enderror" placeholder="Catatan kondisi fisik baru...">
+                        @error('notes')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
                     </div>
                     <button type="submit" class="btn btn-sm btn-warning w-100 text-dark">Simpan Riwayat Kondisi</button>
                 </form>

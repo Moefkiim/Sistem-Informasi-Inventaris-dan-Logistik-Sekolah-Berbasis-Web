@@ -13,11 +13,6 @@
             <form action="{{ route('sarpras.logistics.distributions.store') }}" method="POST" data-disable-on-submit>
                 @csrf
                 <div class="card-body">
-                    @if($errors->any())
-                        <div class="alert alert-danger p-3 mb-4">
-                            @foreach($errors->all() as $err)<div>{{ $err }}</div>@endforeach
-                        </div>
-                    @endif
 
                     <div class="mb-4">
                         <label class="form-label fw-bold required">Barang Inventaris</label>

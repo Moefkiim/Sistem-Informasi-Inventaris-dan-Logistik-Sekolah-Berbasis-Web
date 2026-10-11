@@ -41,7 +41,7 @@
             <div class="d-flex flex-column flex-lg-row-fluid py-10">
                 <div class="d-flex flex-center flex-column flex-column-fluid">
                     <div class="w-lg-450px p-10 p-lg-15 mx-auto">
-                        <form class="form w-100" method="POST" action="{{ route('login') }}">
+                        <form class="form w-100" method="POST" action="{{ route('login') }}" data-disable-on-submit>
                             @csrf
                             <div class="text-center mb-10">
                                 <h1 class="text-dark mb-3 fw-bolder">Selamat Datang</h1>
@@ -118,5 +118,6 @@
     <!-- Scripts Bundle Metronic -->
     <script src="{{ asset('assets/plugins/global/plugins.bundle.js') }}"></script>
     <script src="{{ asset('assets/js/scripts.bundle.js') }}"></script>
+    <script src="{{ asset('js/siils.js') }}?v={{ filemtime(public_path('js/siils.js')) }}" defer></script>
 </body>
 </html>

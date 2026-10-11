@@ -77,7 +77,10 @@
                     @csrf
                     <div class="mb-4">
                         <label class="form-label fw-bold">Catatan / Arahan Kepala Sekolah</label>
-                        <textarea name="principal_notes" class="form-control" rows="3" placeholder="Tuliskan arahan pelaksanaan pengadaan barang..."></textarea>
+                        <textarea name="principal_notes" class="form-control @error('principal_notes') is-invalid @enderror" rows="3" placeholder="Tuliskan arahan pelaksanaan pengadaan barang...">{{ old('principal_notes') }}</textarea>
+                        @error('principal_notes')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
                     </div>
                     <div class="d-flex justify-content-end gap-3">
                         <button type="submit" name="action" value="reject" class="btn btn-danger" onclick="return confirm('Apakah Anda yakin ingin MENOLAK pengajuan ini?')">

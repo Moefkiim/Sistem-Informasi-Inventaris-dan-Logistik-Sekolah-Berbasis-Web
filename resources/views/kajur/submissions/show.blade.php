@@ -116,13 +116,13 @@
                 <a href="{{ route('kajur.submissions.edit', $submission) }}" class="btn btn-light-warning">
                     <i class="bi bi-pencil me-1"></i> Edit Draft
                 </a>
-                <form action="{{ route('kajur.submissions.cancel', $submission) }}" method="POST">
+                <form action="{{ route('kajur.submissions.cancel', $submission) }}" method="POST" data-disable-on-submit>
                     @csrf
                     <button type="submit" class="btn btn-light-danger" onclick="return confirm('Yakin ingin membatalkan draf pengajuan?')">
                         Batalkan Draft
                     </button>
                 </form>
-                <form action="{{ route('kajur.submissions.submitDraft', $submission) }}" method="POST">
+                <form action="{{ route('kajur.submissions.submitDraft', $submission) }}" method="POST" data-disable-on-submit>
                     @csrf
                     <button type="submit" class="btn btn-primary" onclick="return confirm('Kirim pengajuan ke Sarpras?')">
                         <i class="bi bi-send me-1"></i> Kirim ke Sarpras

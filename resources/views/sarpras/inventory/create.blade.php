@@ -11,13 +11,6 @@
     <form action="{{ route('sarpras.inventory.store') }}" method="POST" data-disable-on-submit>
         @csrf
         <div class="card-body">
-            @if($errors->any())
-                <div class="alert alert-danger p-4 mb-5">
-                    @foreach($errors->all() as $error)
-                        <div>{{ $error }}</div>
-                    @endforeach
-                </div>
-            @endif
 
             {{-- Bagian 1: Identitas Barang --}}
             <h5 class="fw-bold text-primary mb-4 border-bottom pb-2">1. Identitas Barang</h5>

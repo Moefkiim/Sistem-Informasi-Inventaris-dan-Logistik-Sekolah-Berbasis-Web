@@ -36,11 +36,6 @@
                 <div>{{ session('success') }}</div>
             </div>
         @endif
-        @if($errors->any())
-            <div class="alert alert-danger p-4 mb-5">
-                @foreach($errors->all() as $err)<div>{{ $err }}</div>@endforeach
-            </div>
-        @endif
 
         <div class="table-responsive">
             <table class="table align-middle table-row-dashed fs-7 gy-4">

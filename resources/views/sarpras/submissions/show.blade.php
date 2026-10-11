@@ -61,7 +61,10 @@
                     @csrf
                     <div class="mb-4">
                         <label class="form-label fw-bold required">Catatan Hasil Telaah & Rekomendasi Sarpras</label>
-                        <textarea name="sarpras_notes" class="form-control" rows="3" placeholder="Tuliskan catatan kelayakan ketersediaan anggaran / kebutuhan sebelum diteruskan ke Kepala Sekolah..." required></textarea>
+                        <textarea name="sarpras_notes" class="form-control @error('sarpras_notes') is-invalid @enderror" rows="3" placeholder="Tuliskan catatan kelayakan ketersediaan anggaran / kebutuhan sebelum diteruskan ke Kepala Sekolah..." required>{{ old('sarpras_notes') }}</textarea>
+                        @error('sarpras_notes')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
                     </div>
                     <div class="d-flex justify-content-end gap-3">
                         <button type="submit" name="action" value="reject" class="btn btn-danger" onclick="return confirm('Tolak permohonan pengajuan ini?')">

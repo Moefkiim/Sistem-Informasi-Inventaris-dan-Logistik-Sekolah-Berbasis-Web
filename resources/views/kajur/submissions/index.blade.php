@@ -56,13 +56,13 @@
                                     Detail
                                 </a>
                                 @if($sub->isDraft())
-                                    <form action="{{ route('kajur.submissions.submitDraft', $sub) }}" method="POST" class="d-inline">
+                                    <form action="{{ route('kajur.submissions.submitDraft', $sub) }}" method="POST" class="d-inline" data-disable-on-submit>
                                         @csrf
                                         <button type="submit" class="btn btn-sm btn-light-success" onclick="return confirm('Ajukan draf ke pihak Sarpras?')">
                                             Kirim
                                         </button>
                                     </form>
-                                    <form action="{{ route('kajur.submissions.cancel', $sub) }}" method="POST" class="d-inline">
+                                    <form action="{{ route('kajur.submissions.cancel', $sub) }}" method="POST" class="d-inline" data-disable-on-submit>
                                         @csrf
                                         <button type="submit" class="btn btn-sm btn-light-danger" onclick="return confirm('Batalkan draft permohonan ini?')">
                                             Batal

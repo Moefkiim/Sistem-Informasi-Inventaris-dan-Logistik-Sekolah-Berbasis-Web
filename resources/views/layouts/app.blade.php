@@ -378,6 +378,30 @@
                                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                                 </div>
                             @endif
+                            @if($errors->any())
+                                <div class="alert alert-dismissible bg-light-danger border border-danger d-flex align-items-start p-5 mb-6 fade show" role="alert">
+                                    <i class="bi bi-exclamation-triangle-fill text-danger fs-3 me-4 mt-1"></i>
+                                    <div class="d-flex flex-column text-danger">
+                                        @if($errors->has('msg'))
+                                            <span class="fw-bold fs-6">{{ $errors->first('msg') }}</span>
+                                        @endif
+                                        @php
+                                            $fieldErrors = collect($errors->all())->filter(fn($e) => $e !== $errors->first('msg'));
+                                        @endphp
+                                        @if($fieldErrors->isNotEmpty())
+                                            @if(!$errors->has('msg'))
+                                                <span class="fw-bold mb-1">Periksa kembali isian formulir:</span>
+                                            @endif
+                                            <ul class="mb-0 {{ $errors->has('msg') ? 'mt-2' : '' }} ps-4">
+                                                @foreach($fieldErrors as $err)
+                                                    <li>{{ $err }}</li>
+                                                @endforeach
+                                            </ul>
+                                        @endif
+                                    </div>
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                </div>
+                            @endif
                             @yield('content')
                         </div>
                     </div>

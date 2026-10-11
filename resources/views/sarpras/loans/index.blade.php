@@ -25,17 +25,6 @@
             </div>
         @endif
 
-        @if($errors->any())
-            <div class="alert alert-danger d-flex align-items-start p-4 mb-5">
-                <i class="fas fa-exclamation-triangle fs-2 text-danger me-3 mt-1"></i>
-                <div>
-                    @foreach($errors->all() as $error)
-                        <div>{{ $error }}</div>
-                    @endforeach
-                </div>
-            </div>
-        @endif
-
         {{-- Ringkasan per status (sumber label: Loan::STATUS_META) --}}
         <div class="row g-3 mb-6">
             @foreach(\App\Models\Loan::STATUS_META as $key => $meta)

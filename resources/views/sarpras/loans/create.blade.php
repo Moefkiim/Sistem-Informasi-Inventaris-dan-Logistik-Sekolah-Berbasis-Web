@@ -22,18 +22,6 @@
         <form action="{{ route('sarpras.loans.store') }}" method="POST" data-disable-on-submit>
             @csrf
             <div class="card-body pt-0">
-                @if($errors->any())
-                    <div class="alert alert-danger d-flex align-items-start p-4 mb-6">
-                        <i class="fas fa-exclamation-triangle fs-2 text-danger me-3 mt-1"></i>
-                        <div>
-                            <div class="fw-bold mb-1">Periksa kembali isian berikut:</div>
-                            @foreach($errors->all() as $error)
-                                <div>{{ $error }}</div>
-                            @endforeach
-                        </div>
-                    </div>
-                @endif
-
                 <div class="row g-5">
                     {{-- 1. Data Peminjam --}}
                     <div class="col-12">

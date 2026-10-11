@@ -26,17 +26,6 @@
                     </div>
                 @endif
 
-                @if($errors->any())
-                    <div class="alert alert-danger d-flex align-items-start p-4 mb-5">
-                        <i class="fas fa-exclamation-triangle fs-2 text-danger me-3 mt-1"></i>
-                        <div>
-                            @foreach($errors->all() as $error)
-                                <div>{{ $error }}</div>
-                            @endforeach
-                        </div>
-                    </div>
-                @endif
-
                 @if($loan->isOverdue())
                     <div class="alert alert-danger d-flex align-items-center p-4 mb-5">
                         <i class="fas fa-clock fs-2 text-danger me-3"></i>
@@ -223,7 +212,7 @@
                             Status aset akan berubah menjadi <strong>Dipinjam</strong>.
                         @endif
                     </p>
-                    <form action="{{ route('sarpras.loans.approve', $loan) }}" method="POST"
+                    <form action="{{ route('sarpras.loans.approve', $loan) }}" method="POST" data-disable-on-submit
                           onsubmit="return confirm('Pastikan barang sudah diserahkan kepada peminjam. Lanjutkan?')">
                         @csrf
                         <button type="submit" class="btn btn-success w-100">
@@ -238,14 +227,17 @@
                     <h6 class="fw-bold text-danger mb-0">Tolak Permohonan</h6>
                 </div>
                 <div class="card-body pt-0">
-                    <form action="{{ route('sarpras.loans.reject', $loan) }}" method="POST"
+                    <form action="{{ route('sarpras.loans.reject', $loan) }}" method="POST" data-disable-on-submit
                           onsubmit="return confirm('Tolak permohonan peminjaman ini?')">
                         @csrf
                         <div class="mb-3">
                             <label class="form-label required" for="reject_notes">Alasan Penolakan</label>
                             <textarea name="notes" id="reject_notes" rows="3"
-                                      class="form-control form-control-solid"
-                                      placeholder="Jelaskan alasan penolakan..." required></textarea>
+                                      class="form-control form-control-solid @error('notes') is-invalid @enderror"
+                                      placeholder="Jelaskan alasan penolakan..." required>{{ old('notes') }}</textarea>
+                            @error('notes')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
                         </div>
                         <button type="submit" class="btn btn-danger w-100">
                             <i class="fas fa-times me-2"></i>Tolak Permohonan
@@ -261,7 +253,7 @@
                     <h6 class="fw-bold text-info mb-0">Terima Pengembalian Barang</h6>
                 </div>
                 <div class="card-body pt-0">
-                    <form action="{{ route('sarpras.loans.return', $loan) }}" method="POST"
+                    <form action="{{ route('sarpras.loans.return', $loan) }}" method="POST" data-disable-on-submit
                           onsubmit="return confirm('Konfirmasi barang sudah diterima kembali?')">
                         @csrf
                         <div class="mb-3">
@@ -269,11 +261,14 @@
                                 Kondisi Barang Saat Kembali
                             </label>
                             <select name="condition_on_return" id="condition_on_return"
-                                    class="form-select form-select-solid" required>
-                                <option value="baik">Baik</option>
-                                <option value="rusak_ringan">Rusak Ringan</option>
-                                <option value="rusak_berat">Rusak Berat</option>
+                                    class="form-select form-select-solid @error('condition_on_return') is-invalid @enderror" required>
+                                <option value="baik" {{ old('condition_on_return') === 'baik' ? 'selected' : '' }}>Baik</option>
+                                <option value="rusak_ringan" {{ old('condition_on_return') === 'rusak_ringan' ? 'selected' : '' }}>Rusak Ringan</option>
+                                <option value="rusak_berat" {{ old('condition_on_return') === 'rusak_berat' ? 'selected' : '' }}>Rusak Berat</option>
                             </select>
+                            @error('condition_on_return')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
                             <div class="form-text">
                                 Jika kondisi berubah, riwayat kondisi barang akan tercatat otomatis.
                             </div>
@@ -281,8 +276,11 @@
                         <div class="mb-3">
                             <label class="form-label" for="return_notes">Catatan Pengembalian</label>
                             <textarea name="notes" id="return_notes" rows="2"
-                                      class="form-control form-control-solid"
-                                      placeholder="Kondisi fisik, kelengkapan, dll..."></textarea>
+                                      class="form-control form-control-solid @error('notes') is-invalid @enderror"
+                                      placeholder="Kondisi fisik, kelengkapan, dll...">{{ old('notes') }}</textarea>
+                            @error('notes')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
                         </div>
                         <button type="submit" class="btn btn-info text-white w-100">
                             <i class="fas fa-undo me-2"></i>Terima Pengembalian
@@ -298,6 +296,7 @@
                     <h6 class="fw-bold mb-0">Info Barang</h6>
                 </div>
                 <div class="card-body pt-0">
+                    <div class="table-responsive">
                     <table class="table table-sm mb-0">
                         <tbody>
                             <tr><td class="text-muted fw-normal">Kode</td>
@@ -326,6 +325,7 @@
                                 <td class="text-end">{{ $loan->item->location?->name ?? '-' }}</td></tr>
                         </tbody>
                     </table>
+                    </div>
                     <a href="{{ route('sarpras.inventory.show', $loan->item) }}"
                        class="btn btn-light btn-sm w-100 mt-3">
                         Lihat Detail Barang
