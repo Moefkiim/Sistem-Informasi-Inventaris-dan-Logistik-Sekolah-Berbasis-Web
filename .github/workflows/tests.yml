@@ -63,13 +63,19 @@ jobs:
         run: php artisan test
 
   mysql-install:
-    name: MySQL/MariaDB (${{ matrix.db }})
+    name: MySQL/MariaDB (${{ matrix.db }}, PHP ${{ matrix.php }})
     runs-on: ubuntu-latest
 
     strategy:
       fail-fast: false
       matrix:
-        db: [ 'mysql:8.0', 'mariadb:10.11' ]
+        include:
+          - php: '8.4'
+            db: 'mysql:8.0'
+          - php: '8.4'
+            db: 'mariadb:10.11'
+          - php: '8.3'
+            db: 'mysql:8.0'
 
     services:
       database:
@@ -99,7 +105,7 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.4'
+          php-version: ${{ matrix.php }}
           extensions: mbstring, intl, pdo_mysql, dom, fileinfo, curl, ctype, filter, gd, iconv, simplexml, xmlreader, xmlwriter, zip
           coverage: none
 
@@ -137,3 +143,48 @@ jobs:
 
       - name: Run tests on MySQL/MariaDB
         run: php artisan test
+
+  composer-setup:
+    name: Composer setup dari clone bersih + smoke per role (PHP 8.4, MySQL 8.0)
+    runs-on: ubuntu-latest
+
+    services:
+      database:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -ppassword"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    env:
+      DB_CONNECTION: mysql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_DATABASE: siils_ci
+      DB_USERNAME: root
+      DB_PASSWORD: password
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, intl, pdo_mysql, dom, fileinfo, curl, ctype, filter, gd, iconv, simplexml, xmlreader, xmlwriter, zip
+          coverage: none
+
+      - name: Composer setup (buat .env, APP_KEY, database, migrate, seed - persis README B.7)
+        run: composer setup
+
+      - name: Periksa prasyarat setelah composer setup
+        run: php artisan siils:check
+
+      - name: Uji asap per role (Kajur, Sarpras, Kepala Sekolah, akun nonaktif)
+        run: php artisan test --filter=DemoReadinessTest

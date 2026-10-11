@@ -447,7 +447,8 @@ php artisan test
 **Tersedia.** Repositori ini dilengkapi workflow GitHub Actions (`.github/workflows/tests.yml`) yang berjalan pada setiap `push` dan `pull_request` ke branch `main`:
 
 - **Job `SQLite`** — matriks **PHP 8.3 & 8.4**. Menjalankan `composer install`, `composer check-platform-reqs`, migrasi SQLite, lalu seluruh suite (`php artisan test`).
-- **Job `MySQL/MariaDB`** — matriks **`mysql:8.0` & `mariadb:10.11`** memakai `services` dengan healthcheck. Menjalankan `composer install`, `composer check-platform-reqs`, lalu `php artisan siils:install --force` yang **membuat database secara otomatis**, memigrasi, dan mengisi data demo pada database sungguhan; dilanjutkan `php artisan siils:check`, pemanggilan `siils:install` kedua (membuktikan idempotensi), dan seluruh suite terhadap MySQL/MariaDB.
+- **Job `MySQL/MariaDB`** — matriks **`mysql:8.0` (PHP 8.4), `mariadb:10.11` (PHP 8.4), dan `mysql:8.0` (PHP 8.3)** memakai `services` dengan healthcheck. Menjalankan `composer install`, `composer check-platform-reqs`, lalu `php artisan siils:install --force` yang **membuat database secara otomatis**, memigrasi, dan mengisi data demo pada database sungguhan; dilanjutkan `php artisan siils:check`, pemanggilan `siils:install` kedua (membuktikan idempotensi), dan seluruh suite terhadap MySQL/MariaDB.
+- **Job `Composer setup`** — **clone bersih tanpa `.env`** terhadap `mysql:8.0` (PHP 8.4). Menjalankan `composer setup` **persis seperti README** (membuat `.env` dari `.env.example`, `APP_KEY`, database, migrasi, dan seeder), lalu `php artisan siils:check`, dan **uji asap per role** (`DemoReadinessTest`: login Kajur, Sarpras, Kepala Sekolah, dan akun nonaktif).
 
 Workflow memastikan regresi terdeteksi — termasuk perbedaan perilaku MySQL vs SQLite — sebelum perubahan digabung ke `main`.
 
