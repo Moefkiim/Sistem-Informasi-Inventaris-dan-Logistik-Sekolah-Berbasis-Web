@@ -816,11 +816,25 @@ dibuat lebih dulu oleh service (`DB_DATABASE=siils_ci`), lalu langkah
 `siils:install --force` (menguji pembuatan otomatis) → `siils:check` → `siils:install --force`
 (membuktikan idempoten) → `php artisan test`.
 
-> **BELUM DIVERIFIKASI DI CI.** Push dari lingkungan kerja ini gagal
-> (`git@github.com: Permission denied (publickey)`; `gh` tidak tersedia), sehingga run CI
-> (hijau/merah) **tidak dapat dijalankan atau ditunjukkan**. Langkah-langkah dan perintahnya
-> sudah diverifikasi secara lokal di MySQL 8.4.3 (§13.4), tetapi **nomor run CI belum ada**.
-> Tindakan yang perlu Anda lakukan: push dari PC Windows ber-kredensial, lalu catat hasil run.
+**Hasil CI — run #45 HIJAU (semua job).** Push dilakukan dari PC Windows (git + SSH Windows),
+commit `8467c47` ("Merge remote-tracking branch 'origin/main'"), HEAD `8467c47` identik dengan
+`origin/main`. Run: https://github.com/Moefkiim/Sistem-Informasi-Inventaris-dan-Logistik-Sekolah-Berbasis-Web/actions/runs/38119258001
+
+| Job | Hasil |
+|---|---|
+| SQLite (PHP 8.3) | ✅ success |
+| SQLite (PHP 8.4) | ✅ success |
+| MySQL/MariaDB (`mysql:8.0`) | ✅ success — termasuk langkah install (buat DB otomatis), `siils:check`, install ulang idempoten, dan seluruh suite |
+| MySQL/MariaDB (`mariadb:10.11`) | ✅ success — idem |
+
+**Catatan kejujuran soal run merah TASK 1.** Prompt TASK 1 meminta men-dorong perubahan lebih
+dulu agar run merahnya terlihat. Dalam pengerjaan ini, commit TASK 1–9 **tidak sempat di-push**
+dari lingkungan WSL (SSH `Permission denied (publickey)`, `gh` tidak tersedia) dan baru
+di-push pada akhir; karena itu **tidak ada run merah khusus untuk TASK 1**. Sebagai gantinya,
+riwayat run merah yang terdokumentasi sebelum sesi ini adalah **run #1–#8** (masalah `composer.lock`
+vs versi PHP dan Vite) dan **run #35** (perubahan asset unit). Setelah semua perbaikan TASK 1–10,
+**run #45 hijau penuh**. Langkah `siils:install`/`siils:check` juga sudah dibuktikan lokal di
+MySQL 8.4.3 (§13.4) sekaligus sebagai langkah eksplisit di job CI MySQL.
 
 ### 13.7 Pencarian sisa data "suntikan"
 
