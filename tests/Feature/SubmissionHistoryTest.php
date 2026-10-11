@@ -202,7 +202,7 @@ class SubmissionHistoryTest extends TestCase
             'action' => 'approve',
         ]);
 
-        $statuses = $submission->histories()->orderBy('id')->pluck('to_status')->all();
+        $statuses = $submission->histories()->reorder('id')->pluck('to_status')->all();
         $this->assertSame(['submitted', 'reviewed_sarpras', 'approved'], $statuses);
     }
 

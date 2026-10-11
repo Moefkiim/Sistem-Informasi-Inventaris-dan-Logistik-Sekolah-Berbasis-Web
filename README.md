@@ -183,11 +183,11 @@ graph TD
 
 ## 5. Tech Stack
 
-- **Backend Framework:** Laravel v11.x / PHP v8.5+
+- **Backend Framework:** Laravel v13.x / PHP v8.3+ (diuji pada PHP 8.3 & 8.4 di CI)
 - **Frontend Template & UI:** Blade Engine, Metronic Design System, Tailwind CSS, Bootstrap Icons
 - **Bundler Asset:** Vite v5.x
-- **Database (Development/Local):** SQLite / MySQL v8.0 / MariaDB
-- **Database (Testing):** SQLite In-Memory / File Database
+- **Database (Development/Local):** MySQL v8.0 / MariaDB 10.4+ (default), SQLite sebagai alternatif
+- **Database (Testing):** SQLite In-Memory
 - **Framework Pengujian:** PHPUnit v12.x / Laravel Testing Toolkit
 
 ---
@@ -195,8 +195,9 @@ graph TD
 ## 6. Instalasi Lokal
 
 ### Kebutuhan Server Lokal
-- PHP >= 8.2 (dengan ekstensi: `openssl`, `pdo_sqlite`, `sqlite3`, `mbstring`, `fileinfo`, `curl`, `zip`)
+- PHP >= 8.3 (diuji pada PHP 8.3 & 8.4). Ekstensi wajib: `openssl`, `pdo_mysql` (atau `pdo_sqlite`), `mbstring`, `fileinfo`, `curl`, `gd`, `zip`, `iconv`, `simplexml`, `xmlreader`, `xmlwriter`, `ctype`, `dom`.
 - Composer >= 2.0
+- MySQL 8.0+ / MariaDB 10.4+ (default) atau SQLite
 - Web Server (PHP Built-in Server / XAMPP / Laragon)
 
 ### Langkah Instalasi (Command Line)
@@ -352,8 +353,8 @@ php artisan test --filter=AuthenticationAndRoleAccessTest
 **Tersedia.** Repositori ini telah dilengkapi dengan workflow CI/CD GitHub Actions (`.github/workflows/tests.yml`) yang secara otomatis:
 
 - Menjalankan `php artisan test` pada setiap event `push` dan `pull_request` ke branch `main`.
-- Mengatur lingkungan PHP 8.2 dengan ekstensi yang dibutuhkan dan dependency via Composer (termasuk paket `laravel/boost --dev` bila terpasang).
-- Menggunakan SQLite in-memory untuk menjalankan seluruh test suite secara deterministik.
+- Menguji pada matriks PHP 8.3 dan 8.4 (SQLite) serta job MySQL 8.0 dan MariaDB 10.11.
+- Mengatur lingkungan PHP dengan ekstensi yang dibutuhkan dan dependency via Composer (`composer check-platform-reqs`).
 
 Workflow terhubung langsung dengan repositori ini dan memastikan regresi terdeteksi sebelum perubahan digabung ke `main`.
 
