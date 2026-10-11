@@ -5,6 +5,7 @@ use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\Kajur\InventoryController;
 use App\Http\Controllers\Kajur\SubmissionController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\Principal\ApprovalController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReportController;
@@ -36,6 +37,11 @@ Route::middleware(['auth', 'role', 'password.changed'])->group(function () {
 
     // Home / Landing status setelah login
     Route::get('/home', [HomeController::class, 'index'])->name('home');
+
+    // Modul Notifikasi Dalam Aplikasi (Semua Role)
+    Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::get('/notifications/{notification}', [NotificationController::class, 'open'])->name('notifications.open');
+    Route::post('/notifications/read-all', [NotificationController::class, 'readAll'])->name('notifications.read_all');
 
     // Modul Laporan (Dapat diakses seluruh role dengan filter otomatis sesuai wewenang)
     Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');

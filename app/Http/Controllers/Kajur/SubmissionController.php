@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Kajur;
 use App\Http\Controllers\Controller;
 use App\Models\ActivityLog;
 use App\Models\Submission;
+use App\Services\SubmissionNotifier;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -12,6 +13,8 @@ use Illuminate\View\View;
 
 class SubmissionController extends Controller
 {
+    public function __construct(private SubmissionNotifier $notifier) {}
+
     /**
      * Menampilkan daftar permohonan pengajuan milik jurusan Kajur yang login.
      */
@@ -53,7 +56,7 @@ class SubmissionController extends Controller
 
         $user = $request->user();
 
-        DB::transaction(function () use ($validated, $user) {
+        $submission = DB::transaction(function () use ($validated, $user) {
             $submissionNumber = $this->generateSubmissionNumber();
             $status = $validated['action'] === 'submit' ? 'submitted' : 'draft';
 
@@ -86,7 +89,13 @@ class SubmissionController extends Controller
                 ['status' => $status],
                 $submissionNumber
             );
+
+            return $submission;
         });
+
+        if ($submission->status === 'submitted') {
+            $this->notifier->submitted($submission);
+        }
 
         return redirect()->route('kajur.submissions.index')
             ->with('success', 'Pengajuan inventaris berhasil disimpan.');
@@ -167,6 +176,10 @@ class SubmissionController extends Controller
             }
         });
 
+        if ($submission->status === 'submitted') {
+            $this->notifier->submitted($submission);
+        }
+
         return redirect()->route('kajur.submissions.show', $submission)
             ->with('success', 'Pengajuan draft berhasil diperbarui.');
     }
@@ -230,6 +243,8 @@ class SubmissionController extends Controller
             ['status' => 'submitted'],
             $submission->submission_number
         );
+
+        $this->notifier->submitted($submission);
 
         return redirect()->route('kajur.submissions.index')
             ->with('success', 'Pengajuan berhasil dikirimkan ke pihak Sarpras untuk ditinjau.');

@@ -8,6 +8,7 @@ use App\Models\Location;
 use App\Models\OutgoingItem;
 use App\Models\Submission;
 use App\Models\User;
+use App\Services\TaskOverview;
 use App\Support\DbDate;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -15,6 +16,8 @@ use Illuminate\View\View;
 
 class HomeController extends Controller
 {
+    public function __construct(private readonly TaskOverview $taskOverview) {}
+
     /**
      * Label baku kondisi/status aset (urutan penampilan grafik).
      */
@@ -58,7 +61,9 @@ class HomeController extends Controller
 
         $charts = $this->chartData($department);
 
-        return view('home', compact('user', 'totalItems', 'totalLocations', 'pendingSubmissions', 'charts'));
+        $tasks = $this->taskOverview->tasks($user);
+
+        return view('home', compact('user', 'totalItems', 'totalLocations', 'pendingSubmissions', 'charts', 'tasks'));
     }
 
     /**

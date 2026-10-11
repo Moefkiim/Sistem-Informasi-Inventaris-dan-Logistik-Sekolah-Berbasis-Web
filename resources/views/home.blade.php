@@ -212,6 +212,27 @@
     @endif
 </div>
 
+{{-- Tugas Anda --}}
+<div class="card border-0 shadow-sm mb-6">
+    <div class="card-header pt-6 border-0 d-flex align-items-center justify-content-between">
+        <h3 class="fw-bolder text-dark mb-0">Tugas Anda</h3>
+        <span class="badge badge-light-primary fw-bold">{{ count($tasks) }} item</span>
+    </div>
+    <div class="card-body pt-2 pb-4">
+        @forelse($tasks as $task)
+            <a href="{{ $task['url'] }}" class="d-flex align-items-center justify-content-between p-4 rounded bg-hover-light-primary text-decoration-none border-bottom">
+                <div class="d-flex flex-column">
+                    <span class="text-dark fw-bolder">{{ $task['title'] }}</span>
+                    <span class="text-muted fs-7">{{ $task['meta'] }}</span>
+                </div>
+                <span class="badge badge-light-{{ $task['color'] }} fw-bold">{{ $task['badge'] }}</span>
+            </a>
+        @empty
+            <x-empty-state icon="bi-check2-circle" title="Tidak ada tugas" description="Semua pekerjaan Anda sudah beres." />
+        @endforelse
+    </div>
+</div>
+
 {{-- Quick Actions --}}
 <div class="card border-0 shadow-sm">
     <div class="card-header pt-6 border-0">

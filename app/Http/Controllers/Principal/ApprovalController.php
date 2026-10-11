@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Principal;
 use App\Http\Controllers\Controller;
 use App\Models\ActivityLog;
 use App\Models\Submission;
+use App\Services\SubmissionNotifier;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -12,6 +13,8 @@ use Illuminate\View\View;
 
 class ApprovalController extends Controller
 {
+    public function __construct(private SubmissionNotifier $notifier) {}
+
     /**
      * Menampilkan daftar pengajuan yang telah diproses Sarpras dan menunggu persetujuan Kepala Sekolah.
      */
@@ -88,6 +91,12 @@ class ApprovalController extends Controller
         );
 
         $statusLabel = $status === 'approved' ? 'disetujui' : 'ditolak';
+
+        if ($status === 'approved') {
+            $this->notifier->approved($submission);
+        } else {
+            $this->notifier->rejected($submission);
+        }
 
         return redirect()->route('kepala_sekolah.approval.index')
             ->with('success', "Pengajuan No. {$submission->submission_number} telah berhasil {$statusLabel}.");

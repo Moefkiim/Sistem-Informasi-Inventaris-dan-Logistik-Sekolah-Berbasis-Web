@@ -22,7 +22,10 @@ use Illuminate\Validation\ValidationException;
  */
 class SubmissionRealizationService
 {
-    public function __construct(private readonly IncomingStockService $incomingStock) {}
+    public function __construct(
+        private readonly IncomingStockService $incomingStock,
+        private readonly SubmissionNotifier $notifier,
+    ) {}
 
     /**
      * @param  array<int,array<string,mixed>>  $lines
@@ -30,7 +33,7 @@ class SubmissionRealizationService
      */
     public function realize(Submission $submission, array $lines, array $meta, User $actor): Submission
     {
-        return DB::transaction(function () use ($submission, $lines, $meta, $actor) {
+        $realized = DB::transaction(function () use ($submission, $lines, $meta, $actor) {
             $locked = Submission::whereKey($submission->getKey())->lockForUpdate()->firstOrFail();
 
             if (! $locked->canBeRealizedBySarpras()) {
@@ -97,6 +100,10 @@ class SubmissionRealizationService
 
             return $locked->fresh(['items.item', 'realizedBy']);
         });
+
+        $this->notifier->realized($realized);
+
+        return $realized;
     }
 
     /**

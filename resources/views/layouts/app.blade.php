@@ -109,6 +109,9 @@
                                             <a class="menu-link {{ request()->routeIs('kajur.submissions.index') ? 'active' : '' }}" href="{{ route('kajur.submissions.index') }}">
                                                 <span class="menu-icon"><i class="bi bi-list-ul fs-5"></i></span>
                                                 <span class="menu-title">Daftar Pengajuan</span>
+                                                @if(($sidebarBadges['draft'] ?? 0) > 0)
+                                                    <span class="badge badge-light-warning fw-bold ms-2">{{ $sidebarBadges['draft'] }}</span>
+                                                @endif
                                             </a>
                                         </div>
                                         <div class="menu-item">
@@ -223,6 +226,9 @@
                                     <a class="menu-link {{ request()->routeIs('sarpras.submissions.*') ? 'active' : '' }}" href="{{ route('sarpras.submissions.index') }}">
                                         <span class="menu-icon"><i class="bi bi-clipboard-check fs-3"></i></span>
                                         <span class="menu-title">Review Pengajuan Kajur</span>
+                                        @if(($sidebarBadges['review'] ?? 0) > 0)
+                                            <span class="badge badge-light-warning fw-bold ms-2">{{ $sidebarBadges['review'] }}</span>
+                                        @endif
                                     </a>
                                 </div>
 
@@ -230,6 +236,9 @@
                                     <a class="menu-link {{ request()->routeIs('sarpras.realizations.*') ? 'active' : '' }}" href="{{ route('sarpras.realizations.index') }}">
                                         <span class="menu-icon"><i class="bi bi-box-arrow-down fs-3"></i></span>
                                         <span class="menu-title">Realisasi Pengajuan</span>
+                                        @if(($sidebarBadges['realize'] ?? 0) > 0)
+                                            <span class="badge badge-light-primary fw-bold ms-2">{{ $sidebarBadges['realize'] }}</span>
+                                        @endif
                                     </a>
                                 </div>
 
@@ -274,6 +283,9 @@
                                     <span class="menu-link {{ request()->routeIs('kepala_sekolah.approval.*') ? 'active' : '' }}">
                                         <span class="menu-icon"><i class="bi bi-person-check fs-3"></i></span>
                                         <span class="menu-title">Persetujuan Pengajuan</span>
+                                        @if(($sidebarBadges['approval'] ?? 0) > 0)
+                                            <span class="badge badge-light-info fw-bold ms-2">{{ $sidebarBadges['approval'] }}</span>
+                                        @endif
                                         <span class="menu-arrow"></span>
                                     </span>
                                     <div class="menu-sub menu-sub-accordion">
@@ -350,6 +362,56 @@
                         <!-- Header Right: Role badge + Logout -->
                         <div class="d-flex align-items-stretch flex-shrink-0">
                             <div class="d-flex align-items-center gap-3">
+                                {{-- Lonceng notifikasi dalam aplikasi --}}
+                                <div class="d-flex align-items-center">
+                                    <button type="button"
+                                        class="btn btn-icon btn-active-light-primary position-relative w-40px h-40px"
+                                        data-kt-menu-trigger="click"
+                                        data-kt-menu-attach="parent"
+                                        data-kt-menu-placement="bottom-end"
+                                        aria-label="Notifikasi">
+                                        <i class="bi bi-bell fs-2"></i>
+                                        @if(($navUnreadCount ?? 0) > 0)
+                                            <span class="position-absolute top-0 start-100 translate-middle badge badge-circle badge-danger fs-8">{{ $navUnreadCount > 9 ? '9+' : $navUnreadCount }}</span>
+                                        @endif
+                                    </button>
+                                    <div class="menu menu-sub menu-sub-dropdown menu-column w-350px w-lg-375px" data-kt-menu="true">
+                                        <div class="d-flex align-items-center justify-content-between px-5 py-4 border-bottom">
+                                            <h3 class="fw-bolder fs-5 mb-0">Notifikasi</h3>
+                                            @if(($navUnreadCount ?? 0) > 0)
+                                                <span class="badge badge-light-primary fw-bold">{{ $navUnreadCount }} baru</span>
+                                            @endif
+                                        </div>
+                                        <div class="scroll-y h-300px">
+                                            @forelse(($navNotifications ?? collect()) as $notification)
+                                                <a href="{{ route('notifications.open', $notification->id) }}" class="d-flex align-items-start p-5 border-bottom text-decoration-none">
+                                                    <span class="symbol symbol-35px me-3">
+                                                        <span class="symbol-label bg-light-{{ $notification->read_at === null ? 'primary' : 'secondary' }}">
+                                                            <i class="bi bi-bell fs-5 text-{{ $notification->read_at === null ? 'primary' : 'muted' }}"></i>
+                                                        </span>
+                                                    </span>
+                                                    <span class="flex-grow-1">
+                                                        <span class="fs-6 fw-bolder text-gray-800 d-block">{{ $notification->data['title'] ?? 'Pemberitahuan' }}</span>
+                                                        <span class="text-muted fw-semibold d-block fs-7">{{ \Illuminate\Support\Str::limit($notification->data['message'] ?? '', 80) }}</span>
+                                                        <span class="text-muted fw-semibold d-block fs-8 mt-1">{{ $notification->created_at?->diffForHumans() }}</span>
+                                                    </span>
+                                                    @if($notification->read_at === null)
+                                                        <span class="badge badge-primary badge-circle ms-2" style="width:10px;height:10px;">&nbsp;</span>
+                                                    @endif
+                                                </a>
+                                            @empty
+                                                <div class="text-center text-muted py-10 px-5">Belum ada notifikasi.</div>
+                                            @endforelse
+                                        </div>
+                                        <div class="d-flex flex-stack px-5 py-3 border-top">
+                                            <form action="{{ route('notifications.read_all') }}" method="POST" data-disable-on-submit>
+                                                @csrf
+                                                <button type="submit" class="btn btn-sm btn-light btn-active-light-primary">Tandai semua dibaca</button>
+                                            </form>
+                                            <a href="{{ route('notifications.index') }}" class="btn btn-sm btn-light-primary">Semua Notifikasi</a>
+                                        </div>
+                                    </div>
+                                </div>
                                 <span class="badge badge-light-primary fw-bolder d-none d-md-flex align-items-center gap-1 px-3 py-2">
                                     <i class="bi bi-shield-check me-1"></i>
                                     {{ strtoupper(str_replace('_', ' ', auth()->user()->role)) }}

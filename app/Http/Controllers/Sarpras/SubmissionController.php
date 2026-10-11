@@ -7,6 +7,7 @@ use App\Models\ActivityLog;
 use App\Models\Item;
 use App\Models\Location;
 use App\Models\Submission;
+use App\Services\SubmissionNotifier;
 use App\Services\SubmissionRealizationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -16,7 +17,10 @@ use Illuminate\View\View;
 
 class SubmissionController extends Controller
 {
-    public function __construct(private readonly SubmissionRealizationService $realization) {}
+    public function __construct(
+        private readonly SubmissionRealizationService $realization,
+        private readonly SubmissionNotifier $notifier,
+    ) {}
 
     /**
      * Menampilkan semua pengajuan dari seluruh Kajur.
@@ -93,6 +97,12 @@ class SubmissionController extends Controller
         $msg = $status === 'reviewed_sarpras'
             ? 'Pengajuan berhasil diproses dan diteruskan ke Kepala Sekolah untuk approval.'
             : 'Pengajuan telah ditolak oleh Sarpras.';
+
+        if ($status === 'reviewed_sarpras') {
+            $this->notifier->reviewed($submission);
+        } else {
+            $this->notifier->rejected($submission);
+        }
 
         return redirect()->route('sarpras.submissions.index')->with('success', $msg);
     }
