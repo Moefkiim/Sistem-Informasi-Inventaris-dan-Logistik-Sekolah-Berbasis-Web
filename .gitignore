@@ -1,4 +1,5 @@
 *.log
+/storage/logs/browser-smoke*
 .DS_Store
 .env
 .env.backup

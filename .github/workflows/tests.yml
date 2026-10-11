@@ -188,3 +188,98 @@ jobs:
 
       - name: Uji asap per role (Kajur, Sarpras, Kepala Sekolah, akun nonaktif)
         run: php artisan test --filter=DemoReadinessTest
+
+  browser-smoke:
+    name: Browser smoke via Playwright/Python (PHP 8.4, MySQL 8.0)
+    runs-on: ubuntu-latest
+
+    services:
+      database:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -ppassword"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    env:
+      DB_CONNECTION: mysql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_DATABASE: siils_ci
+      DB_USERNAME: root
+      DB_PASSWORD: password
+      APP_URL: http://127.0.0.1:8000
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, intl, pdo_mysql, dom, fileinfo, curl, ctype, filter, gd, iconv, simplexml, xmlreader, xmlwriter, zip
+          coverage: none
+
+      - name: Get Composer Cache Directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
+
+      - name: Install Composer dependencies
+        run: composer install --no-progress --prefer-dist --optimize-autoloader
+
+      - name: Copy .env
+        run: cp .env.example .env
+
+      - name: Generate key
+        run: php artisan key:generate
+
+      - name: Install (buat DB siils_ci, migrate, seed data demo)
+        run: php artisan siils:install --force
+
+      - name: Jalankan server aplikasi
+        run: |
+          php artisan serve --host=127.0.0.1 --port=8000 > /tmp/laravel-browser-smoke.log 2>&1 &
+          for i in $(seq 1 40); do
+            if curl -fsS http://127.0.0.1:8000/up >/dev/null 2>&1; then echo "Server siap"; break; fi
+            sleep 2
+          done
+          curl -fsS http://127.0.0.1:8000/up
+
+      - name: Siapkan Python + Playwright (hanya di CI)
+        run: |
+          python3 -m ensurepip --upgrade || true
+          python3 -m pip install --upgrade pip
+          python3 -m pip install "playwright>=1.45,<2"
+          python3 -m playwright install --with-deps chromium
+
+      - name: Jalankan browser smoke (tests/Browser/smoke.py)
+        run: |
+          python3 tests/Browser/smoke.py \
+            --base-url "http://127.0.0.1:8000" \
+            --artifact-dir "storage/logs/browser-smoke" \
+            > storage/logs/browser-smoke-run.log 2>&1 || { cat storage/logs/browser-smoke-run.log; exit 1; }
+
+      - name: Tampilkan ringkasan browser smoke
+        run: |
+          tail -30 storage/logs/browser-smoke-run.log || true
+
+      - name: Unggah screenshot, trace, dan indeks sebagai artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-smoke-artifacts
+          path: storage/logs/browser-smoke
+          retention-days: 14
