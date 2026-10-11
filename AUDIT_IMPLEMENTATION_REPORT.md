@@ -931,7 +931,8 @@ sudah dijamin oleh kode aplikasi dan justru menjadi sumber inkompatibilitas anta
 
 ### 14.6 Hasil commit akhir sesi ini
 
-Setelah TASK 9 dikerjakan, `git rev-parse HEAD` = **`78d47d6`**
-("test: uji alur end-to-end lintas role dan perbarui dokumentasi") dan divalidasi identik dengan
-`git ls-remote origin main` sebelum laporan ini dicetak. Rantai commit F1–K2 tercantum di §14.1.
+Setelah TASK 9 dikerjakan, rangkaian commit ditutup dengan **`9584022`**
+("docs: catat hash HEAD akhir di laporan audit") sebagai `HEAD`; `git rev-parse HEAD` identik
+dengan `git ls-remote origin main`. Rantai commit F1–K2 tercantum di §14.1 (commit fitur TASK 9:
+`78d47d6`).
 
