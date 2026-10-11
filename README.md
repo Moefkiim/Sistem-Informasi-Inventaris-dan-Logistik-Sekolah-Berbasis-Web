@@ -194,43 +194,85 @@ graph TD
 
 ## 6. Instalasi Lokal
 
-### Kebutuhan Server Lokal
-- PHP >= 8.3 (diuji pada PHP 8.3 & 8.4). Ekstensi wajib: `openssl`, `pdo_mysql` (atau `pdo_sqlite`), `mbstring`, `fileinfo`, `curl`, `gd`, `zip`, `iconv`, `simplexml`, `xmlreader`, `xmlwriter`, `ctype`, `dom`.
-- Composer >= 2.0
-- MySQL 8.0+ / MariaDB 10.4+ (default) atau SQLite
-- Web Server (PHP Built-in Server / XAMPP / Laragon)
+Panduan ini diuji pada Windows (Laragon) dan Linux/macOS. **Node.js tidak diperlukan** untuk instalasi; aset JS dimuat sebagai file statis.
 
-### Langkah Instalasi (Command Line)
+### A. Persyaratan
+
+| Komponen | Versi / Keterangan |
+|---|---|
+| **PHP** | 8.3 atau 8.4 (diuji otomatis di CI pada 8.3 & 8.4; juga berjalan di 8.5) |
+| **Ekstensi PHP** | `ctype`, `curl`, `dom`, `fileinfo`, `filter`, `gd`, `iconv`, `mbstring`, `openssl`, `simplexml`, `xmlreader`, `xmlwriter`, `zip`, `zlib`, dan `pdo_mysql` (atau `pdo_sqlite` bila memakai SQLite) |
+| **Composer** | 2.x |
+| **Database** | MySQL 8.0+ atau MariaDB 10.4+ (diuji otomatis di CI: `mysql:8.0` dan `mariadb:10.11`) |
+| **Node.js / npm** | Tidak diperlukan — aset JS dimuat sebagai file statis `public/js/siils.js` |
+| **Web server** | Laragon/XAMPP (Windows) atau bawaan `php artisan serve` |
+
+### B. Mulai Cepat di Laragon (Windows)
+
+1. Pasang **Laragon Full** (sudah membawa Apache/Nginx, MySQL/MariaDB, PHP, dan Composer).
+2. Buka Laragon, klik **Start All** sampai indikator Apache/Nginx dan MySQL berwarna hijau.
+3. Pilih versi PHP yang sesuai: menu **PHP → Versi → 8.3 atau 8.4**, lalu tunggu Laragon menyesuaikan.
+4. Aktifkan ekstensi yang dibutuhkan: menu **PHP → Ekstensi**, lalu pastikan `gd`, `zip`, `pdo_mysql`, `mbstring`, `curl`, `fileinfo`, `openssl`, `iconv`, `simplexml`, `xmlreader`, `xmlwriter`, `ctype`, dan `dom` tercentang (Laragon umumnya sudah mengaktifkannya).
+5. Letakkan proyek ini di `C:\laragon\www\siils`. Jika fitur *Auto virtual hosts* aktif, Laragon membuat alamat `http://siils.test` (set `APP_URL=http://siils.test` pada `.env`).
+6. Buka **Terminal Laragon** (klik kanan ikon Laragon → **Terminal**) di dalam folder proyek.
+7. Jalankan satu perintah yang menangani `.env`, kunci aplikasi, pembuatan database, migrasi, dan data demo:
+   ```bash
+   composer setup
+   ```
+8. Buka `http://siils.test` (atau `http://localhost/siils`) di peramban, lalu login memakai [akun demo](#akun-demo-default-dari-seeder).
+
+`composer setup` menjalankan `composer install` lalu `php artisan siils:install`. Perintah `siils:install` bersifat **idempoten** (aman dijalankan berulang) dan melakukan:
+
+- Menyalin `.env.example` menjadi `.env` bila belum ada, lalu membuat `APP_KEY`.
+- Membuat database `siils` bila belum ada (`CREATE DATABASE IF NOT EXISTS ... utf8mb4_unicode_ci`).
+- Menjalankan `migrate --force` dan `db:seed`.
+
+Sebelum/sesudah instalasi, Anda dapat memeriksa prasyarat kapan saja:
 
 ```bash
-# 1. Clone repository proyek
+php artisan siils:check
+```
+
+### C. Instalasi Manual (Lintas OS)
+
+Perintah berikut berlaku di **cmd/PowerShell** (Windows) maupun **bash** (Linux/macOS).
+
+```bash
+# 1. Clone repository
 git clone https://github.com/Moefkiim/Sistem-Informasi-Inventaris-dan-Logistik-Sekolah-Berbasis-Web.git
 cd Sistem-Informasi-Inventaris-dan-Logistik-Sekolah-Berbasis-Web
 
-# 2. Install seluruh dependensi PHP via Composer
+# 2. Pasang dependensi PHP dan siapkan aplikasi (env, key, database, migrasi, data demo)
 composer install
+php artisan siils:install
+```
 
-# 3. Salin file lingkungan dari .env.example
-cp .env.example .env
+Bila ingin menyalin `.env` secara manual sebelum instalasi:
 
-# 4. Generate Kunci Aplikasi Laravel
-php artisan key:generate
+- **cmd:** `copy .env.example .env`
+- **PowerShell:** `Copy-Item .env.example .env`
+- **bash:** `cp .env.example .env`
 
-# 5. Buat file database SQLite (jika menggunakan SQLite default)
-touch database/database.sqlite
+Sesuaikan kredensial database pada `.env`, lalu jalankan `php artisan siils:install`.
 
-# 6. Jalankan migrasi tabel dan seeder data awal
-php artisan migrate:fresh --seed
+Menjalankan server pengembang:
 
-# 7. Hubungkan folder penyimpanan media dokumen
-php artisan storage:link
-
-# 8. Jalankan server pengembang lokal
+```bash
 php artisan serve
 ```
-Aplikasi siap dibuka pada peramban web di tautan: `http://127.0.0.1:8000`.
 
----
+Aplikasi dapat dibuka di `http://127.0.0.1:8000`.
+
+### D. Memakai SQLite (opsional)
+
+SQLite hanya sebagai alternatif cepat tanpa server database. Set pada `.env`:
+
+```dotenv
+DB_CONNECTION=sqlite
+DB_DATABASE=/path/absolut/ke/database.sqlite
+```
+
+`siils:install` akan membuat berkas SQLite tersebut bila belum ada. Data demo dibuat ulang oleh seeder; isi berkas `database.sqlite` lama tidak dipindahkan otomatis ke MySQL.
 
 ### Penjelasan Variabel Konfigurasi `.env`
 
@@ -238,23 +280,34 @@ Aplikasi siap dibuka pada peramban web di tautan: `http://127.0.0.1:8000`.
 |---|---|---|
 | `APP_NAME` | Nama aplikasi yang tampil pada judul halaman | `SIILS Sekolah` |
 | `APP_ENV` | Mode lingkungan aplikasi (local/production) | `local` |
-| `APP_KEY` | Kunci enkripsi enkripsi session & password | `base64:...` *(auto generated)* |
-| `APP_URL` | URL domain utama server | `http://localhost:8000` |
-| `DB_CONNECTION` | Driver database (sqlite / mysql) | `sqlite` |
-| `DB_DATABASE` | Path file SQLite atau nama DB MySQL | `database/database.sqlite` |
+| `APP_KEY` | Kunci enkripsi session & password | `base64:...` *(dibuat otomatis)* |
+| `APP_URL` | URL domain utama server | `http://localhost:8000` atau `http://siils.test` |
+| `APP_TIMEZONE` | Zona waktu tampilan jam dan tanggal | `Asia/Jakarta` |
+| `APP_LOCALE` | Bahasa antarmuka & pesan validasi | `id` |
+| `DB_CONNECTION` | Driver database (`mysql` / `mariadb` / `sqlite`) | `mysql` |
+| `DB_HOST` | Host server database | `127.0.0.1` |
+| `DB_PORT` | Port server database | `3306` |
+| `DB_DATABASE` | Nama DB MySQL (path berkas bila SQLite) | `siils` |
+| `DB_USERNAME` | User database (default Laragon) | `root` |
+| `DB_PASSWORD` | Kata sandi database (default Laragon kosong) | *(kosong)* |
+
+> **Zona waktu.** `APP_TIMEZONE` hanya memengaruhi cara aplikasi **menafsirkan** jam saat menyimpan/menampilkan data. Instalasi baru berisi data demo, sehingga tidak ada konversi data historis yang diperlukan. Bila Anda mengubah `APP_TIMEZONE` setelah menyimpan data nyata, waktu pada data lama tidak digeser otomatis.
 
 ---
 
 ### Akun Demo Default dari Seeder
 
-> ⚠️ **Peringatan:** Akun demo di bawah ini dihasilkan dari `DatabaseSeeder.php` dan hanya ditujukan untuk lingkungan pengujian lokal. Jangan gunakan kata sandi ini pada server produksi live!
+> ⚠️ **Peringatan:** Akun demo di bawah ini dihasilkan oleh seeder (`DatabaseSeeder` → `BaseUserSeeder` + seeder demo) dan hanya ditujukan untuk lingkungan pengujian lokal. Jangan gunakan kata sandi ini pada server produksi live!
 
 | Peran (Role) | Username | Password | Keterangan / Jurusan |
 |---|---|---|---|
 | **Kajur RPL** | `kajur_rpl` | `password123` | Kepala Kejuruan RPL |
+| **Kajur TKJ** | `kajur_tkj` | `password123` | Kepala Kejuruan TKJ (dibuat oleh seeder demo) |
 | **Sarpras** | `sarpras` | `password123` | Staf Sarana Prasarana Sekolah |
 | **Kepala Sekolah** | `kepsek` | `password123` | Kepala Sekolah |
 | **User Nonaktif** | `user_nonaktif` | `password123` | Pengujian blokir login |
+
+> Menjalankan `php artisan siils:install --tanpa-demo` hanya membuat akun dasar (`kajur_rpl`, `sarpras`, `kepsek`, `user_nonaktif`) tanpa akun `kajur_tkj` dan tanpa data demo.
 
 ### Membuat Akun Pengguna Baru
 Pendaftaran akun secara mandiri (*self-registration*) ditiadakan untuk menjaga keamanan. Seluruh akun pengguna baru (Kajur/Staf) dibuat secara eksklusif oleh pihak **Sarpras** melalui menu **Manajemen Pengguna** (`/sarpras/users`).
@@ -274,29 +327,70 @@ Sumber tunggal daftar jurusan berada di `config/departments.php` (helper `app/Su
 
 > Untuk menambah jurusan, cukup ubah `config/departments.php`; seluruh dropdown, validasi, dan scoping laporan otomatis mengikuti.
 
----
+### Melihat Isi Database (HeidiSQL / phpMyAdmin)
 
+1. Buka **HeidiSQL** dari menu **Database** di Laragon, atau **phpMyAdmin** di `http://localhost/phpmyadmin`.
+2. Pilih database `siils`.
+3. Tabel yang diharapkan: `users`, `locations`, `items`, `asset_units`, `incoming_items`, `outgoing_items`, `distributions`, `submissions`, `submission_items`, `submission_histories`, `loans`, `activity_logs`, `condition_histories`, `location_histories`, `documents`, `migrations`.
+4. Contoh query:
+   ```sql
+   SELECT role, COUNT(*) AS jumlah FROM users GROUP BY role;
+   ```
+5. Perkiraan jumlah baris setelah `php artisan siils:install` (data demo lengkap):
+
+   | Tabel | Perkiraan Baris |
+   |---|---:|
+   | `users` | 5 |
+   | `locations` | 6 |
+   | `items` | 7 |
+   | `asset_units` | 11 |
+   | `incoming_items` | 7 |
+   | `outgoing_items` | 4 |
+   | `distributions` | 2 |
+   | `submissions` | 6 |
+   | `submission_items` | 7 |
+   | `submission_histories` | 16 |
+   | `loans` | 5 |
+   | `activity_logs` | 33 |
+   | `condition_histories` | 11 |
+   | `location_histories` | 9 |
+   | `documents` | 0 |
+
+   > Jumlah di atas berasal dari seeder demo pada mode lokal. Modul Dokumen memang dibiarkan kosong (tidak ada berkas palsu). Seeder bersifat idempoten: menjalankan `php artisan db:seed` dua kali tidak menggandakan baris.
+
+---
 
 ## 7. Menjalankan Test
 
-Proyek ini telah dilengkapi dengan suite pengujian otomatis berbasis PHPUnit untuk menguji alur autentikasi dan pembatasan hak akses antar peran.
+Proyek ini dilengkapi suite pengujian otomatis berbasis PHPUnit (**196 test** pada **30 file**) untuk menguji alur autentikasi, pembatasan hak akses antar peran, alur bisnis, logistik, laporan, seeder demo, instalasi, dan lokalisasi. Suite yang sama dijalankan terhadap **SQLite (in-memory)** dan **MySQL/MariaDB sungguhan** di CI.
 
 ### Perintah Pengujian
 
 ```bash
-# Jalankan seluruh unit & feature test
+# Jalankan seluruh unit & feature test (SQLite in-memory, cepat)
 php artisan test
 
-# Jalankan pengujian khusus file otorisasi dan role
+# Jalankan file test tertentu
 php artisan test --filter=AuthenticationAndRoleAccessTest
+
+# Menjalankan seluruh suite terhadap MySQL lokal
+# (set DB_CONNECTION=mysql dan DB_DATABASE pada lingkungan sebelum perintah)
+php artisan test
 ```
 
-### Tabel Cakupan File Test
+### Cakupan Test (contoh file penting)
 
 | File Test | Cakupan & Fitur yang Diuji |
 |---|---|
-| `tests/Feature/AuthenticationAndRoleAccessTest.php` | Pengujian render halaman login, autentikasi via Email & Username, penolakan kata sandi salah, pencegahan login user nonaktif, logout, serta isolasi rute antar role (Response 403). |
-| `tests/Feature/ExampleTest.php` | Pengujian dasar status halaman utama aplikasi. |
+| `tests/Feature/AuthenticationAndRoleAccessTest.php` | Render login, autentikasi via Email & Username, penolakan kata sandi salah, pencegahan login user nonaktif, logout, serta isolasi rute antar role (403). |
+| `tests/Feature/WorkflowTransitionTest.php` | Rantai transisi pengajuan `draft → submitted → reviewed_sarpras → approved/rejected` dan larangan lompat status. |
+| `tests/Feature/DemoDataSeederTest.php` | Invarian seeder demo: jumlah unit = stok barang individual, tidak ada stok negatif, nomor unik, tiap status terwakili, idempoten. |
+| `tests/Feature/DemoReadinessTest.php` | Uji asap per role: login tiap akun demo dan membuka halaman utama (dashboard, inventaris, laporan, pengajuan/persetujuan, peminjaman, aktivitas). |
+| `tests/Feature/ReportScopingTest.php` | Filter laporan per jenis, scoping jurusan Kajur, dan akses role lain. |
+| `tests/Feature/InstallCommandTest.php` | Perintah `siils:check`/`siils:install`: keluar 0/non-nol, idempotensi, penolakan `--fresh` di produksi, validasi nama database. |
+| `tests/Feature/LocalizationTest.php` | Pesan validasi, nama bulan grafik, dan teks paginasi berbahasa Indonesia. |
+
+> Untuk daftar lengkap, lihat folder `tests/Feature/` dan `tests/Unit/`.
 
 ---
 
@@ -350,13 +444,12 @@ php artisan test --filter=AuthenticationAndRoleAccessTest
 
 ## 9. Continuous Integration
 
-**Tersedia.** Repositori ini telah dilengkapi dengan workflow CI/CD GitHub Actions (`.github/workflows/tests.yml`) yang secara otomatis:
+**Tersedia.** Repositori ini dilengkapi workflow GitHub Actions (`.github/workflows/tests.yml`) yang berjalan pada setiap `push` dan `pull_request` ke branch `main`:
 
-- Menjalankan `php artisan test` pada setiap event `push` dan `pull_request` ke branch `main`.
-- Menguji pada matriks PHP 8.3 dan 8.4 (SQLite) serta job MySQL 8.0 dan MariaDB 10.11.
-- Mengatur lingkungan PHP dengan ekstensi yang dibutuhkan dan dependency via Composer (`composer check-platform-reqs`).
+- **Job `SQLite`** — matriks **PHP 8.3 & 8.4**. Menjalankan `composer install`, `composer check-platform-reqs`, migrasi SQLite, lalu seluruh suite (`php artisan test`).
+- **Job `MySQL/MariaDB`** — matriks **`mysql:8.0` & `mariadb:10.11`** memakai `services` dengan healthcheck. Menjalankan `composer install`, `composer check-platform-reqs`, `php artisan migrate:fresh --seed --force` pada database sungguhan, memeriksa `php artisan siils:check`, menguji pembuatan database lewat `php artisan siils:install` (termasuk pemanggilan kedua untuk membuktikan idempotensi), lalu menjalankan seluruh suite terhadap MySQL/MariaDB.
 
-Workflow terhubung langsung dengan repositori ini dan memastikan regresi terdeteksi sebelum perubahan digabung ke `main`.
+Workflow memastikan regresi terdeteksi — termasuk perbedaan perilaku MySQL vs SQLite — sebelum perubahan digabung ke `main`.
 
 ---
 
@@ -386,8 +479,9 @@ Workflow terhubung langsung dengan repositori ini dan memastikan regresi terdete
 ## 11. Catatan Teknis
 
 - **Privasi & Keamanan Data:** Sandi pengguna dienkripsi menggunakan algoritma `Bcrypt` dengan faktor biaya 12. Seluruh form input wajib dilengkapi proteksi `CSRF` token.
-- **Driver Database:** Konfigurasi default menggunakan driver `SQLite` untuk kemudahan pengujian pengembang lokal. Untuk deployment lingkungan produksi, disarankan menggunakan database engine server seperti `MySQL 8.0` atau `MariaDB 10.6+`.
-- **Manajemen Storage File:** Berkas dokumen terlampir disimpan dalam direktori privat `storage/app/public/documents` dan diakses melalui rute terautentikasi `DocumentController@download` untuk mencegah pengunduhan ilegal langsung via URL publik.
+- **Driver Database:** Konfigurasi default menggunakan **MySQL/MariaDB** (driver `mysql`). SQLite tetap didukung sebagai alternatif cepat tanpa server database (`DB_CONNECTION=sqlite`). Pengujian otomatis berjalan pada SQLite in-memory (lokal) dan MySQL/MariaDB sungguhan (CI).
+- **Manajemen Storage File:** Berkas dokumen terlampir disimpan pada disk privat (`storage/app/private/documents`) dan diakses melalui rute terautentikasi `DocumentController@download`. Karena berkas tidak disajikan langsung dari `public/`, perintah `php artisan storage:link` **tidak diperlukan**.
+- **Zona Waktu & Lokalisasi:** `APP_TIMEZONE=Asia/Jakarta` dan `APP_LOCALE=id` secara default. Nama bulan pada grafik/laporan mengikuti locale Carbon, sehingga otomatis berbahasa Indonesia.
 
 ---
 
@@ -429,7 +523,7 @@ Workflow terhubung langsung dengan repositori ini dan memastikan regresi terdete
 |---|:---:|---|
 | **CI/CD** | ✅ Terpasang | Workflow GitHub Actions (`tests.yml`) menjalankan `php artisan test` otomatis pada push/PR ke `main`. |
 | **Konsistensi CSS** | ✅ Terkonsolidasi | UI konsisten dengan gaya Metronic/Bootstrap 5; halaman `documents/index.blade.php` telah diseragamkan dan bebas dari Tailwind utility di area view terpakai. |
-| **Indeks Database** | ✅ Tersedia | Migration `2026_10_04_012000_add_indexes_to_inventory_and_submissions` menambah indeks pada tabel `inventories`, `submissions`, `submission_items`, dan `documents` untuk optimasi query. |
+| **Indeks Database** | ✅ Tersedia | Migration `2026_10_02_070437_add_indexes_to_core_tables` menambah indeks pada tabel inti (termasuk `items`, `submissions`, `submission_items`, dan `documents`) untuk optimasi query. |
 | **Catatan Desain yang Disengaja** | ✅ Tercatat | Field sensitif (`status`, `role`, `is_active`, dll.) sengaja dikeluarkan dari `$fillable` — controller (dan test yang memerlukan transisi state) WAJIB mengubahnya melalui set properti eksplisit (`$model->field = $value; $model->save()`) sesuai alur transisi yang benar, bukan via mass-assignment. |
 
 ### Batasan Scope (Strict Scope Boundaries)
@@ -445,17 +539,38 @@ Sistem ini secara eksplisit **TIDAK MEMILIKI** dan **DILARANG MENAMBAHKAN** fitu
 
 ## 14. Troubleshooting dan FAQ
 
-#### Masalah: Gagal mengunduh file dokumen yang baru diunggah (`404 Not Found`).
-- *Penyebab:* Tautan simbolik (*symbolic link*) antara folder `storage/app/public` dan `public/storage` belum dibuat.
-- *Solusi:* Jalankan perintah `php artisan storage:link` pada terminal terminal Anda.
+### Reset dari Awal (hanya lokal)
 
-#### Masalah: Kajur tidak melihat tombol edit pada halaman detail pengajuan.
-- *Penyebab:* Pengajuan tersebut sudah dikirimkan (*submitted*) atau dalam proses peninjauan oleh Sarpras.
-- *Solusi:* Sesuai aturan desain, tombol edit hanya muncul apabila status pengajuan masih `draft`.
+Menghapus seluruh data lalu memasang ulang dari nol:
 
-#### Masalah: Terjadi error `SQLSTATE[HY000]: General error: 1 no such table`.
-- *Penyebab:* File database SQLite belum dibuat atau tabel migrasi belum dijalankan.
-- *Solusi:* Jalankan perintah `touch database/database.sqlite` diikuti dengan `php artisan migrate:fresh --seed`.
+```bash
+php artisan siils:install --fresh
+```
+
+`--fresh` bersifat destruktif (menghapus semua tabel) dan **ditolak** bila `APP_ENV=production`. Di produksi, gunakan `php artisan migrate --force` biasa.
+
+### Tabel Pemecahan Masalah
+
+| Pesan Error | Penyebab | Solusi |
+|---|---|---|
+| `Your lock file does not contain a compatible set of packages` | Versi PHP tidak cocok dengan `composer.lock` | Gunakan PHP 8.3/8.4 sesuai [persyaratan](#a-persyaratan), lalu `composer install`. Jangan memakai `--ignore-platform-reqs`. |
+| `could not find driver` | Ekstensi PDO driver database belum aktif | Aktifkan `pdo_mysql` (atau `pdo_sqlite`) di `php.ini` (Laragon: **PHP → Ekstensi**), lalu restart. |
+| `SQLSTATE[HY000] [1049] Unknown database 'siils'` | Database belum dibuat | Jalankan `php artisan siils:install` (membuat otomatis) atau buat manual di HeidiSQL/phpMyAdmin. |
+| `SQLSTATE[HY000] [1045] Access denied for user` | User/password database salah | Periksa `DB_USERNAME`/`DB_PASSWORD` di `.env` (default Laragon: `root` tanpa password). |
+| `SQLSTATE[HY000] [2002] Connection refused` | MySQL/MariaDB belum menyala atau host/port salah | Klik **Start All** di Laragon; pastikan `DB_HOST=127.0.0.1` dan `DB_PORT=3306`. |
+| `requires ext-gd` (atau ekstensi lain) | Ekstensi PHP belum aktif | Aktifkan ekstensi terkait (mis. `gd`, `zip`) di `php.ini` (Laragon: **PHP → Ekstensi**), lalu restart. |
+| `419 Page Expired` | `APP_URL`/domain berubah sehingga cookie/session tidak valid | Samakan `APP_URL` dengan alamat yang dibuka, jalankan `php artisan config:clear`, lalu login ulang. |
+| `'php' is not recognized` | PHP tidak ada di PATH (cmd biasa) | Gunakan **Terminal Laragon**, atau tambahkan folder PHP ke PATH Windows. |
+| Gagal menulis `storage/` atau `bootstrap/cache` | Izin folder | Beri izin tulis (Windows: properti folder → keamanan; Linux: `chmod -R 775 storage bootstrap/cache`). |
+| `SQLSTATE[HY000]: General error: 1 no such table` | Database belum dimigrasi | Jalankan `php artisan siils:install` atau `php artisan migrate --force`. |
+
+### FAQ
+
+#### Mengapa berkas dokumen tidak bisa diunduh walau sudah diunggah?
+Modul Dokumen menyimpan berkas pada disk privat dan menyajikannya lewat rute terautentikasi. Pastikan Anda sudah login; perintah `php artisan storage:link` **tidak diperlukan**.
+
+#### Mengapa Kajur tidak melihat tombol edit pada halaman detail pengajuan?
+Sesuai aturan desain, tombol edit hanya muncul bila status pengajuan masih `draft`.
 
 ---
 
