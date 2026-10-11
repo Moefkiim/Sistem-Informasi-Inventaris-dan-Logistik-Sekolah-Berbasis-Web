@@ -6,21 +6,36 @@ use App\Http\Controllers\Controller;
 use App\Models\ActivityLog;
 use App\Models\User;
 use App\Support\Departments;
+use App\Support\SessionStore;
 use App\Support\TemporaryPassword;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\View\View;
 
 class UserController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
+        // Kata sandi sementara hanya tampil sekali: nilai flash ditarik (pull)
+        // begitu halaman pengguna dibaca agar tidak tersisa di payload sesi.
+        $temporaryPassword = $request->session()->pull('temporary_password');
+
+        // Bersihkan daftar flash agar kunci 'temporary_password' tidak
+        // kembali di-put oleh ageFlashData pada request berikutnya.
+        $request->session()->put('_flash.new', array_values(array_filter(
+            $request->session()->get('_flash.new', []),
+            fn ($key) => $key !== 'temporary_password',
+        )));
+        $request->session()->put('_flash.old', array_values(array_filter(
+            $request->session()->get('_flash.old', []),
+            fn ($key) => $key !== 'temporary_password',
+        )));
+
         $users = User::latest()->paginate(15);
 
-        return view('sarpras.users.index', compact('users'));
+        return view('sarpras.users.index', compact('users', 'temporaryPassword'));
     }
 
     public function store(Request $request): RedirectResponse
@@ -102,7 +117,7 @@ class UserController extends Controller
         $user->must_change_password = true;
         $user->save();
 
-        $this->invalidateSessions($user);
+        $this->forgetSessions($user);
 
         ActivityLog::log(
             action: 'user_password_reset',
@@ -143,14 +158,8 @@ class UserController extends Controller
         return in_array($user->role, ['kepala_sekolah', 'sarpras'], true);
     }
 
-    private function invalidateSessions(User $user): void
+    private function forgetSessions(User $user): void
     {
-        if (config('session.driver') !== 'database') {
-            return;
-        }
-
-        DB::table(config('session.table', 'sessions'))
-            ->where('user_id', $user->id)
-            ->delete();
+        SessionStore::forgetForUser($user);
     }
 }

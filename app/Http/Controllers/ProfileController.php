@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\ActivityLog;
+use App\Support\SessionStore;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -50,6 +51,11 @@ class ProfileController extends Controller
         $user->password = Hash::make($validated['password']);
         $user->must_change_password = false;
         $user->save();
+
+        // Bikin ulang ID sesi dan batalkan seluruh sesi lain pengguna agar
+        // sesi lama tidak berlaku lagi setelah kata sandi diganti.
+        $request->session()->regenerate();
+        SessionStore::forgetForUser($user, $request->session()->getId());
 
         ActivityLog::log(
             action: 'user_password_changed',

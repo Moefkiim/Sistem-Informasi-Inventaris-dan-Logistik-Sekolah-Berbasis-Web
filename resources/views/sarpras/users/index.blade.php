@@ -179,8 +179,8 @@
     </div>
 </div>
 
-@if(session('temporary_password'))
-    @php($temp = session('temporary_password'))
+@if(!empty($temporaryPassword))
+    @php($temp = $temporaryPassword)
     <div class="modal fade" id="tempPasswordModal" tabindex="-1" aria-labelledby="tempPasswordModalLabel" aria-hidden="true" data-bs-backdrop="static">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">

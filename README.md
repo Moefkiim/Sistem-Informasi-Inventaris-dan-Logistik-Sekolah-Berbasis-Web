@@ -182,7 +182,13 @@ graph TD
 1. Masuk ke menu **Administrasi** > **Manajemen Pengguna**.
 2. Klik **Reset Sandi** pada akun Kajur/Staf yang lupa kata sandi.
 3. Sistem membuat kata sandi sementara yang **wajib diganti saat login berikutnya**; sampaikan kepada pengguna yang bersangkutan.
-4. Alternatif via konsol: `php artisan siils:reset-password <username>`.
+4. Kata sandi sementara hanya ditampilkan sekali lalu langsung dibersihkan dari sesi; kata sandi tidak pernah tercatat di riwayat aktivitas maupun log aplikasi.
+5. Mereset kata sandi otomatis mencabut seluruh sesi login lama akun tersebut.
+6. Alternatif via konsol: `php artisan siils:reset-password <username>`.
+
+#### Keamanan Sesi & Kata Sandi
+- Setiap pengguna yang **mengganti kata sandinya sendiri** akan mendapat **ID sesi baru**; seluruh sesi login lain yang memakai akun yang sama dicabut seketika (untuk driver sesi `database`). Pada driver lain yang tidak menyimpan sesi sebagai baris, pencabutan menyeluruh tidak dapat dilakukan — disarankan memakai driver sesi `database` (default).
+- `SESSION_ENCRYPT=true` di `.env.example`: payload sesi dienkripsi di penyimpanan (kolom `payload` tabel `sessions`) sehingga nilai flash seperti kata sandi sementara tidak tersimpan sebagai teks terbaca. Setelah nilai ini diaktifkan, **seluruh sesi lama menjadi tidak valid** dan pengguna harus login ulang.
 
 ---
 
@@ -323,6 +329,8 @@ DB_DATABASE=/path/absolut/ke/database.sqlite
 | `APP_URL` | URL domain utama server | `http://localhost:8000` atau `http://siils.test` |
 | `APP_TIMEZONE` | Zona waktu tampilan jam dan tanggal | `Asia/Jakarta` |
 | `APP_LOCALE` | Bahasa antarmuka & pesan validasi | `id` |
+| `SESSION_ENCRYPT` | Enkripsi payload sesi di penyimpanan (aktif = sesi lama tidak valid) | `true` |
+| `SESSION_DRIVER` | Driver sesi; disarankan `database` agar sesi bisa dicabut per akun | `database` |
 | `DB_CONNECTION` | Driver database (`mysql` / `mariadb` / `sqlite`) | `mysql` |
 | `DB_HOST` | Host server database | `127.0.0.1` |
 | `DB_PORT` | Port server database | `3306` |

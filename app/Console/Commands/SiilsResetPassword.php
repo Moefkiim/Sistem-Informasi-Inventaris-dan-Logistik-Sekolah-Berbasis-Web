@@ -4,9 +4,9 @@ namespace App\Console\Commands;
 
 use App\Models\ActivityLog;
 use App\Models\User;
+use App\Support\SessionStore;
 use App\Support\TemporaryPassword;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
 
 /**
  * Reset kata sandi akun lewat terminal server.
@@ -40,11 +40,7 @@ class SiilsResetPassword extends Command
         $user->must_change_password = true;
         $user->save();
 
-        if (config('session.driver') === 'database') {
-            DB::table(config('session.table', 'sessions'))
-                ->where('user_id', $user->id)
-                ->delete();
-        }
+        SessionStore::forgetForUser($user);
 
         ActivityLog::log(
             action: 'user_password_reset',

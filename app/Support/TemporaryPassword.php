@@ -2,6 +2,8 @@
 
 namespace App\Support;
 
+use Random\Randomizer;
+
 /**
  * Pembuat kata sandi sementara acak untuk reset akun.
  *
@@ -33,8 +35,10 @@ class TemporaryPassword
             $chars[] = $all[random_int(0, strlen($all) - 1)];
         }
 
-        shuffle($chars);
+        // Fisher–Yates berbasis CSPRNG (shuffle() lama bukan secure random,
+        // dan bisa meleset dari distribusi seragam untuk elemen banyak).
+        $randomizer = new Randomizer;
 
-        return implode('', $chars);
+        return implode('', $randomizer->shuffleArray($chars));
     }
 }
