@@ -9,6 +9,7 @@ use App\Models\Item;
 use App\Models\Location;
 use App\Models\LocationHistory;
 use App\Models\OutgoingItem;
+use App\Services\IncomingStockService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -18,6 +19,8 @@ use Illuminate\View\View;
 
 class LogisticsController extends Controller
 {
+    public function __construct(private readonly IncomingStockService $incomingStock) {}
+
     /**
      * Log Barang Masuk
      */
@@ -41,10 +44,7 @@ class LogisticsController extends Controller
         ]);
 
         DB::transaction(function () use ($validated, $request) {
-            $transactionNumber = $this->generateDocumentNumber('incoming_items', 'transaction_number', 'IN');
-
-            IncomingItem::create([
-                'transaction_number' => $transactionNumber,
+            $this->incomingStock->record([
                 'item_id' => $validated['item_id'],
                 'quantity' => $validated['quantity'],
                 'source' => $validated['source'],
@@ -53,11 +53,6 @@ class LogisticsController extends Controller
                 'user_id' => $request->user()->id,
                 'notes' => $validated['notes'] ?? null,
             ]);
-
-            // Tambahkan stok barang secara konsisten
-            Item::where('id', $validated['item_id'])
-                ->whereNull('deleted_at')
-                ->increment('stock', $validated['quantity']);
         });
 
         return back()->with('success', 'Transaksi barang masuk berhasil dicatat dan stok telah bertambah.');

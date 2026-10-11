@@ -90,6 +90,11 @@ Route::middleware(['auth', 'role', 'password.changed'])->group(function () {
         Route::get('/submissions/{submission}', [App\Http\Controllers\Sarpras\SubmissionController::class, 'show'])->name('submissions.show');
         Route::post('/submissions/{submission}/process', [App\Http\Controllers\Sarpras\SubmissionController::class, 'process'])->name('submissions.process');
 
+        // Realisasi Pengajuan yang Telah Disetujui
+        Route::get('/realizations', [App\Http\Controllers\Sarpras\SubmissionController::class, 'ready'])->name('realizations.index');
+        Route::get('/submissions/{submission}/realize', [App\Http\Controllers\Sarpras\SubmissionController::class, 'realizeForm'])->name('submissions.realize_form');
+        Route::post('/submissions/{submission}/realize', [App\Http\Controllers\Sarpras\SubmissionController::class, 'realize'])->name('submissions.realize');
+
         // Logistik: Barang Masuk
         Route::get('/logistics/incoming', [LogisticsController::class, 'incomingIndex'])->name('logistics.incoming');
         Route::post('/logistics/incoming', [LogisticsController::class, 'storeIncoming'])->name('logistics.incoming.store');
