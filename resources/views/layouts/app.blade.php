@@ -404,7 +404,7 @@
     <script src="{{ asset('plugins/daterangepicker/daterangepicker.js') }}"></script>
 
     <!-- App Script (Dynamic rows, submit guard) -->
-    @vite('resources/js/app.js')
+    <script src="{{ asset('js/siils.js') }}?v={{ filemtime(public_path('js/siils.js')) }}" defer></script>
     @stack('scripts')
 </body>
 </html>

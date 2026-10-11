@@ -44,19 +44,6 @@ jobs:
       - name: Verify platform requirements
         run: composer check-platform-reqs
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: 'package-lock.json'
-
-      - name: Install Node dependencies
-        run: npm ci
-
-      - name: Build assets with Vite
-        run: npm run build
-
       - name: Copy .env
         run: cp .env.example .env
 
@@ -68,6 +55,9 @@ jobs:
 
       - name: Run migrations
         run: php artisan migrate --force
+        env:
+          DB_CONNECTION: sqlite
+          DB_DATABASE: database/database.sqlite
 
       - name: Run tests
         run: php artisan test
@@ -130,19 +120,6 @@ jobs:
 
       - name: Verify platform requirements
         run: composer check-platform-reqs
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: 'package-lock.json'
-
-      - name: Install Node dependencies
-        run: npm ci
-
-      - name: Build assets with Vite
-        run: npm run build
 
       - name: Copy .env
         run: cp .env.example .env

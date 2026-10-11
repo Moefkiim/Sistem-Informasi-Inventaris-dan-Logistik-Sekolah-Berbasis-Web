@@ -185,7 +185,7 @@ graph TD
 
 - **Backend Framework:** Laravel v13.x / PHP v8.3+ (diuji pada PHP 8.3 & 8.4 di CI)
 - **Frontend Template & UI:** Blade Engine, Metronic Design System, Tailwind CSS, Bootstrap Icons
-- **Bundler Asset:** Vite v5.x
+- **Asset JS:** File statis `public/js/siils.js` (tanpa Node/Vite)
 - **Database (Development/Local):** MySQL v8.0 / MariaDB 10.4+ (default), SQLite sebagai alternatif
 - **Database (Testing):** SQLite In-Memory
 - **Framework Pengujian:** PHPUnit v12.x / Laravel Testing Toolkit

@@ -1,7 +1,7 @@
 /**
  * Logika Reusable untuk Dinamika Baris Item Pengajuan (Kajur Create / Edit)
  */
-export function initDynamicItemRows() {
+function initDynamicItemRows() {
     const btnAdd = document.getElementById('btn-add-item');
     const container = document.getElementById('items-container');
     if (!btnAdd || !container) return;
@@ -60,7 +60,7 @@ export function initDynamicItemRows() {
 /**
  * Global Handler Pencegah Double-Submit (data-disable-on-submit)
  */
-export function initDisableOnSubmit() {
+function initDisableOnSubmit() {
     document.addEventListener('submit', function (e) {
         const form = e.target;
         if (!form || !form.hasAttribute('data-disable-on-submit')) return;
