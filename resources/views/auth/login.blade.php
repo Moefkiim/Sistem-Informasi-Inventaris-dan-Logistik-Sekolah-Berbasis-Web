@@ -48,6 +48,13 @@
                                 <div class="text-gray-400 fw-bold fs-6">Masuk menggunakan Username atau Email Anda</div>
                             </div>
 
+                            @if (session('error'))
+                                <div class="alert alert-dismissible bg-light-danger d-flex align-items-center p-4 mb-6 border border-danger">
+                                    <i class="bi bi-exclamation-circle-fill text-danger fs-3 me-3"></i>
+                                    <div class="text-danger fw-bold">{{ session('error') }}</div>
+                                </div>
+                            @endif
+
                             @if ($errors->any())
                                 <div class="alert alert-dismissible bg-light-danger d-flex flex-column flex-sm-row p-5 mb-8 border border-danger">
                                     <span class="svg-icon svg-icon-2hx svg-icon-danger me-4 mb-5 mb-sm-0">
