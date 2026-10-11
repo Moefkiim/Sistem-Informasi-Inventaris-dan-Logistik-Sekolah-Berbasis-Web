@@ -69,7 +69,7 @@ class DemoReadinessTest extends TestCase
             ->assertViewHas('totalItems', fn ($total) => $total >= 1);
 
         $this->get(route('kajur.submissions.index'))->assertOk();
-        $this->get(route('kajur.submissions.show', $this->submission))->assertOk()->assertSee('Riwayat Proses Pengajuan');
+        $this->get(route('kajur.submissions.show', $this->submission))->assertOk()->assertSee('Linimasa Proses Pengajuan');
         $this->get(route('kajur.inventory.index'))->assertOk();
         $this->get(route('kajur.inventory.show', $this->item))->assertOk()->assertSee('Peminjaman Aktif');
         $this->get(route('reports.index'))->assertOk()->assertSee('BRG-RPL-0001');
@@ -90,7 +90,7 @@ class DemoReadinessTest extends TestCase
         $this->get(route('sarpras.loans.create'))->assertOk();
         $this->get(route('sarpras.loans.show', $this->loan))->assertOk();
         $this->get(route('sarpras.submissions.index'))->assertOk();
-        $this->get(route('sarpras.submissions.show', $this->submission))->assertOk()->assertSee('Riwayat Proses Pengajuan');
+        $this->get(route('sarpras.submissions.show', $this->submission))->assertOk()->assertSee('Linimasa Proses Pengajuan');
         $this->get(route('sarpras.activity_logs.index'))->assertOk();
         $this->get(route('sarpras.locations.index'))->assertOk();
         $this->get(route('sarpras.logistics.incoming'))->assertOk();
@@ -109,7 +109,7 @@ class DemoReadinessTest extends TestCase
         $this->get(route('home'))->assertOk();
 
         $this->get(route('kepala_sekolah.approval.index'))->assertOk();
-        $this->get(route('kepala_sekolah.approval.show', $this->submission))->assertOk()->assertSee('Riwayat Proses Pengajuan');
+        $this->get(route('kepala_sekolah.approval.show', $this->submission))->assertOk()->assertSee('Linimasa Proses Pengajuan');
         $this->get(route('reports.index'))->assertOk();
         $this->get(route('reports.pdf', ['type' => 'submission']))->assertOk();
         $this->get(route('reports.excel', ['type' => 'incoming']))->assertOk();

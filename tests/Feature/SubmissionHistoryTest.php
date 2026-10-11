@@ -221,7 +221,7 @@ class SubmissionHistoryTest extends TestCase
         $this->actingAs($sarpras)
             ->get(route('sarpras.submissions.show', $submission))
             ->assertOk()
-            ->assertSee('Riwayat Proses Pengajuan')
+            ->assertSee('Linimasa Proses Pengajuan')
             ->assertSee('Diajukan')
             ->assertSee('Diverifikasi Sarpras')
             ->assertSee('Rekomendasi disetujui.');

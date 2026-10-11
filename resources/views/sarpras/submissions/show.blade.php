@@ -34,7 +34,8 @@
                     <tr class="fw-bolder fs-7 text-gray-800">
                         <th>#</th>
                         <th>Nama Barang</th>
-                        <th>Jumlah</th>
+                        <th>Diminta</th>
+                        <th>Terealisasi</th>
                         <th>Estimasi Biaya Satuan</th>
                         <th>Spesifikasi</th>
                     </tr>
@@ -43,8 +44,20 @@
                     @foreach($submission->items as $idx => $item)
                         <tr>
                             <td>{{ $idx + 1 }}</td>
-                            <td class="fw-bold">{{ $item->item_name }}</td>
+                            <td class="fw-bold">
+                                {{ $item->item_name }}
+                                @if($item->item)
+                                    <div class="fs-8 text-muted">Master: {{ $item->item->code }}</div>
+                                @endif
+                            </td>
                             <td><span class="badge badge-light-primary">{{ $item->quantity }} {{ $item->unit }}</span></td>
+                            <td>
+                                @if($item->received_quantity)
+                                    <span class="badge badge-light-success">{{ $item->received_quantity }} {{ $item->unit }}</span>
+                                @else
+                                    <span class="text-muted">-</span>
+                                @endif
+                            </td>
                             <td>Rp {{ number_format($item->estimated_price, 0, ',', '.') }}</td>
                             <td class="text-muted">{{ $item->specification ?: '-' }}</td>
                         </tr>
@@ -79,42 +92,73 @@
             </div>
         @else
             <div class="alert alert-light-info p-4">
-                <strong>Status Pengajuan:</strong> {{ strtoupper(str_replace('_', ' ', $submission->status)) }}
+                <strong>Status Pengajuan:</strong> <x-submission-status-badge :status="$submission->status" />
                 @if($submission->sarpras_notes)
                     <div class="mt-2"><strong>Catatan Sarpras:</strong> {{ $submission->sarpras_notes }}</div>
                 @endif
             </div>
+            @if($submission->canBeRealizedBySarpras())
+                <div class="bg-light-primary p-6 rounded border border-primary mt-4">
+                    <h4 class="fw-bolder text-primary mb-2"><i class="bi bi-box-arrow-down me-2"></i> Pengajuan Siap Direalisasi</h4>
+                    <p class="text-muted fs-7 mb-4">Pengajuan telah disetujui Kepala Sekolah. Realisasikan untuk mencatat barang masuk dan memperbarui inventaris.</p>
+                    <a href="{{ route('sarpras.submissions.realize_form', $submission) }}" class="btn btn-primary" data-disable-on-submit>
+                        <i class="bi bi-box-arrow-down me-1"></i> Realisasikan Sekarang
+                    </a>
+                </div>
+            @elseif($submission->isRealized())
+                <div class="bg-light-success p-6 rounded border border-success mt-4">
+                    <h4 class="fw-bolder text-success mb-4"><i class="bi bi-check-circle me-2"></i> Pengajuan Terealisasi</h4>
+                    <div class="row g-4">
+                        <div class="col-md-4">
+                            <span class="text-muted fs-7">Direalisasikan oleh</span>
+                            <div class="fw-bold fs-6">{{ $submission->realizedBy?->name ?? '-' }}</div>
+                        </div>
+                        <div class="col-md-4">
+                            <span class="text-muted fs-7">Tanggal Realisasi</span>
+                            <div class="fw-bold fs-6">{{ $submission->realized_at?->format('d/m/Y H:i') ?? '-' }}</div>
+                        </div>
+                        <div class="col-md-4">
+                            <span class="text-muted fs-7">Catatan Realisasi</span>
+                            <div class="fw-bold fs-6">{{ $submission->realization_notes ?: '-' }}</div>
+                        </div>
+                    </div>
+                </div>
+            @endif
         @endif
 
-        @if($submission->histories && $submission->histories->isNotEmpty())
+        @if($submission->incomingItems->isNotEmpty())
             <div class="separator separator-dashed my-6"></div>
-            <h4 class="fw-bolder mb-4">Riwayat Proses Pengajuan (Audit Trail)</h4>
+            <h4 class="fw-bolder mb-4">Transaksi Barang Masuk Terkait</h4>
             <div class="table-responsive">
                 <table class="table table-sm table-row-bordered align-middle gy-3">
                     <thead class="fw-bold text-muted fs-8 text-uppercase">
                         <tr>
-                            <th>Waktu</th>
-                            <th>Transisi Status</th>
-                            <th>Aktor</th>
-                            <th>Catatan</th>
+                            <th>No. Transaksi</th>
+                            <th>Barang</th>
+                            <th>Jumlah</th>
+                            <th>Sumber</th>
+                            <th>Tanggal Masuk</th>
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach($submission->histories as $history)
+                        @foreach($submission->incomingItems as $incoming)
                             <tr>
-                                <td class="text-nowrap">{{ $history->recorded_at->format('d/m/Y H:i') }}</td>
-                                <td>
-                                    <span class="badge badge-light-secondary">{{ \App\Models\Submission::statusLabel($history->from_status) ?: '—' }}</span>
-                                    <i class="bi bi-arrow-right mx-1"></i>
-                                    <span class="badge badge-light-primary">{{ \App\Models\Submission::statusLabel($history->to_status) }}</span>
-                                </td>
-                                <td>{{ $history->actor?->name ?: 'Sistem' }}</td>
-                                <td class="text-muted">{{ $history->notes ?: '-' }}</td>
+                                <td class="text-nowrap fw-bold">{{ $incoming->transaction_number }}</td>
+                                <td>{{ $incoming->item?->name }} ({{ $incoming->item?->code }})</td>
+                                <td>{{ $incoming->quantity }}</td>
+                                <td>{{ ucfirst($incoming->source) }}</td>
+                                <td>{{ $incoming->entry_date->format('d/m/Y') }}</td>
                             </tr>
                         @endforeach
                     </tbody>
                 </table>
             </div>
+        @endif
+
+        @if($submission->histories && $submission->histories->isNotEmpty())
+            <div class="separator separator-dashed my-6"></div>
+            <h4 class="fw-bolder mb-4">Linimasa Proses Pengajuan</h4>
+            <x-submission-timeline :submission="$submission" />
         @endif
     </div>
     <div class="card-footer">

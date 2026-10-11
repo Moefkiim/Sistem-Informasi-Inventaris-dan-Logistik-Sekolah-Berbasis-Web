@@ -44,7 +44,8 @@
                     <tr class="fw-bolder fs-7 text-gray-800">
                         <th>#</th>
                         <th>Nama Item</th>
-                        <th>Kuantitas</th>
+                        <th>Diminta</th>
+                        <th>Terealisasi</th>
                         <th>Estimasi Harga</th>
                         <th>Spesifikasi Teknis</th>
                     </tr>
@@ -55,19 +56,77 @@
                         @php $totalEstimasi += ($item->estimated_price * $item->quantity); @endphp
                         <tr>
                             <td>{{ $idx + 1 }}</td>
-                            <td class="fw-bold">{{ $item->item_name }}</td>
+                            <td class="fw-bold">
+                                {{ $item->item_name }}
+                                @if($item->item)
+                                    <div class="fs-8 text-muted">Master: {{ $item->item->code }}</div>
+                                @endif
+                            </td>
                             <td><span class="badge badge-light-primary">{{ $item->quantity }} {{ $item->unit }}</span></td>
+                            <td>
+                                @if($item->received_quantity)
+                                    <span class="badge badge-light-success">{{ $item->received_quantity }} {{ $item->unit }}</span>
+                                @else
+                                    <span class="text-muted">-</span>
+                                @endif
+                            </td>
                             <td>Rp {{ number_format($item->estimated_price, 0, ',', '.') }}</td>
                             <td class="text-muted">{{ $item->specification ?: '-' }}</td>
                         </tr>
                     @endforeach
                     <tr class="fw-bold fs-6 bg-light">
-                        <td colspan="3" class="text-end">Total Perkiraan Biaya:</td>
+                        <td colspan="4" class="text-end">Total Perkiraan Biaya:</td>
                         <td colspan="2" class="text-primary fw-bolder">Rp {{ number_format($totalEstimasi, 0, ',', '.') }}</td>
                     </tr>
                 </tbody>
             </table>
         </div>
+
+        @if($submission->isRealized())
+            <div class="bg-light-success p-5 rounded border border-success mb-4">
+                <h5 class="text-success fw-bolder mb-3"><i class="bi bi-check-circle me-2"></i> Pengajuan Terealisasi oleh Sarpras</h5>
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <span class="text-muted fs-7">Direalisasikan oleh</span>
+                        <div class="fw-bold fs-6">{{ $submission->realizedBy?->name ?? '-' }}</div>
+                    </div>
+                    <div class="col-md-4">
+                        <span class="text-muted fs-7">Tanggal Realisasi</span>
+                        <div class="fw-bold fs-6">{{ $submission->realized_at?->format('d/m/Y H:i') ?? '-' }}</div>
+                    </div>
+                    <div class="col-md-4">
+                        <span class="text-muted fs-7">Catatan Realisasi</span>
+                        <div class="fw-bold fs-6">{{ $submission->realization_notes ?: '-' }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <h4 class="fw-bolder mt-6 mb-4">Transaksi Barang Masuk Terkait</h4>
+            <div class="table-responsive mb-4">
+                <table class="table table-sm table-row-bordered align-middle gy-3">
+                    <thead class="fw-bold text-muted fs-8 text-uppercase">
+                        <tr>
+                            <th>No. Transaksi</th>
+                            <th>Barang</th>
+                            <th>Jumlah</th>
+                            <th>Sumber</th>
+                            <th>Tanggal Masuk</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($submission->incomingItems as $incoming)
+                            <tr>
+                                <td class="text-nowrap fw-bold">{{ $incoming->transaction_number }}</td>
+                                <td>{{ $incoming->item?->name }} ({{ $incoming->item?->code }})</td>
+                                <td>{{ $incoming->quantity }}</td>
+                                <td>{{ ucfirst($incoming->source) }}</td>
+                                <td>{{ $incoming->entry_date->format('d/m/Y') }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @endif
 
         @if($submission->status === 'reviewed_sarpras')
             <div class="separator separator-dashed my-6"></div>
@@ -93,16 +152,19 @@
                     </div>
                 </form>
             </div>
-        @elseif(in_array($submission->status, ['approved', 'rejected']))
+        @elseif(in_array($submission->status, ['approved', 'rejected', 'realized']))
             <div class="separator separator-dashed my-6"></div>
-            <div class="alert alert-light-{{ $submission->status === 'approved' ? 'success' : 'danger' }} p-4">
+            <div class="alert alert-light-{{ $submission->status === 'rejected' ? 'danger' : 'success' }} p-4">
                 <strong>Keputusan Kepala Sekolah:</strong>
-                {{ $submission->status === 'approved' ? 'DISETUJUI' : 'DITOLAK' }}
+                {{ $submission->status === 'rejected' ? 'DITOLAK' : 'DISETUJUI' }}
                 @if($submission->principal_notes)
                     <div class="mt-2"><strong>Catatan:</strong> {{ $submission->principal_notes }}</div>
                 @endif
                 @if($submission->decided_at)
                     <div class="text-muted fs-8 mt-1">Pada: {{ $submission->decided_at->format('d/m/Y H:i') }}</div>
+                @endif
+                @if($submission->isRealized())
+                    <div class="mt-2 text-success fw-bolder"><i class="bi bi-check-circle me-1"></i> Pengajuan telah direalisasikan oleh Sarpras.</div>
                 @endif
             </div>
         @else
@@ -122,33 +184,8 @@
 
         @if($submission->histories && $submission->histories->isNotEmpty())
             <div class="separator separator-dashed my-6"></div>
-            <h4 class="fw-bolder mb-4">Riwayat Proses Pengajuan (Audit Trail)</h4>
-            <div class="table-responsive">
-                <table class="table table-sm table-row-bordered align-middle gy-3">
-                    <thead class="fw-bold text-muted fs-8 text-uppercase">
-                        <tr>
-                            <th>Waktu</th>
-                            <th>Transisi Status</th>
-                            <th>Aktor</th>
-                            <th>Catatan</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach($submission->histories as $history)
-                            <tr>
-                                <td class="text-nowrap">{{ $history->recorded_at->format('d/m/Y H:i') }}</td>
-                                <td>
-                                    <span class="badge badge-light-secondary">{{ \App\Models\Submission::statusLabel($history->from_status) ?: '—' }}</span>
-                                    <i class="bi bi-arrow-right mx-1"></i>
-                                    <span class="badge badge-light-primary">{{ \App\Models\Submission::statusLabel($history->to_status) }}</span>
-                                </td>
-                                <td>{{ $history->actor?->name ?: 'Sistem' }}</td>
-                                <td class="text-muted">{{ $history->notes ?: '-' }}</td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
+            <h4 class="fw-bolder mb-4">Linimasa Proses Pengajuan</h4>
+            <x-submission-timeline :submission="$submission" />
         @endif
     </div>
     <div class="card-footer">
