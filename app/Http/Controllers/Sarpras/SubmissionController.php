@@ -144,14 +144,14 @@ class SubmissionController extends Controller
 
         $validated = $request->validate([
             'source' => ['required', 'in:pembelian,bantuan'],
-            'entry_date' => ['required', 'date'],
+            'entry_date' => ['required', 'date', 'after:2000-01-01', 'before_or_equal:'.today()->toDateString()],
             'realization_notes' => ['nullable', 'string'],
             'lines' => ['required', 'array', 'min:1'],
-            'lines.*.submission_item_id' => ['required', 'integer'],
+            'lines.*.submission_item_id' => ['required', 'integer', 'distinct'],
             'lines.*.received_quantity' => ['required', 'integer', 'min:1'],
             'lines.*.mode' => ['required', 'in:existing,new'],
-            'lines.*.item_id' => ['nullable', 'integer'],
-            'lines.*.new_name' => ['nullable', 'string', 'max:255'],
+            'lines.*.item_id' => ['nullable', 'integer', Rule::exists('items', 'id')->whereNull('deleted_at')],
+            'lines.*.new_name' => ['required_if:lines.*.mode,new', 'nullable', 'string', 'max:255'],
             'lines.*.new_category' => ['nullable', 'string', 'max:191'],
             'lines.*.new_item_type' => ['required_if:lines.*.mode,new', 'nullable', 'in:individual,consumable'],
             'lines.*.new_unit' => ['required_if:lines.*.mode,new', 'nullable', 'string', 'max:50'],

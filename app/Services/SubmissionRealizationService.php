@@ -44,6 +44,8 @@ class SubmissionRealizationService
 
             $itemsById = $locked->items()->get()->keyBy('id');
 
+            $this->assertExactSubmissionItemSet($locked, $lines);
+
             foreach ($lines as $line) {
                 $submissionItem = $itemsById->get((int) ($line['submission_item_id'] ?? 0));
 
@@ -107,6 +109,28 @@ class SubmissionRealizationService
     }
 
     /**
+     * Realisasi wajib mencakup setiap baris pengajuan tepat satu kali,
+     * tidak boleh ada baris ganda, hilang, maupun milik pengajuan lain.
+     *
+     * @param  array<int,array<string,mixed>>  $lines
+     */
+    private function assertExactSubmissionItemSet(Submission $submission, array $lines): void
+    {
+        $submissionItemIds = $submission->items()->pluck('id')->all();
+        $lineItemIds = array_map('intval', array_column($lines, 'submission_item_id'));
+
+        $missing = array_diff(array_map('intval', $submissionItemIds), $lineItemIds);
+        $foreign = array_diff($lineItemIds, array_map('intval', $submissionItemIds));
+        $hasDuplicates = count($lineItemIds) !== count(array_unique($lineItemIds));
+
+        if ($missing !== [] || $foreign !== [] || $hasDuplicates) {
+            throw ValidationException::withMessages([
+                'lines' => 'Setiap baris pengajuan wajib dicakup tepat satu kali dalam realisasi.',
+            ]);
+        }
+    }
+
+    /**
      * @param  array<string,mixed>  $line
      * @return array{0:Item,1:?int,2:string}
      */
@@ -127,11 +151,20 @@ class SubmissionRealizationService
         $new = $line['new'] ?? [];
         $locationId = $new['location_id'] ?? null;
         $condition = $new['condition'] ?? 'baik';
+        $name = trim((string) ($new['name'] ?? ''));
+        $category = trim((string) ($new['category'] ?? ''));
+        $category = $category === '' ? 'Umum' : $category;
+
+        if ($name === '') {
+            throw ValidationException::withMessages([
+                'lines' => 'Nama barang baru untuk realisasi wajib diisi.',
+            ]);
+        }
 
         $item = new Item;
         $item->code = $this->generateItemCode($submission->department);
-        $item->name = $new['name'];
-        $item->category = $new['category'];
+        $item->name = $name;
+        $item->category = $category;
         $item->item_type = $new['item_type'];
         $item->unit = $new['unit'];
         $item->source = $meta['source'];
@@ -214,14 +247,24 @@ class SubmissionRealizationService
     private function generateItemCode(?string $department): string
     {
         $prefix = 'BRG-'.($department ?: 'UMM').'-';
+
+        // Kunci baris kisaran kode yang sama agar dua realisasi bersamaan
+        // tidak menghasilkan kode yang sama (konsisten dengan generator
+        // nomor transaksi di LogisticsController::generateDocumentNumber).
         $last = Item::withTrashed()
             ->where('code', 'like', $prefix.'%')
+            ->lockForUpdate()
             ->orderByDesc('code')
             ->value('code');
 
-        $next = $last ? ((int) substr((string) $last, -4) + 1) : 1;
+        $next = $last ? (int) substr((string) $last, -4) : 0;
 
-        return $prefix.str_pad($next, 4, '0', STR_PAD_LEFT);
+        do {
+            $next++;
+            $candidate = $prefix.str_pad($next, 4, '0', STR_PAD_LEFT);
+        } while (Item::withTrashed()->where('code', $candidate)->exists());
+
+        return $candidate;
     }
 
     private function generateUnitNumber(Item $item): string
