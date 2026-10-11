@@ -82,8 +82,9 @@ graph TD
     G -->|Setujui| H[Status: approved]
     G -->|Tolak| I[Status: rejected]
     H --> J[Sarpras: Realisasi Barang Masuk]
+    J --> K[Status: realized]
 ```
-*Penjelasan:* Kajur menyusun kebutuhan dalam status `draft`. Setelah di-submit, Sarpras memberikan catatan teknis, dan Kepala Sekolah memberikan keputusan akhir disetujui atau ditolak.
+*Penjelasan:* Kajur menyusun kebutuhan dalam status `draft`. Setelah di-submit, Sarpras memberikan catatan teknis, dan Kepala Sekolah memberikan keputusan akhir disetujui atau ditolak. Pengajuan yang disetujui kemudian **direalisasikan** oleh Sarpras (barang masuk + stok/unit aset dicatat dan tertaut ke pengajuan) sehingga status berhenti di **`realized` (Terealisasi)** — bukan lagi berhenti di `approved`. Penolakan wajib disertai alasan (`principal_notes`) dan dapat diajukan ulang oleh Kajur sebagai draf revisi.
 
 ### (b) Alur Pengelolaan Master Barang, Lokasi, dan Kondisi
 
@@ -133,6 +134,17 @@ graph TD
 5. Klik **Simpan Perubahan Draft** atau **Simpan & Kirimkan ke Sarpras**.
    ![Halaman Edit Draft Pengajuan](docs/img/kajur_submission_edit.png)
 
+#### Tugas 3: Menindaklanjuti Penolakan dan Melihat Status Realisasi
+1. Pada **Daftar Pengajuan**, pengajuan yang ditolak menampilkan badge **Ditolak**.
+2. Buka halaman **Detail** — alasan penolakan Kepala Sekolah tampil di **Linimasa Proses Pengajuan**.
+3. Klik **Ajukan Ulang** untuk membuat **draf revisi** dari pengajuan yang ditolak (tanpa mengetik ulang dari nol), sesuaikan, lalu kirimkan lagi.
+4. Pengajuan yang sudah direalisasikan menampilkan badge **Terealisasi**; masuk ke **Notifikasi** (lonceng di kanan atas) untuk melihat pemberitahuannya.
+
+#### Tugas 4: Mengubah Kata Sandi Sendiri (Akun Saya)
+1. Klik gambar profil di kanan atas → **Akun Saya**.
+2. Isi kata sandi saat ini, kata sandi baru, dan konfirmasi.
+3. Klik **Simpan**.
+
 ---
 
 ### B. Panduan Tugas Sarpras (Operator & Logistik)
@@ -159,6 +171,19 @@ graph TD
 4. Klik **Simpan Dokumen**.
    ![Unggah Dokumen](docs/img/sarpras_document_upload.png)
 
+#### Tugas 4: Merealisasikan Pengajuan yang Disetujui
+1. Masuk ke menu **Administrasi** > **Pengajuan Siap Direalisasi** (badge jumlah tugas pada sidebar).
+2. Klik **Realisasikan** pada pengajuan berstatus *Disetujui*.
+3. Untuk tiap baris pilih mode **Barang Baru** atau **Barang Sudah Ada**, kuantitas diterima, kategori, satuan, lokasi, dan kondisi.
+4. Catat **Sumber Barang** (Pembelian/Bantuan) dan **Tanggal Masuk**, lalu klik **Simpan Realisasi**.
+5. Barang masuk tercatat, stok/unit aset bertambah, dan status pengajuan menjadi **Terealisasi**.
+
+#### Tugas 5: Mereset Kata Sandi Pengguna
+1. Masuk ke menu **Administrasi** > **Manajemen Pengguna**.
+2. Klik **Reset Sandi** pada akun Kajur/Staf yang lupa kata sandi.
+3. Sistem membuat kata sandi sementara yang **wajib diganti saat login berikutnya**; sampaikan kepada pengguna yang bersangkutan.
+4. Alternatif via konsol: `php artisan siils:reset-password <username>`.
+
 ---
 
 ### C. Panduan Tugas Kepala Sekolah
@@ -178,6 +203,20 @@ graph TD
 3. Tentukan rentang tanggal dan jurusan (jika diperlukan), lalu klik **Filter**.
 4. Klik tombol **Cetak** untuk membuka halaman versi cetak bebas komponen navigasi web.
    ![Cetak Laporan Window](docs/img/report_print_view.png)
+
+#### Tugas 2: Keputusan Penolakan yang Beralasan
+1. Saat menolak pengajuan (`reviewed_sarpras`), kolom **Catatan Kepala Sekolah** **wajib diisi** minimal 10 karakter sebagai alasan penolakan.
+2. Alasan tersebut langsung tampil di halaman **Detail Pengajuan** Kajur dan menjadi dasar pengajuan ulang.
+
+---
+
+### D. Notifikasi & Akun Saya (Lintas Peran)
+
+- **Notifikasi dalam aplikasi** (ikon lonceng di kanan atas): pemberitahuan saat pengajuan **diajukan, ditinjau, disetujui, ditolak, atau direalisasikan**. Halaman **Notifikasi** menampilkan riwayat lengkap beserta tombol **Tandai Semua Dibaca**.
+- **Panel "Tugas Anda"** di beranda merangkum tugas per peran (pengajuan draft, pengajuan menunggu review/realisasi, dan keputusan yang menunggu persetujuan).
+- Sesuai batasan `AGENTS.md`, notifikasi **hanya dalam aplikasi** (kanal database) — **tidak ada pengiriman WhatsApp/e-mail** atau integrasi pihak ketiga.
+- **Akun Saya** (menu gambar profil, tersedia untuk semua peran) untuk mengganti kata sandi sendiri.
+- Toggle **tampil/sembunyikan** kata sandi tersedia pada form login.
 
 ---
 
@@ -331,7 +370,7 @@ Sumber tunggal daftar jurusan berada di `config/departments.php` (helper `app/Su
 
 1. Buka **HeidiSQL** dari menu **Database** di Laragon, atau **phpMyAdmin** di `http://localhost/phpmyadmin`.
 2. Pilih database `siils`.
-3. Tabel yang diharapkan: `users`, `locations`, `items`, `asset_units`, `incoming_items`, `outgoing_items`, `distributions`, `submissions`, `submission_items`, `submission_histories`, `loans`, `activity_logs`, `condition_histories`, `location_histories`, `documents`, `migrations`.
+3. Tabel yang diharapkan: `users`, `locations`, `items`, `asset_units`, `incoming_items`, `outgoing_items`, `distributions`, `submissions`, `submission_items`, `submission_histories`, `loans`, `activity_logs`, `condition_histories`, `location_histories`, `documents`, `notifications`, `migrations`.
 4. Contoh query:
    ```sql
    SELECT role, COUNT(*) AS jumlah FROM users GROUP BY role;
@@ -342,27 +381,32 @@ Sumber tunggal daftar jurusan berada di `config/departments.php` (helper `app/Su
    |---|---:|
    | `users` | 5 |
    | `locations` | 6 |
-   | `items` | 7 |
-   | `asset_units` | 11 |
-   | `incoming_items` | 7 |
+   | `items` | 9 |
+   | `asset_units` | 13 |
+   | `incoming_items` | 9 |
    | `outgoing_items` | 4 |
    | `distributions` | 2 |
-   | `submissions` | 6 |
-   | `submission_items` | 7 |
-   | `submission_histories` | 16 |
+   | `submissions` | 8 |
+   | `submission_items` | 10 |
+   | `submission_histories` | 22 |
    | `loans` | 5 |
-   | `activity_logs` | 33 |
-   | `condition_histories` | 11 |
-   | `location_histories` | 9 |
+   | `activity_logs` | 41 |
+   | `condition_histories` | 15 |
+   | `location_histories` | 13 |
+   | `notifications` | 1 |
    | `documents` | 0 |
 
-   > Jumlah di atas berasal dari seeder demo pada mode lokal. Modul Dokumen memang dibiarkan kosong (tidak ada berkas palsu). Seeder bersifat idempoten: menjalankan `php artisan db:seed` dua kali tidak menggandakan baris.
+   > Jumlah di atas berasal dari seeder demo pada mode lokal (termasuk skenario pengajuan yang
+   > **terealisasi** dan **draf revisi**, yang dijalankan lewat jalur aplikasi
+   > `SubmissionRealizationService` sehingga memicu 1 notifikasi "Pengajuan Terealisasi" kepada
+   > pengaju). Modul Dokumen memang dibiarkan kosong (tidak ada berkas palsu). Seeder bersifat
+   > idempoten: menjalankan `php artisan db:seed` dua kali tidak menggandakan baris.
 
 ---
 
 ## 7. Menjalankan Test
 
-Proyek ini dilengkapi suite pengujian otomatis berbasis PHPUnit (**197 test** pada **30 file**) untuk menguji alur autentikasi, pembatasan hak akses antar peran, alur bisnis, logistik, laporan, seeder demo, instalasi, dan lokalisasi. Suite yang sama dijalankan terhadap **SQLite (in-memory)** dan **MySQL/MariaDB sungguhan** di CI.
+Proyek ini dilengkapi suite pengujian otomatis berbasis PHPUnit (**285 test** pada **39 file**) untuk menguji alur autentikasi, pembatasan hak akses antar peran, alur bisnis, logistik, laporan, seeder demo, instalasi, dan lokalisasi. Suite yang sama dijalankan terhadap **SQLite (in-memory)** dan **MySQL/MariaDB sungguhan** di CI.
 
 ### Perintah Pengujian
 
@@ -388,6 +432,9 @@ php artisan test
 | `tests/Feature/DemoReadinessTest.php` | Uji asap per role: login tiap akun demo dan membuka halaman utama (dashboard, inventaris, laporan, pengajuan/persetujuan, peminjaman, aktivitas). |
 | `tests/Feature/ReportScopingTest.php` | Filter laporan per jenis, scoping jurusan Kajur, dan akses role lain. |
 | `tests/Feature/InstallCommandTest.php` | Perintah `siils:check`/`siils:install`: keluar 0/non-nol, idempotensi, penolakan `--fresh` di produksi, validasi nama database. |
+| `tests/Feature/SubmissionRealizationTest.php` | Realisasi pengajuan: barang baru individual/consumable, barang inventaris yang sudah ada, kuantitas melebihi permintaan ditolak, realisasi ganda ditolak, riwayat lokasi/kondisi bagi unit baru. |
+| `tests/Feature/SubmissionNotificationTest.php` | Notifikasi dalam aplikasi untuk tiap peristiwa (diajukan, ditinjau, disetujui, ditolak, direalisasi) dan URL tujuan per peran. |
+| `tests/Feature/EndToEndWorkflowTest.php` | Alur menyeluruh lintas role (Kajur → Sarpras → Kepala Sekolah → realisasi; jalur penolakan + ajukan ulang), berjalan di SQLite & MySQL. |
 | `tests/Feature/LocalizationTest.php` | Pesan validasi, nama bulan grafik, dan teks paginasi berbahasa Indonesia. |
 
 > Untuk daftar lengkap, lihat folder `tests/Feature/` dan `tests/Unit/`.

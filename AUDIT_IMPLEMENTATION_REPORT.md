@@ -796,9 +796,9 @@ Dijalankan pada **MySQL 8.4.3** (Windows, via `cmd.exe`) dengan `DB_DATABASE=sii
 | `php artisan siils:install --force` | **membuat database otomatis**, 16 migration, 5 seeder — exit 0 |
 | `php artisan siils:check` (sesudah) | sukses "Semua prasyarat terpenuhi" (exit 0) |
 | `php artisan siils:install --force` (kedua) | idempoten — seeder melaporkan "sudah ada, dilewati" — exit 0 |
-| Jumlah baris per tabel | cocok persis dengan tabel README (users 5, locations 6, items 7, asset_units 11, incoming 7, outgoing 4, distributions 2, submissions 6, submission_items 7, submission_histories 16, loans 5, activity_logs 33, condition_histories 11, location_histories 9, documents 0) |
-| `php artisan test` di MySQL | **197 test hijau, 753 assertion** (exit 0) |
-| `php artisan test` di SQLite | **197 test hijau, 753 assertion** |
+| Jumlah baris per tabel | diukur ulang 11 Okt 2026 (setelah skenario realized + revision): users 5, locations 6, items 9, asset_units 13, incoming 9, outgoing 4, distributions 2, submissions 8, submission_items 10, submission_histories 22, loans 5, activity_logs 41, condition_histories 15, location_histories 13, notifications 1, documents 0 (cocok dengan tabel README §6) |
+| `php artisan test` di MySQL | **285 test hijau, 1228 assertion** (exit 0) |
+| `php artisan test` di SQLite | **285 test hijau, 1228 assertion** |
 
 Modul Dokumen memang kosong (`documents=0`) sesuai aturan (tidak ada berkas palsu).
 
@@ -863,6 +863,74 @@ composer setup                       # install + .env + key + buat DB + migrate 
 php artisan siils:install            # idempoten
 php artisan siils:install --tanpa-demo
 php artisan siils:install --fresh    # destruktif, ditolak di production
-php artisan test                     # 197 test (SQLite lokal; MySQL di CI)
+php artisan test                     # 285 test (SQLite lokal; MySQL/MariaDB di CI)
 ```
+
+---
+
+## 14. Perbaikan Alur Pengajuan & UI (TASK 1–9 prompt-perbaikan-alur-dan-ui.md)
+
+Tanggal: 11 Oktober 2026. Prompt: `prompt-perbaikan-alur-dan-ui.md` dengan fitur F1–F7 dan
+kriteria K1–K2. Seluruh commit ter-push dan semua job CI hijau.
+
+### 14.1 Status F1–F7 dan K1–K2
+
+| ID | Item | Status | Commit | Bukti CI / hasil test |
+|---|---|---|---|---|
+| F1 | Realisasi pengajuan (`realized`) | **Selesai** | `9d9b80b`, `3db8df3`, `930c22c`, `9b9e8d1`, `39302d5` | CI run `38136247464` **hijau**; `SubmissionRealizationTest` (9) + `DemoDataSeederTest` '
+| F2 | Alasan penolakan wajib + Ajukan Ulang | **Selesai** | `c82a0a4` | `SubmissionRevisionTest` (9); termasuk dalam CI run `38136247464` |
+| F3 | Pesan error/validasi terlihat | **Selesai** | `6720c86` | `VisibleErrorMessagesTest`; termasuk dalam CI run `38136247464` |
+| F4 | Akun Saya, ubah sandi, reset oleh Sarpras | **Selesai** | `0327bf7`, `1f3e933` | `ProfileAndPasswordTest` (17) + `TemporaryPasswordTest` (Unit) |
+| F5 | Halaman error + pesan sesi/throttle | **Selesai** | `2f2f3cb` | `CustomErrorPagesTest` |
+| F6 | Notifikasi dalam aplikasi + badge/panel tugas | **Selesai** | `9b9031a` | CI run `38137686430` **hijau**; `SubmissionNotificationTest` (11) |
+| F7 | Kerapian UI: Select2, toggle sandi, tabel responsif, page-header/empty-state | **Selesai** | `ce1b54c` | CI run `38139308280` **hijau** |
+| K1 | CI PHP 8.3+MySQL & `composer setup` dari clone bersih | **Selesai** | `a5ab6fe` | CI run `38139977697` **hijau** — 3 kombinasi MySQL/MariaDB + job `composer-setup` |
+| K2 | Seluruh migration TASK 3–5 jalan di MariaDB 10.11 & MySQL 8.0 | **Selesai** | (bagian dari run K1/K2) | job `MySQL/MariaDB` (`mysql:8.0`, `mariadb:10.11`) menjalankan migrate + seed + seluruh suite |
+| TASK 9 | Test end-to-end + dokumentasi | **Selesai** | (commit dok ini) | `EndToEndWorkflowTest` (2, lintas SQLite & MySQL/8.4 lokal) |
+
+> Catatan bukti: TASK 1–4 (F2–F5) tidak memiliki nomor run tersendiri karena didorong bersamaan
+> sebelum TASK 5; seluruh commit tersebut tercakup dan hijau pada CI run `38136247464`
+> (TIP TASK 5, `39302d5`) serta suite lokal 285 test/1228 assertion.
+
+### 14.2 Keputusan desain: cara memperluas status di TASK 5
+
+Kolom `submissions.status` semula `enum('draft','submitted','reviewed_sarpras','approved','rejected','cancelled')`.
+Enum DB **kurang portabel** antar driver (SQLite tanpa native enum + gaya sintaks MySQL/MariaDB
+berbeda). Agar migration yang sama jalan mulus di SQLite, MySQL 8.0, dan MariaDB 10.11, kolom
+diganti menjadi `string(20)` dengan **default `draft`**; nilai yang sah tetap dijaga di level
+aplikasi (model `Submission` + status badge relasi). Nilai baru `realized` ditambahkan sebagai
+status final setelah approval. Alasan: enum DB tidak memberikan proteksi tambahan yang tidak
+sudah dijamin oleh kode aplikasi dan justru menjadi sumber inkompatibilitas antar driver.
+
+### 14.3 Asumsi yang ternyata keliru
+
+1. **Semua `<table>` di `reports/index` belum di-wrap `table-responsive`** — hasil scan awal
+   menghitung 5 tabel vs 1 wrapper. Ternyata seluruh 5 tabel berbagi satu `<div class="table-responsive">`,
+   sehingga halaman itu aman; yang benar-benar perlu dibungkus adalah **4 tabel tab di
+   `sarpras/inventory/show`** (histori lokasi, kondisi, barang masuk, barang keluar). `reports/pdf`
+   dan `reports/print` sengaja dibiarkan (cetak/ekspor bergantung lebar penuh).
+2. **Semantik `--env=testing` untuk MySQL** — variabel phpunit.xml (`force=false`) tidak
+   menimpa variabel lingkungan proses, sehingga `DB_CONNECTION=mysql` dari luar tetap dipakai;
+   tidak perlu flag tambahan.
+
+### 14.4 Hal yang tidak bisa diverifikasi otomatis
+
+- **TASK 7.5 (overflow horizontal):** tidak ada peramban headless di lingkungan ini. Verifikasi
+  `scrollWidth <= clientWidth` pada 1366/1024/768/375 px tidak dapat dilakukan otomatis; mitigasi
+  statis dilakukan (pembungkusan `table-responsive` dan pengecilan opsi dropdown). Sesi 12.3
+  sebelumnya sempat memakai headless Chromium untuk audit kontras; tidak tersedia pada sesi ini.
+- **Uji manual Laragon** (§13.8) tetap terbuka untuk pemilik.
+
+### 14.5 Angka test akhir sesi ini
+
+- SQLite (lokal): **285 test / 1228 assertion** hijau.
+- MySQL 8.4 (lokal, Windows): **285 test / 1228 assertion** hijau.
+- CI (commit `a5ab6fe`, run `38139977697`): **semua job success** — SQLite (PHP 8.3 & 8.4),
+  MySQL/MariaDB (`mysql:8.0` PHP 8.4, `mariadb:10.11` PHP 8.4, `mysql:8.0` PHP 8.3), dan
+  `composer-setup` (clone bersih tanpa `.env` → `composer setup` → `siils:check` → uji asap per role).
+
+### 14.6 Hasil commit akhir sesi ini
+
+TASK 9 akan di-commit terakhir dalam sesi ini; `git log --oneline -1` dan `git ls-remote` dicatat
+di babak laporan akhir (lihat awal berkas untuk rantai commit F1–K2 di atas).
 
