@@ -346,6 +346,15 @@ class ReportController extends Controller
 
         $base = $this->buildQuery($type, $filters);
 
+        if ($type === 'submission') {
+            $rows = (clone $base)->withSum('items as items_quantity', 'quantity')->get();
+
+            return [
+                'transactions' => $rows->count(),
+                'quantity' => (int) $rows->sum('items_quantity'),
+            ];
+        }
+
         return [
             'transactions' => (clone $base)->count(),
             'quantity' => (int) (clone $base)->sum('quantity'),
