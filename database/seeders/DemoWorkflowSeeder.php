@@ -6,8 +6,10 @@ use App\Models\ActivityLog;
 use App\Models\AssetUnit;
 use App\Models\Item;
 use App\Models\Loan;
+use App\Models\Location;
 use App\Models\Submission;
 use App\Models\User;
+use App\Services\SubmissionRealizationService;
 use Database\Seeders\Concerns\GuardsDemoEnvironment;
 use Illuminate\Database\Seeder;
 
@@ -97,6 +99,20 @@ class DemoWorkflowSeeder extends Seeder
             ['item_name' => 'Router Mikrotik RB750Gr3', 'quantity' => 3, 'unit' => 'Unit', 'estimated_price' => 950000],
         ]);
         $this->submitToSarpras($tkj, $this->kajurTkj);
+
+        // 7. Realized: disetujui lalu direalisasikan penuh oleh Sarpras via
+        //    jalur yang sama dengan aplikasi (IncomingStock + registrasi unit).
+        $realized = $this->makeSubmission($this->kajurRpl, 'Pengadaan Laptop & Toner Praktik RPL', 'Kebutuhan perlengkapan praktik kelas XI RPL.', [
+            ['item_name' => 'Laptop Praktik RPL', 'quantity' => 2, 'unit' => 'Unit', 'estimated_price' => 8500000],
+            ['item_name' => 'Toner Printer Epson', 'quantity' => 4, 'unit' => 'Pcs', 'estimated_price' => 250000],
+        ]);
+        $this->submitToSarpras($realized, $this->kajurRpl);
+        $this->reviewBySarpras($realized, 'Sesuai kebutuhan praktik, direkomendasikan untuk dipenuhi.');
+        $this->decideByPrincipal($realized, 'Disetujui untuk direalisasikan.', true);
+        $this->realizeSubmission($realized);
+
+        // 8. Draf revisi dari pengajuan yang ditolak (revision_of_id terisi).
+        $this->makeRevisionDraft($rejected);
     }
 
     private function seedLoans(): void
@@ -267,6 +283,82 @@ class DemoWorkflowSeeder extends Seeder
             ['status' => 'reviewed_sarpras'],
             ['status' => $status, 'principal_notes' => $notes],
             $submission->submission_number
+        ));
+    }
+
+    /**
+     * Realisasi pengajuan lewat SubmissionRealizationService (jalur aplikasi).
+     */
+    private function realizeSubmission(Submission $submission): void
+    {
+        $lab = Location::where('code', 'LAB-RPL-01')->firstOrFail();
+        $lines = [];
+
+        foreach ($submission->items()->get() as $index => $submissionItem) {
+            $lines[] = [
+                'submission_item_id' => $submissionItem->id,
+                'received_quantity' => $submissionItem->quantity,
+                'item_id' => null,
+                'new' => [
+                    'name' => $submissionItem->item_name,
+                    'category' => 'Elektronik Praktik',
+                    'item_type' => $index === 0 ? 'individual' : 'consumable',
+                    'unit' => $submissionItem->unit,
+                    'location_id' => $lab->id,
+                    'condition' => 'baik',
+                ],
+            ];
+        }
+
+        $this->runAsUser($this->sarpras, fn () => app(SubmissionRealizationService::class)->realize(
+            $submission,
+            $lines,
+            [
+                'source' => 'pembelian',
+                'entry_date' => now()->subDays(1)->toDateString(),
+                'realization_notes' => 'Barang diterima lengkap dan didaftarkan ke inventaris pada saat realisasi.',
+            ],
+            $this->sarpras,
+        ));
+    }
+
+    /**
+     * Buat draf revisi dari pengajuan yang ditolak (revision_of_id terisi).
+     */
+    private function makeRevisionDraft(Submission $source): void
+    {
+        $this->submissionSeq++;
+        $number = 'REQ-'.now()->format('Ymd').'-'.str_pad((string) $this->submissionSeq, 4, '0', STR_PAD_LEFT);
+
+        $draft = new Submission;
+        $draft->submission_number = $number;
+        $draft->user_id = $source->user_id;
+        $draft->department = $source->department;
+        $draft->title = $source->title;
+        $draft->purpose = $source->purpose;
+        $draft->revision_of_id = $source->id; // dikecualikan dari $fillable
+        $draft->status = 'draft';
+        $draft->save();
+
+        foreach ($source->items as $item) {
+            $draft->items()->create([
+                'item_name' => $item->item_name,
+                'quantity' => $item->quantity,
+                'unit' => $item->unit,
+                'estimated_price' => $item->estimated_price,
+                'specification' => $item->specification,
+            ]);
+        }
+
+        $draft->recordStatusChange(null, 'draft', $source->user);
+
+        $this->runAsUser($source->user, fn () => ActivityLog::log(
+            'submission_revised',
+            "Draf revisi {$number} dibuat dari pengajuan {$source->submission_number} oleh {$source->user->name}",
+            $draft,
+            [],
+            ['revision_of_id' => $source->id, 'status' => 'draft'],
+            $number,
         ));
     }
 

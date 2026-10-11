@@ -78,7 +78,7 @@ class DemoDataSeederTest extends TestCase
     {
         $this->seed();
 
-        foreach (['draft', 'submitted', 'reviewed_sarpras', 'approved', 'rejected'] as $status) {
+        foreach (['draft', 'submitted', 'reviewed_sarpras', 'approved', 'rejected', 'realized'] as $status) {
             $this->assertTrue(
                 Submission::where('status', $status)->exists(),
                 "Harus ada minimal satu pengajuan berstatus {$status}."
@@ -104,6 +104,37 @@ class DemoDataSeederTest extends TestCase
         $dipinjam = Loan::where('status', 'dipinjam')->firstOrFail();
         $this->assertNotNull($dipinjam->asset_unit_id);
         $this->assertSame('dipinjam', AssetUnit::find($dipinjam->asset_unit_id)->current_status);
+    }
+
+    public function test_pengajuan_terealisasi_tertaut_barang_masuk_dan_inventaris(): void
+    {
+        $this->seed();
+
+        $realized = Submission::where('status', 'realized')->firstOrFail();
+
+        $this->assertGreaterThan(0, $realized->incomingItems()->count());
+        $this->assertDatabaseHas('submissions', [
+            'id' => $realized->id,
+            'realized_by' => User::where('username', 'sarpras')->value('id'),
+        ]);
+
+        foreach ($realized->items as $submissionItem) {
+            $this->assertNotNull($submissionItem->item_id, 'Baris pengajuan harus tertaut ke master barang.');
+            $this->assertSame($submissionItem->quantity, $submissionItem->received_quantity);
+
+            $masuk = (int) IncomingItem::where('submission_id', $realized->id)
+                ->where('item_id', $submissionItem->item_id)
+                ->sum('quantity');
+            $this->assertSame($submissionItem->quantity, $masuk);
+
+            $item = $submissionItem->item;
+            if ($item->isIndividual()) {
+                $this->assertSame($submissionItem->quantity, $item->assetUnits()->count());
+                $this->assertSame($submissionItem->quantity, $item->stock);
+            } else {
+                $this->assertSame($submissionItem->quantity, $item->stock);
+            }
+        }
     }
 
     public function test_activity_log_terisi_untuk_audit_trail(): void
