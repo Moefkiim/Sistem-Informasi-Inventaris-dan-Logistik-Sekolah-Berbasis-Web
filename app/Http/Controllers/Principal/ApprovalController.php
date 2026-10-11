@@ -7,6 +7,7 @@ use App\Models\ActivityLog;
 use App\Models\Submission;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class ApprovalController extends Controller
@@ -48,7 +49,17 @@ class ApprovalController extends Controller
     {
         $validated = $request->validate([
             'action' => ['required', 'in:approve,reject'],
-            'principal_notes' => ['nullable', 'string'],
+            'principal_notes' => [
+                Rule::requiredIf($request->input('action') === 'reject'),
+                'nullable',
+                'string',
+                Rule::when($request->input('action') === 'reject', ['min:10']),
+            ],
+        ], [
+            'action.required' => 'Pilih keputusan terlebih dahulu.',
+            'action.in' => 'Keputusan tidak valid.',
+            'principal_notes.required' => 'Alasan penolakan wajib diisi.',
+            'principal_notes.min' => 'Alasan penolakan minimal 10 karakter.',
         ]);
 
         if ($submission->status !== 'reviewed_sarpras') {
@@ -56,22 +67,23 @@ class ApprovalController extends Controller
         }
 
         $status = $validated['action'] === 'approve' ? 'approved' : 'rejected';
+        $notes = $validated['principal_notes'] ?? null;
 
         // Fields ini dikecualikan dari $fillable — set secara eksplisit
         $submission->status = $status;
-        $submission->principal_notes = $validated['principal_notes'] ?? null;
+        $submission->principal_notes = $notes;
         $submission->principal_user_id = $request->user()->id;
         $submission->decided_at = now();
         $submission->save();
 
-        $submission->recordStatusChange('reviewed_sarpras', $status, $request->user(), $validated['principal_notes'] ?? null);
+        $submission->recordStatusChange('reviewed_sarpras', $status, $request->user(), $notes);
 
         ActivityLog::log(
             $status === 'approved' ? 'submission_approved' : 'submission_rejected',
-            "Pengajuan {$submission->submission_number} ".($status === 'approved' ? 'DISETUJUI' : 'DITOLAK').' oleh Kepala Sekolah'.($validated['principal_notes'] ? ": {$validated['principal_notes']}" : ''),
+            "Pengajuan {$submission->submission_number} ".($status === 'approved' ? 'DISETUJUI' : 'DITOLAK').' oleh Kepala Sekolah'.($notes ? ": {$notes}" : ''),
             $submission,
             ['status' => 'reviewed_sarpras'],
-            ['status' => $status, 'principal_notes' => $validated['principal_notes'] ?? null],
+            ['status' => $status, 'principal_notes' => $notes],
             $submission->submission_number
         );
 

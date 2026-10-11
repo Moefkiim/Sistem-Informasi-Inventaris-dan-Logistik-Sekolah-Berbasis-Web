@@ -61,16 +61,17 @@
                     @csrf
                     <div class="mb-4">
                         <label class="form-label fw-bold required">Catatan Hasil Telaah & Rekomendasi Sarpras</label>
-                        <textarea name="sarpras_notes" class="form-control @error('sarpras_notes') is-invalid @enderror" rows="3" placeholder="Tuliskan catatan kelayakan ketersediaan anggaran / kebutuhan sebelum diteruskan ke Kepala Sekolah..." required>{{ old('sarpras_notes') }}</textarea>
+                        <textarea name="sarpras_notes" id="sarprasNotes" class="form-control @error('sarpras_notes') is-invalid @enderror" rows="3" placeholder="Tuliskan catatan kelayakan ketersediaan anggaran / kebutuhan sebelum diteruskan ke Kepala Sekolah..." data-required-action="reject">{{ old('sarpras_notes') }}</textarea>
+                        <div class="form-text text-muted fs-8">Wajib diisi (minimal 10 karakter) saat menolak pengajuan.</div>
                         @error('sarpras_notes')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
                     <div class="d-flex justify-content-end gap-3">
-                        <button type="submit" name="action" value="reject" class="btn btn-danger" onclick="return confirm('Tolak permohonan pengajuan ini?')">
+                        <button type="submit" name="action" value="reject" class="btn btn-danger js-submit-action" data-action="reject" onclick="return confirm('Tolak permohonan pengajuan ini? Pastikan alasan penolakan sudah diisi.')">
                             <i class="bi bi-x-circle me-1"></i> Tolak Pengajuan
                         </button>
-                        <button type="submit" name="action" value="review" class="btn btn-primary" onclick="return confirm('Teruskan pengajuan ke Kepala Sekolah?')">
+                        <button type="submit" name="action" value="review" class="btn btn-primary js-submit-action" data-action="review" onclick="return confirm('Teruskan pengajuan ke Kepala Sekolah?')">
                             <i class="bi bi-check2-circle me-1"></i> Teruskan ke Kepala Sekolah
                         </button>
                     </div>
@@ -123,3 +124,22 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var notes = document.getElementById('sarprasNotes');
+        if (!notes) {
+            return;
+        }
+
+        document.querySelectorAll('.js-submit-action').forEach(function (button) {
+            button.addEventListener('click', function () {
+                var isReject = this.getAttribute('data-action') === 'reject';
+                notes.required = isReject;
+                notes.minLength = isReject ? 10 : 0;
+            });
+        });
+    });
+</script>
+@endpush

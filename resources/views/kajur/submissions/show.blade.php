@@ -33,6 +33,32 @@
             </div>
         </div>
 
+        @php($rejection = $submission->histories->firstWhere('to_status', 'rejected'))
+
+        @if($submission->revision_of_id && $submission->revisionOf)
+            <div class="alert alert-light-info border border-info p-4 mb-5">
+                <div class="fw-bolder text-info mb-1"><i class="bi bi-arrow-repeat me-1"></i> Draf Revisi</div>
+                <div>
+                    Revisi dari pengajuan <strong>{{ $submission->revisionOf->submission_number }}</strong>.
+                    @if($alasanSebelumnya = $submission->revisionOf->latestRejection())
+                        Alasan penolakan sebelumnya: <em>{{ $alasanSebelumnya->notes }}</em>
+                    @endif
+                </div>
+            </div>
+        @endif
+
+        @if($submission->isRejected() && $rejection)
+            <div class="alert alert-danger p-5 mb-5 border border-danger">
+                <h5 class="text-danger fw-bolder mb-2"><i class="bi bi-x-octagon-fill me-2"></i> Pengajuan Ditolak</h5>
+                <div class="mb-2">{{ $rejection->notes ?: 'Tidak ada alasan tertulis.' }}</div>
+                <div class="text-muted fs-8">
+                    Ditolak oleh {{ $rejection->actor?->name ?: 'Sistem' }}
+                    ({{ \App\Models\Submission::statusLabel($rejection->from_status) }})
+                    pada {{ $rejection->recorded_at->format('d/m/Y H:i') }}
+                </div>
+            </div>
+        @endif
+
         @if($submission->sarpras_notes)
             <div class="alert alert-light-primary p-4 mb-4">
                 <div class="fw-bolder text-primary">Catatan Telaah Sarpras:</div>
@@ -129,6 +155,13 @@
                     </button>
                 </form>
             </div>
+        @elseif($submission->isRejected())
+            <form action="{{ route('kajur.submissions.revise', $submission) }}" method="POST" data-disable-on-submit>
+                @csrf
+                <button type="submit" class="btn btn-primary" onclick="return confirm('Buat draf revisi dari pengajuan yang ditolak ini? Baris barang akan disalin ke draf baru.')">
+                    <i class="bi bi-arrow-repeat me-1"></i> Ajukan Ulang
+                </button>
+            </form>
         @endif
     </div>
 </div>

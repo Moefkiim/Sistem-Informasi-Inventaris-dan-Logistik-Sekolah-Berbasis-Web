@@ -180,11 +180,13 @@ class SubmissionHistoryTest extends TestCase
 
         $this->actingAs($principal)->post(route('kepala_sekolah.approval.decide', $submission), [
             'action' => 'reject',
+            'principal_notes' => 'Anggaran belum tersedia pada tahun ini.',
         ]);
 
         $history = $submission->histories()->latest('recorded_at')->firstOrFail();
         $this->assertSame('reviewed_sarpras', $history->from_status);
         $this->assertSame('rejected', $history->to_status);
+        $this->assertSame('Anggaran belum tersedia pada tahun ini.', $history->notes);
     }
 
     public function test_full_workflow_leaves_three_histories_in_order(): void

@@ -49,10 +49,16 @@ class ActivityLog extends Model
         'submission_rejected_sarpras' => 'Pengajuan Ditolak Sarpras',
         'submission_approved' => 'Pengajuan Disetujui',
         'submission_rejected' => 'Pengajuan Ditolak',
+        'submission_revised' => 'Draf Revisi Dibuat',
         'loan_created' => 'Peminjaman Dibuat',
         'loan_approved' => 'Peminjaman Disetujui',
         'loan_returned' => 'Peminjaman Dikembalikan',
         'loan_rejected' => 'Peminjaman Ditolak',
+        // Akun pengguna
+        'user_created' => 'Pengguna Dibuat',
+        'user_updated' => 'Pengguna Diubah',
+        'user_password_changed' => 'Kata Sandi Diubah',
+        'user_password_reset' => 'Kata Sandi Direset',
         // Aksi ringkas (dipakai sebagian alur/test lama).
         'draft' => 'Disimpan sebagai Draft',
         'submit' => 'Dikirim',

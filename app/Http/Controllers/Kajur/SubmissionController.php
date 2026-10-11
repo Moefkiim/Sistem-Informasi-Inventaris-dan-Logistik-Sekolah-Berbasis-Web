@@ -235,6 +235,70 @@ class SubmissionController extends Controller
             ->with('success', 'Pengajuan berhasil dikirimkan ke pihak Sarpras untuk ditinjau.');
     }
 
+    /**
+     * Ajukan ulang pengajuan yang ditolak sebagai draf revisi baru.
+     *
+     * Pengajuan lama tidak diubah (tetap berstatus rejected). Baris item disalin
+     * ke draf baru tanpa membawa riwayat lama. Bila draf revisi untuk pengajuan
+     * ini sudah ada, arahkan ke draf tersebut alih-alih menggandakan.
+     */
+    public function revise(Submission $submission): RedirectResponse
+    {
+        $this->authorizeKajur($submission);
+
+        if (! $submission->isRejected()) {
+            return back()->withErrors(['msg' => 'Hanya pengajuan yang ditolak yang dapat diajukan ulang.']);
+        }
+
+        $existingDraft = $submission->revisions()->latest()->first();
+
+        if ($existingDraft) {
+            return redirect()->route('kajur.submissions.edit', $existingDraft)
+                ->with('success', 'Draf revisi untuk pengajuan ini sudah ada. Silakan lanjutkan menyuntingnya.');
+        }
+
+        $draft = DB::transaction(function () use ($submission) {
+            $submissionNumber = $this->generateSubmissionNumber();
+            $user = auth()->user();
+
+            $draft = new Submission;
+            $draft->submission_number = $submissionNumber;
+            $draft->user_id = $user->id;
+            $draft->department = $submission->department;
+            $draft->title = $submission->title;
+            $draft->purpose = $submission->purpose;
+            $draft->revision_of_id = $submission->id; // dikecualikan dari $fillable — set eksplisit
+            $draft->status = 'draft';
+            $draft->save();
+
+            foreach ($submission->items as $item) {
+                $draft->items()->create([
+                    'item_name' => $item->item_name,
+                    'quantity' => $item->quantity,
+                    'unit' => $item->unit,
+                    'estimated_price' => $item->estimated_price,
+                    'specification' => $item->specification,
+                ]);
+            }
+
+            $draft->recordStatusChange(null, 'draft', $user);
+
+            ActivityLog::log(
+                'submission_revised',
+                "Draf revisi {$submissionNumber} dibuat dari pengajuan {$submission->submission_number} oleh {$user->name}",
+                $draft,
+                [],
+                ['revision_of_id' => $submission->id, 'status' => 'draft'],
+                $submissionNumber
+            );
+
+            return $draft;
+        });
+
+        return redirect()->route('kajur.submissions.edit', $draft)
+            ->with('success', 'Draf revisi berhasil dibuat. Sesuaikan kebutuhan lalu kirim kembali ke Sarpras.');
+    }
+
     protected function authorizeKajur(Submission $submission): void
     {
         if ($submission->user_id !== auth()->id()) {

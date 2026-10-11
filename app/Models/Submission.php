@@ -104,6 +104,37 @@ class Submission extends Model
         return $this->hasMany(SubmissionHistory::class)->latest('recorded_at');
     }
 
+    /**
+     * Pengajuan asal yang direvisi (bila draf ini hasil "Ajukan Ulang").
+     */
+    public function revisionOf(): BelongsTo
+    {
+        return $this->belongsTo(Submission::class, 'revision_of_id');
+    }
+
+    /**
+     * Draf revisi yang pernah dibuat dari pengajuan ini.
+     */
+    public function revisions(): HasMany
+    {
+        return $this->hasMany(Submission::class, 'revision_of_id');
+    }
+
+    /**
+     * Riwayat penolakan terakhir (oleh Sarpras atau Kepala Sekolah).
+     */
+    public function latestRejection(): ?SubmissionHistory
+    {
+        return $this->histories()
+            ->where('to_status', 'rejected')
+            ->first();
+    }
+
+    public function isRejected(): bool
+    {
+        return $this->status === 'rejected';
+    }
+
     public function recordStatusChange(
         ?string $fromStatus,
         string $toStatus,

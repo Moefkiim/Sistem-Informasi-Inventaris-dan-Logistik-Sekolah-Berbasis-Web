@@ -7,6 +7,7 @@ use App\Models\ActivityLog;
 use App\Models\Submission;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class SubmissionController extends Controller
@@ -44,8 +45,18 @@ class SubmissionController extends Controller
     public function process(Request $request, Submission $submission): RedirectResponse
     {
         $validated = $request->validate([
-            'sarpras_notes' => ['required', 'string'],
             'action' => ['required', 'in:review,reject'],
+            'sarpras_notes' => [
+                Rule::requiredIf($request->input('action') === 'reject'),
+                'nullable',
+                'string',
+                Rule::when($request->input('action') === 'reject', ['min:10']),
+            ],
+        ], [
+            'action.required' => 'Pilih tindakan verifikasi terlebih dahulu.',
+            'action.in' => 'Tindakan verifikasi tidak valid.',
+            'sarpras_notes.required' => 'Alasan penolakan wajib diisi.',
+            'sarpras_notes.min' => 'Alasan penolakan minimal 10 karakter.',
         ]);
 
         if ($submission->status !== 'submitted') {
@@ -53,22 +64,23 @@ class SubmissionController extends Controller
         }
 
         $status = $validated['action'] === 'review' ? 'reviewed_sarpras' : 'rejected';
+        $notes = $validated['sarpras_notes'] ?? null;
 
         // Fields ini dikecualikan dari $fillable — set secara eksplisit
         $submission->status = $status;
-        $submission->sarpras_notes = $validated['sarpras_notes'];
+        $submission->sarpras_notes = $notes;
         $submission->sarpras_user_id = $request->user()->id;
         $submission->reviewed_at = now();
         $submission->save();
 
-        $submission->recordStatusChange('submitted', $status, $request->user(), $validated['sarpras_notes']);
+        $submission->recordStatusChange('submitted', $status, $request->user(), $notes);
 
         ActivityLog::log(
             $status === 'reviewed_sarpras' ? 'submission_reviewed' : 'submission_rejected_sarpras',
-            "Pengajuan {$submission->submission_number} ".($status === 'reviewed_sarpras' ? 'diverifikasi' : 'ditolak')." oleh Sarpras: {$validated['sarpras_notes']}",
+            "Pengajuan {$submission->submission_number} ".($status === 'reviewed_sarpras' ? 'diverifikasi' : 'ditolak').' oleh Sarpras'.($notes ? ": {$notes}" : ''),
             $submission,
             ['status' => 'submitted'],
-            ['status' => $status, 'sarpras_notes' => $validated['sarpras_notes']],
+            ['status' => $status, 'sarpras_notes' => $notes],
             $submission->submission_number
         );
 

@@ -77,16 +77,17 @@
                     @csrf
                     <div class="mb-4">
                         <label class="form-label fw-bold">Catatan / Arahan Kepala Sekolah</label>
-                        <textarea name="principal_notes" class="form-control @error('principal_notes') is-invalid @enderror" rows="3" placeholder="Tuliskan arahan pelaksanaan pengadaan barang...">{{ old('principal_notes') }}</textarea>
+                        <textarea name="principal_notes" id="principalNotes" class="form-control @error('principal_notes') is-invalid @enderror" rows="3" placeholder="Tuliskan arahan pelaksanaan pengadaan barang...">{{ old('principal_notes') }}</textarea>
+                        <div class="form-text text-muted fs-8">Wajib diisi (minimal 10 karakter) saat menolak pengajuan.</div>
                         @error('principal_notes')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
                     <div class="d-flex justify-content-end gap-3">
-                        <button type="submit" name="action" value="reject" class="btn btn-danger" onclick="return confirm('Apakah Anda yakin ingin MENOLAK pengajuan ini?')">
+                        <button type="submit" name="action" value="reject" class="btn btn-danger js-submit-action" data-action="reject" onclick="return confirm('Apakah Anda yakin ingin MENOLAK pengajuan ini? Pastikan alasan penolakan sudah diisi.')">
                             <i class="bi bi-x-circle me-1"></i> Tolak Pengajuan
                         </button>
-                        <button type="submit" name="action" value="approve" class="btn btn-success" onclick="return confirm('Apakah Anda yakin ingin MENYETUJUI pengajuan ini?')">
+                        <button type="submit" name="action" value="approve" class="btn btn-success js-submit-action" data-action="approve" onclick="return confirm('Apakah Anda yakin ingin MENYETUJUI pengajuan ini?')">
                             <i class="bi bi-check-circle me-1"></i> Setujui Pengajuan (Approve)
                         </button>
                     </div>
@@ -157,3 +158,22 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var notes = document.getElementById('principalNotes');
+        if (!notes) {
+            return;
+        }
+
+        document.querySelectorAll('.js-submit-action').forEach(function (button) {
+            button.addEventListener('click', function () {
+                var isReject = this.getAttribute('data-action') === 'reject';
+                notes.required = isReject;
+                notes.minLength = isReject ? 10 : 0;
+            });
+        });
+    });
+</script>
+@endpush

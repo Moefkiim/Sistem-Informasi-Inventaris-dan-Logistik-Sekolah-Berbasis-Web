@@ -68,6 +68,13 @@
                                             Batal
                                         </button>
                                     </form>
+                                @elseif($sub->isRejected())
+                                    <form action="{{ route('kajur.submissions.revise', $sub) }}" method="POST" class="d-inline" data-disable-on-submit>
+                                        @csrf
+                                        <button type="submit" class="btn btn-sm btn-light-primary" onclick="return confirm('Buat draf revisi dari pengajuan yang ditolak ini?')">
+                                            Ajukan Ulang
+                                        </button>
+                                    </form>
                                 @endif
                             </td>
                         </tr>

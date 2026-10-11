@@ -61,6 +61,7 @@ Route::middleware(['auth', 'role', 'password.changed'])->group(function () {
         Route::put('/submissions/{submission}', [SubmissionController::class, 'update'])->name('submissions.update');
         Route::post('/submissions/{submission}/cancel', [SubmissionController::class, 'cancel'])->name('submissions.cancel');
         Route::post('/submissions/{submission}/submit', [SubmissionController::class, 'submitDraft'])->name('submissions.submitDraft');
+        Route::post('/submissions/{submission}/revise', [SubmissionController::class, 'revise'])->name('submissions.revise');
 
         // Inventaris Jurusan
         Route::get('/inventory', [InventoryController::class, 'index'])->name('inventory.index');
