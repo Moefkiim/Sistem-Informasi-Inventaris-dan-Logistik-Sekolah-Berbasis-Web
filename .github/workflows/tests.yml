@@ -144,6 +144,15 @@ jobs:
       - name: Run tests on MySQL/MariaDB
         run: php artisan test
 
+      - name: Pastikan klien MySQL tersedia
+        run: |
+          if ! command -v mysql >/dev/null 2>&1; then
+            sudo apt-get update && sudo apt-get install -y mysql-client
+          fi
+
+      - name: Uji round-trip backup (MySQL/MariaDB)
+        run: bash ci/backup-roundtrip.sh
+
   composer-setup:
     name: Composer setup dari clone bersih + smoke per role (PHP 8.4, MySQL 8.0)
     runs-on: ubuntu-latest
