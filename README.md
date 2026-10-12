@@ -189,6 +189,22 @@ graph TD
 5. Mereset kata sandi otomatis mencabut seluruh sesi login lama akun tersebut.
 6. Alternatif via konsol: `php artisan siils:reset-password <username>`.
 
+#### Tugas 6: Impor Inventaris Massal (Excel/CSV)
+1. Masuk ke menu **Inventaris** lalu klik **Impor Inventaris** (tombol di kanan atas daftar barang).
+2. Unduh **Template .xlsx** resmi. Template memuat lembar *Data* (contoh baris) dan *Petunjuk* (daftar kolom serta nilai validnya).
+3. Isi data: **satu baris untuk satu unit** barang individual, sedangkan barang **habis pakai** cukup satu baris dengan kolom **Stok Awal**.
+4. Unggah berkas (format `.xlsx` atau `.csv`, maksimal **2 MB** dan **2.000 baris**), lalu tinjau **Pratinjau**.
+5. Pratinjau menampilkan jumlah barang & unit yang akan dibuat. Bila ada kesalahan, daftar kesalahan per **baris/kolom** ditampilkan dalam Bahasa Indonesia dan dapat diunduh sebagai CSV.
+6. Klik **Konfirmasi** untuk menyimpan. Impor bersifat **semua-atau-tidak**: bila ada satu saja kesalahan, tidak ada data yang ditulis.
+
+Catatan penting:
+- Kolom **Kode Barang** dan **Nomor Inventaris Unit** boleh dikosongkan; sistem membuat nomornya otomatis (mis. `BRG-RPL-0001`).
+- Baris dengan **Kode Barang sama** digabung menjadi satu barang dengan beberapa unit (khusus barang individual).
+- **Nomor seri** dan **nomor inventaris unit** yang sudah terdaftar, atau yang duplikat di dalam berkas, dilaporkan sebagai kesalahan.
+- Rumus spreadsheet **tidak dievaluasi** (berkas dibaca sebagai data saja), sehingga sel berisi rumus diperlakukan sebagai teks kosong/tidak valid.
+- Impor memakai layanan registrasi yang sama dengan form master barang, sehingga riwayat kondisi & lokasi serta stok tetap konsisten.
+- Setiap impor dicatat **satu kali** di riwayat aktivitas sebagai aksi `inventory_imported` beserta ID batch dan ringkasan jumlah barang/unit.
+
 #### Keamanan Sesi & Kata Sandi
 - Setiap pengguna yang **mengganti kata sandinya sendiri** akan mendapat **ID sesi baru**; seluruh sesi login lain yang memakai akun yang sama dicabut seketika (untuk driver sesi `database`). Pada driver lain yang tidak menyimpan sesi sebagai baris, pencabutan menyeluruh tidak dapat dilakukan — disarankan memakai driver sesi `database` (default).
 - `SESSION_ENCRYPT=true` di `.env.example`: payload sesi dienkripsi di penyimpanan (kolom `payload` tabel `sessions`) sehingga nilai flash seperti kata sandi sementara tidak tersimpan sebagai teks terbaca. Setelah nilai ini diaktifkan, **seluruh sesi lama menjadi tidak valid** dan pengguna harus login ulang.
@@ -446,6 +462,7 @@ php artisan test
 | `tests/Feature/SubmissionRealizationTest.php` | Realisasi pengajuan: barang baru individual/consumable, barang inventaris yang sudah ada, kuantitas melebihi permintaan ditolak, realisasi ganda ditolak, riwayat lokasi/kondisi bagi unit baru. |
 | `tests/Feature/SubmissionNotificationTest.php` | Notifikasi dalam aplikasi untuk tiap peristiwa (diajukan, ditinjau, disetujui, ditolak, direalisasi) dan URL tujuan per peran. |
 | `tests/Feature/EndToEndWorkflowTest.php` | Alur menyeluruh lintas role (Kajur → Sarpras → Kepala Sekolah → realisasi; jalur penolakan + ajukan ulang), berjalan di SQLite & MySQL. |
+| `tests/Feature/InventoryImportTest.php` | Impor inventaris `.xlsx`/`.csv`: pembuatan barang & unit, kode otomatis, kesalahan bernomor baris, sifat semua-atau-tidak, duplikat kode/seri, batas ukuran/tipe/jumlah baris, rumus tidak dievaluasi, dan pembatasan akses hanya Sarpras. |
 | `tests/Feature/LocalizationTest.php` | Pesan validasi, nama bulan grafik, dan teks paginasi berbahasa Indonesia. |
 
 > Untuk daftar lengkap, lihat folder `tests/Feature/` dan `tests/Unit/`.

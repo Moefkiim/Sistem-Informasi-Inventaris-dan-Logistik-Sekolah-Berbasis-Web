@@ -172,6 +172,12 @@
                                                 <span class="menu-title">Registrasi Barang</span>
                                             </a>
                                         </div>
+                                        <div class="menu-item">
+                                            <a class="menu-link {{ request()->routeIs('sarpras.inventory.import.*') ? 'active' : '' }}" href="{{ route('sarpras.inventory.import.create') }}">
+                                                <span class="menu-icon"><i class="bi bi-upload fs-5"></i></span>
+                                                <span class="menu-title">Impor Inventaris</span>
+                                            </a>
+                                        </div>
                                     </div>
                                 </div>
 

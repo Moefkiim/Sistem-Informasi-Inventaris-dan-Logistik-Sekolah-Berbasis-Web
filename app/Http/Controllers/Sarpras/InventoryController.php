@@ -9,6 +9,7 @@ use App\Models\ConditionHistory;
 use App\Models\Item;
 use App\Models\Location;
 use App\Models\LocationHistory;
+use App\Services\InventoryRegistrationService;
 use App\Support\AssetCondition;
 use App\Support\Departments;
 use Illuminate\Http\RedirectResponse;
@@ -20,6 +21,8 @@ use Illuminate\View\View;
 
 class InventoryController extends Controller
 {
+    public function __construct(private readonly InventoryRegistrationService $registration) {}
+
     public function index(Request $request): View
     {
         $query = Item::with(['location']);
@@ -73,45 +76,7 @@ class InventoryController extends Controller
             'description' => ['nullable', 'string'],
         ]);
 
-        DB::transaction(function () use ($validated, $request) {
-            $initial_stock = $validated['stock'];
-            unset($validated['stock']);
-
-            $item = new Item($validated);
-            $item->stock = $initial_stock;
-            $item->save();
-
-            // Jika ada lokasi awal, buat histori mutasi lokasi perdana
-            if (! empty($validated['location_id'])) {
-                LocationHistory::create([
-                    'item_id' => $item->id,
-                    'from_location_id' => null,
-                    'to_location_id' => $validated['location_id'],
-                    'user_id' => $request->user()->id,
-                    'notes' => 'Pencatatan inventaris awal',
-                    'moved_at' => now(),
-                ]);
-            }
-
-            // Buat entri awal riwayat kondisi fisik
-            ConditionHistory::create([
-                'item_id' => $item->id,
-                'from_condition' => $validated['current_condition'],
-                'to_condition' => $validated['current_condition'],
-                'user_id' => $request->user()->id,
-                'notes' => 'Kondisi fisik saat registrasi aset',
-                'recorded_at' => now(),
-            ]);
-
-            ActivityLog::log(
-                'item_created',
-                "Barang baru didaftarkan: {$item->name} ({$item->code})",
-                $item,
-                [],
-                ['code' => $item->code, 'name' => $item->name, 'stock' => $item->stock],
-                $item->code
-            );
-        });
+        $this->registration->register($validated, $request->user());
 
         return redirect()->route('sarpras.inventory.index')
             ->with('success', 'Master data barang inventaris berhasil ditambahkan.');

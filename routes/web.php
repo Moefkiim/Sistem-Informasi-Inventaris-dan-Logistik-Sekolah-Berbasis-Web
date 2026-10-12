@@ -87,6 +87,14 @@ Route::middleware(['auth', 'role', 'password.changed'])->group(function () {
         Route::get('/inventory', [App\Http\Controllers\Sarpras\InventoryController::class, 'index'])->name('inventory.index');
         Route::get('/inventory/create', [App\Http\Controllers\Sarpras\InventoryController::class, 'create'])->name('inventory.create');
         Route::post('/inventory', [App\Http\Controllers\Sarpras\InventoryController::class, 'store'])->name('inventory.store');
+
+        // Impor Inventaris Awal (Excel/CSV) — didaftarkan sebelum rute {item}
+        Route::get('/inventory/import', [App\Http\Controllers\Sarpras\InventoryImportController::class, 'create'])->name('inventory.import.create');
+        Route::get('/inventory/import/template', [App\Http\Controllers\Sarpras\InventoryImportController::class, 'template'])->name('inventory.import.template');
+        Route::post('/inventory/import/preview', [App\Http\Controllers\Sarpras\InventoryImportController::class, 'preview'])->name('inventory.import.preview');
+        Route::post('/inventory/import/confirm', [App\Http\Controllers\Sarpras\InventoryImportController::class, 'confirm'])->name('inventory.import.confirm');
+        Route::get('/inventory/import/errors/{token}', [App\Http\Controllers\Sarpras\InventoryImportController::class, 'errors'])->name('inventory.import.errors');
+
         Route::get('/inventory/{item}', [App\Http\Controllers\Sarpras\InventoryController::class, 'show'])->name('inventory.show');
         Route::post('/inventory/{item}/location', [App\Http\Controllers\Sarpras\InventoryController::class, 'updateLocation'])->name('inventory.updateLocation');
         Route::post('/inventory/{item}/condition', [App\Http\Controllers\Sarpras\InventoryController::class, 'updateCondition'])->name('inventory.updateCondition');

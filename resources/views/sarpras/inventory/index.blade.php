@@ -13,6 +13,9 @@
             </form>
         </div>
         <div class="card-toolbar">
+            <a href="{{ route('sarpras.inventory.import.create') }}" class="btn btn-light-primary me-2">
+                <i class="bi bi-upload me-1"></i> Impor Inventaris
+            </a>
             <a href="{{ route('sarpras.inventory.create') }}" class="btn btn-primary">
                 <i class="bi bi-plus-lg me-1"></i> Registrasi Barang Baru
             </a>

@@ -43,6 +43,7 @@ class ActivityLog extends Model
         'item_location_updated' => 'Lokasi Barang Diubah',
         'item_condition_updated' => 'Kondisi Barang Diubah',
         'unit_status_changed' => 'Status Unit Diubah',
+        'inventory_imported' => 'Inventaris Diimpor',
         'submission_created' => 'Pengajuan Dibuat',
         'submission_submitted' => 'Pengajuan Dikirim',
         'submission_cancelled' => 'Pengajuan Dibatalkan',
@@ -108,6 +109,7 @@ class ActivityLog extends Model
 
     private const GROUP_PREFIXES = [
         'item' => 'Inventaris',
+        'inventory' => 'Inventaris',
         'unit' => 'Inventaris',
         'loan' => 'Peminjaman',
         'submission' => 'Pengajuan',
