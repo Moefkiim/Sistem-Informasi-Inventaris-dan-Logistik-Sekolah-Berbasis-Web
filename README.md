@@ -21,8 +21,9 @@ Sistem Informasi Inventaris dan Logistik Sekolah (SIILS) adalah aplikasi manajem
 - [12. Glosarium](#12-glosarium)
 - [13. Status Pengembangan dan Batasan Scope](#13-status-pengembangan-dan-batasan-scope)
 - [14. Troubleshooting dan FAQ](#14-troubleshooting-dan-faq)
-- [15. Cara Berkontribusi](#15-cara-berkontribusi)
-- [16. Lisensi](#16-lisensi)
+- [15. Panduan Pemakaian Resmi di Sekolah](#15-panduan-pemakaian-resmi-di-sekolah)
+- [16. Cara Berkontribusi](#16-cara-berkontribusi)
+- [17. Lisensi](#17-lisensi)
 
 ---
 
@@ -633,7 +634,94 @@ Sesuai aturan desain, tombol edit hanya muncul bila status pengajuan masih `draf
 
 ---
 
-## 15. Cara Berkontribusi
+## 15. Panduan Pemakaian Resmi di Sekolah
+
+Bagian ini adalah ringkasan langkah operasional untuk menaikkan aplikasi dari mode uji coba (lokal) menjadi dipakai sehari-hari di sekolah. Semua langkah yang khusus Laragon ditandai **[belum diverifikasi di Laragon]**.
+
+### A. Mode Production
+
+1. Sunting `.env`:
+   ```dotenv
+   APP_ENV=production
+   APP_DEBUG=false
+   APP_URL=http://<alamat-ip-atau-domain>/siils
+   LOG_STACK=daily
+   LOG_LEVEL=warning
+   ```
+2. Bersihkan dan bangun ulang cache:
+   ```bash
+   php artisan optimize:clear
+   php artisan optimize
+   ```
+3. Pastikan `php artisan siils:check` tidak melaporkan galat (kode keluar `0`).
+4. Jangan membuka file `.env` untuk umum dan pastikan tidak ikut tercadangkan (perintah backup sudah mengecualikannya).
+
+### B. Akses dari Komputer Lain di Jaringan Sekolah
+
+1. Cari alamat IP server (contoh `192.168.1.10`) dan arahkan web server ke folder `public` aplikasi.
+2. Set `APP_URL` sesuai alamat tersebut, misalnya `http://192.168.1.10/siils`.
+3. Izinkan port web (80/443) pada firewall server agar dapat diakses komputer klien di jaringan yang sama.
+4. **[belum diverifikasi di Laragon]** Di Laragon, aktifkan **Auto virtual hosts** lalu **Reload**; akses memakai `http://<nama-folder>.test` atau IP server. Pastikan keamanan hanya terbuka untuk jaringan internal sekolah.
+
+### C. Cadangan (Backup) Terjadwal
+
+Buat arsip cadangan manual:
+```bash
+php artisan siils:backup
+# Opsi: --keep=14 (jumlah arsip disimpan), --path=..., --tanpa-berkas, --tanpa-mysqldump
+```
+Arsip `.zip` berisi `database.sql`, berkas dokumen (disk privat), dan `manifest.json` (waktu, driver + versi database, jumlah baris per tabel). `.env` tidak pernah disertakan.
+
+Contoh penjadwalan di **Windows Task Scheduler** (jalankan setiap hari pukul 22.00):
+1. **Create Task** → tab **Triggers** → Daily 22:00.
+2. Tab **Actions** → **Start a program**:
+   - Program/script: `C:\laragon\bin\php\php-8.3.x\php.exe` (sesuaikan versi) 
+   - Add arguments: `artisan siils:backup`
+   - Start in: `C:\path\ke\Sistem-Informasi-Inventaris-dan-Logistik-Sekolah-Berbasis-Web`
+   - **[belum diverifikasi di Laragon]**: jalur `php.exe` dan folder proyek menyesuaikan pemasangan Anda.
+3. Simpan arsip di lokasi terpisah (mis. drive lain / NAS) untuk mencegah kehilangan tunggal.
+
+### D. Pemulihan (Restore)
+
+**Peringatan:** restore menggantikan seluruh data aktif.
+```bash
+# Pratinjau isi arsip (opsional)
+unzip -l storage/app/backups/siils-backup-YYYYmmdd-HHMMSS.zip
+
+# Pulihkan (production wajib memakai --force)
+php artisan siils:restore storage/app/backups/siils-backup-YYYYmmdd-HHMMSS.zip --force
+```
+Perintah akan memeriksa `manifest.json` (driver cocok), menolak berjalan di `production` tanpa `--force`, memulihkan database, lalu mengembalikan berkas dokumen.
+
+### E. Memperbarui Aplikasi
+
+```bash
+git pull
+composer install --no-dev --optimize-autoloader
+php artisan migrate --force
+php artisan optimize:clear
+php artisan optimize
+```
+Jalankan `php artisan siils:check` setelah pembaruan.
+
+### E1. Rotasi Log
+
+`.env.example` sudah memakai `LOG_STACK=daily` dan `LOG_DAILY_DAYS=14`, sehingga berkas log lama otomatis dihapus setelah 14 hari. Untuk production disarankan `LOG_LEVEL=warning` agar log tidak cepat menumpuk.
+
+### E. Daftar Periksa Serah Terima
+
+- [ ] `php artisan siils:check` hijau (kode keluar `0`).
+2. Tidak ada akun demo/default dengan kata sandi default yang masih aktif; ganti atau nonaktifkan.
+3. `APP_ENV=production` dan `APP_DEBUG=false`.
+4. `php artisan siils:backup` berhasil dan arsip disimpan di lokasi terpisah.
+5. Penjadwalan backup terjadwal aktif (mis. Task Scheduler).
+5. Data jurusan (`config/departments.php`), daftar pengguna, dan master lokasi sudah sesuai kondisi sekolah.
+6. Ajarkan alur kerja inti kepada operator: pengajuan (Kajur) → proses (Sarpras) → persetujuan (Kepala Sekolah) → laporan.
+7. Serahkan dokumen alamat akses, akun admin, dan lokasi arsip cadangan kepada pengelola baru.
+
+---
+
+## 16. Cara Berkontribusi
 
 1. Tinjau dan pahami seluruh aturan bisnis serta matriks akses pada [AGENTS.md](file:///c:/Ibang/KULIAH/Semester%205/Sistem-Informasi-Inventaris-dan-Logistik-Sekolah-Berbasis-Web/AGENTS.md) dan [rancangan-web.md](file:///c:/Ibang/KULIAH/Semester%205/Sistem-Informasi-Inventaris-dan-Logistik-Sekolah-Berbasis-Web/rancangan-web.md).
 2. Buat branch fitur baru dari `main` dengan format penamaan: `docs/fitur-nama` atau `fix/deskripsi-bug`.
@@ -642,6 +730,6 @@ Sesuai aturan desain, tombol edit hanya muncul bila status pengajuan masih `draf
 
 ---
 
-## 16. Lisensi
+## 17. Lisensi
 
 Proyek Sistem Informasi Inventaris dan Logistik Sekolah (SIILS) ini dikembangkan untuk kebutuhan internal pengelolaan sarana prasarana sekolah. Lisensi dan pemanfaatan sistem dikelola oleh tim pengembang sekolah.
