@@ -572,7 +572,7 @@ class SmokeTest:
         for idx in range(page.locator(".mode-select").count()):
             mode = page.locator(f'select[name="lines[{idx}][mode]"]')
             item_select = page.locator(f'select[name="lines[{idx}][item_id]"]')
-            item_col = item_select.locator("xpath=ancestor::div[contains(@class,'col')]")
+            item_col = item_select.locator("xpath=ancestor::div[contains(@class,'col-md-4')]")
 
             # existing -> kolom pilih barang tampil.
             mode.select_option("existing")
