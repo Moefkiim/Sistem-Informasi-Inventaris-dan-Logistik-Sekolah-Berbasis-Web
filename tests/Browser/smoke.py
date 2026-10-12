@@ -22,11 +22,14 @@ dengan kode keluar != 0 bila ada pelanggaran.
 """
 
 import argparse
+import csv
+import io
 import json
 import os
 import re
 import sys
 import time
+import zipfile
 from datetime import datetime
 from pathlib import Path
 from urllib.parse import urljoin
@@ -35,6 +38,11 @@ from playwright.sync_api import (
     TimeoutError as PlaywrightTimeoutError,
     sync_playwright,
 )
+
+try:  # hanya tersedia di CI (paket pip opsional).
+    from axe_playwright_python.sync_playwright import Axe
+except Exception:  # pragma: no cover - lingkungan lokal tanpa paket axe.
+    Axe = None
 
 # ---------------------------------------------------------------------------
 # Pola teks yang menandai halaman error tak terduga (server-side crash).
@@ -117,7 +125,37 @@ ROLE_PAGES = {
     ],
 }
 
+# ---------------------------------------------------------------------------
+# Jenis laporan yang wajib ditelusuri untuk tiap role (filter scoping otomatis).
+# ---------------------------------------------------------------------------
+REPORT_TYPES = [
+    "inventory",
+    "incoming",
+    "outgoing",
+    "distribution",
+    "submission",
+    "loan",
+    "condition",
+]
+
+# Tingkat dampak axe-core yang memblokir job (harus nol, kecuali pada allowlist).
+BLOCKING_IMPACTS = ("serious", "critical")
+
+# Tahap 1 aksesibilitas dibatasi pada halaman laporan. Ubah ke True untuk
+# memperluas axe-core ke seluruh halaman yang ditelusuri.
+A11Y_FULL_TRAVERSAL = False
+
+# Tahap 1 (pelaporan) hanya memperingatkan temuan serious/critical. Setelah
+# temuan diperbaiki atau didaftarkan di a11y-allowlist.json, ubah ke True agar
+# temuan serious/critical baru menggagalkan job.
+A11Y_ENFORCE = False
+
+# Berkas pengecualian aksesibilitas (hanya diperbolehkan dengan alasan tertulis).
+A11Y_ALLOWLIST_PATH = Path(__file__).with_name("a11y-allowlist.json")
+
+# ---------------------------------------------------------------------------
 # Halaman-halaman sarpras yang dropdown barangnya wajib memakai Select2.
+# ---------------------------------------------------------------------------
 SELECT2_PAGES = {
     "/sarpras/logistics/outgoing": "barang_keluar",
     "/sarpras/logistics/distributions": "distribusi",
@@ -132,6 +170,10 @@ class SmokeTest:
         self.artifact_dir.mkdir(parents=True, exist_ok=True)
         (self.artifact_dir / "screenshots").mkdir(exist_ok=True)
         (self.artifact_dir / "trace").mkdir(exist_ok=True)
+        (self.artifact_dir / "downloads").mkdir(exist_ok=True)
+        self.a11y_violations = []
+        self.axe = None
+        self._axe_warned = False
 
         # Seluruh peristiwa console/pageerror, ditandai tag halaman aktif.
         self.events = []
@@ -242,6 +284,121 @@ class SmokeTest:
                 )
         except Exception as exc:
             self.fail(f"Gagal mengukur overflow: {exc}", role, page_name, viewport)
+
+        self.run_a11y(page, role, page_name, viewport)
+
+    # ------------------------------------------------------------------
+    # Aksesibilitas (axe-core) — dijalankan pada setiap halaman & viewport.
+    # ------------------------------------------------------------------
+    def run_a11y(self, page, role: str, page_name: str, viewport: str):
+        if not A11Y_FULL_TRAVERSAL and not page_name.startswith("laporan_"):
+            return
+
+        if Axe is None:
+            if not self._axe_warned:
+                self.warn("axe-core tidak tersedia (paket axe-playwright-python tidak terpasang) — pemeriksaan aksesibilitas dilewati")
+                self._axe_warned = True
+            return
+
+        if self.axe is None:
+            self.axe = Axe()
+
+        try:
+            try:
+                results = self.axe.run(page, options={"resultTypes": ["violations"]})
+            except TypeError:
+                results = self.axe.run(page)
+        except Exception as exc:
+            self.warn(f"axe-core gagal dijalankan: {exc}", role, page_name, viewport)
+            return
+
+        response = results.response or {}
+        for violation in response.get("violations", []):
+            nodes = violation.get("nodes", [])
+            targets = [t for node in nodes for t in node.get("target", [])][:5]
+            self.a11y_violations.append({
+                "role": role,
+                "page": page_name,
+                "path": self.tag,
+                "viewport": viewport,
+                "rule": violation.get("id"),
+                "impact": violation.get("impact"),
+                "help": violation.get("help"),
+                "help_url": violation.get("helpUrl"),
+                "nodes": len(nodes),
+                "targets": targets,
+            })
+
+    def load_a11y_allowlist(self) -> dict:
+        if not A11Y_ALLOWLIST_PATH.exists():
+            return {}
+        try:
+            data = json.loads(A11Y_ALLOWLIST_PATH.read_text(encoding="utf-8"))
+        except Exception as exc:
+            self.warn(f"Allowlist aksesibilitas tidak dapat dibaca: {exc}")
+            return {}
+        allowlist = {}
+        for entry in data.get("exceptions", []):
+            allowlist.setdefault(entry.get("rule"), []).append(entry.get("reason", "(tanpa alasan)"))
+        return allowlist
+
+    def check_a11y(self) -> int:
+        """Tandai serious/critical yang tidak ada di allowlist sebagai kegagalan."""
+        allowlist = self.load_a11y_allowlist()
+        seen_blockers = set()
+        for v in self.a11y_violations:
+            impact = v["impact"]
+            rule = v["rule"]
+            if impact in BLOCKING_IMPACTS:
+                if rule in allowlist:
+                    continue
+                key = (rule, v["role"], v["page"], v["viewport"])
+                if key in seen_blockers:
+                    continue
+                seen_blockers.add(key)
+                message = f"a11y {impact}: {rule} — {v['help']} ({v['nodes']} elemen; mis. {v['targets']})"
+                if A11Y_ENFORCE:
+                    self.fail(message, v["role"], v["page"], v["viewport"])
+                else:
+                    self.warn(f"[lapor] {message}", v["role"], v["page"], v["viewport"])
+            elif impact == "moderate":
+                self.warn(
+                    f"a11y moderate: {rule} — {v['help']} ({v['nodes']} elemen)",
+                    v["role"], v["page"], v["viewport"],
+                )
+        return len(self.a11y_violations)
+
+    def write_a11y_report(self):
+        grouped = {}
+        for v in self.a11y_violations:
+            bucket = grouped.setdefault(v["rule"], {
+                "rule": v["rule"],
+                "impact": v["impact"],
+                "help": v["help"],
+                "help_url": v["help_url"],
+                "count": 0,
+                "pages": {},
+            })
+            bucket["count"] += 1
+            page_key = f"{v['role']}/{v['page']} @ {v['viewport']}"
+            bucket["pages"].setdefault(page_key, {"nodes": 0, "targets": []})
+            bucket["pages"][page_key]["nodes"] += v["nodes"]
+            bucket["pages"][page_key]["targets"].extend(v["targets"])
+
+        summary = {}
+        for v in self.a11y_violations:
+            summary[v["impact"]] = summary.get(v["impact"], 0) + 1
+
+        payload = {
+            "generated_at": datetime.now().isoformat(),
+            "total_violations": len(self.a11y_violations),
+            "by_impact": summary,
+            "by_rule": sorted(grouped.values(), key=lambda r: (-r["count"], r["rule"] or "")),
+        }
+        (self.artifact_dir / "a11y-report.json").write_text(
+            json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
+        return payload
 
     # ------------------------------------------------------------------
     # Screenshot ke direktori artifact.
@@ -631,6 +788,310 @@ class SmokeTest:
         ctx_real.close()
 
     # ------------------------------------------------------------------
+    # Laporan: telusur semua jenis + verifikasi ekspor PDF/Excel/Cetak
+    # ------------------------------------------------------------------
+    def run_reports(self, browser):
+        for role in ROLE_PAGES:
+            context = browser.new_context()
+            self.hook_context(context)
+            page = context.new_page()
+            if not self.login(page, role):
+                context.close()
+                continue
+
+            for report_type in REPORT_TYPES:
+                path = f"/reports?type={report_type}"
+                for width, height in VIEWPORTS:
+                    page.set_viewport_size({"width": width, "height": height})
+                    vp_label = f"{width}x{height}"
+                    status = self.goto(page, path)
+                    self.check_page(page, role, f"laporan_{report_type}", path, vp_label)
+                    if status != 200:
+                        self.fail(f"Status HTTP {status} untuk laporan {report_type}", role, f"laporan_{report_type}", vp_label)
+
+                    body = self.body_text(page)
+                    has_table = page.locator("table.report-table, table.table-report").count() > 0
+                    has_empty = ("Belum ada data" in body) or ("Tidak ada hasil untuk filter ini" in body)
+                    if not has_table and not has_empty:
+                        self.fail(f"Laporan {report_type} tidak memuat tabel maupun keadaan kosong", role, f"laporan_{report_type}", vp_label)
+                    if "$summary" in body or "$totalRows" in body:
+                        self.fail(f"Variabel mentah tampil pada laporan {report_type}", role, f"laporan_{report_type}", vp_label)
+                    self.screenshot(page, role, f"laporan_{report_type}", vp_label)
+
+                page.set_viewport_size({"width": 1366, "height": 768})
+                self.goto(page, path)
+                self.check_report_exports(page, context, report_type, role)
+
+            self.logout(page)
+            context.close()
+
+    def count_report_rows(self, page, report_type: str):
+        """Jumlah baris data laporan di layar (gabungan seluruh halaman paginasi)."""
+        total = 0
+        for page_no in range(1, 21):
+            path = f"/reports?type={report_type}&per_page=50&page={page_no}"
+            status = self.goto(page, path)
+            if status != 200:
+                return None
+            rows = page.locator("table.report-table tbody tr, table.table-report tbody tr").count()
+            body = self.body_text(page)
+            if "Belum ada data" in body or "Tidak ada hasil untuk filter ini" in body:
+                break
+            total += rows
+            if page.locator('a[rel="next"]').count() == 0:
+                break
+        return total
+
+    @staticmethod
+    def xlsx_data_rows(body: bytes):
+        """Hitung baris data (tanpa baris judul) pada sheet pertama berkas xlsx."""
+        try:
+            with zipfile.ZipFile(io.BytesIO(body)) as archive:
+                sheets = [n for n in archive.namelist() if re.match(r"xl/worksheets/sheet\d+\.xml$", n)]
+                if not sheets:
+                    return None
+                xml = archive.read(sheets[0]).decode("utf-8", "ignore")
+        except Exception:
+            return None
+        total_rows = len(re.findall(r"<row\b", xml))
+        return max(total_rows - 1, 0)
+
+    def check_report_exports(self, page, context, report_type: str, role: str):
+        page_name = f"laporan_{report_type}_ekspor"
+        expected = self.count_report_rows(page, report_type)
+
+        pdf = context.request.get(self.url(f"/reports/pdf?type={report_type}"))
+        if pdf.status != 200:
+            self.fail(f"PDF laporan {report_type} status {pdf.status}", role, page_name, "1366x768")
+        else:
+            ctype = pdf.headers.get("content-type", "")
+            body = pdf.body()
+            if "pdf" not in ctype.lower():
+                self.fail(f"PDF laporan {report_type} content-type tidak sesuai: {ctype}", role, page_name, "1366x768")
+            if not body.startswith(b"%PDF"):
+                self.fail(f"PDF laporan {report_type} tidak diawali %PDF", role, page_name, "1366x768")
+
+        xls = context.request.get(self.url(f"/reports/excel?type={report_type}"))
+        if xls.status != 200:
+            self.fail(f"Excel laporan {report_type} status {xls.status}", role, page_name, "1366x768")
+        else:
+            body = xls.body()
+            if not body.startswith(b"PK"):
+                self.fail(f"Excel laporan {report_type} bukan berkas xlsx (magic bukan PK)", role, page_name, "1366x768")
+            else:
+                count = self.xlsx_data_rows(body)
+                if count is not None and expected is not None and count != expected:
+                    self.fail(
+                        f"Jumlah baris Excel {report_type} ({count}) berbeda dari baris di layar ({expected})",
+                        role, page_name, "1366x768",
+                    )
+
+        status = self.goto(page, f"/reports?type={report_type}&export=print")
+        body = self.body_text(page)
+        if status != 200:
+            self.fail(f"Halaman cetak laporan {report_type} status {status}", role, page_name, "1366x768")
+        elif "<table" not in page.content() and "Tidak ada data laporan." not in body:
+            self.fail(f"Halaman cetak laporan {report_type} tidak memuat tabel/data", role, page_name, "1366x768")
+        self.screenshot(page, role, f"laporan_{report_type}_cetak", "1366x768")
+
+    # ------------------------------------------------------------------
+    # Skenario: aksi status unit pada barang individual
+    # ------------------------------------------------------------------
+    def run_status_unit(self, browser):
+        context = browser.new_context()
+        self.hook_context(context)
+        page = context.new_page()
+        page.set_viewport_size({"width": 1366, "height": 768})
+        if not self.login(page, "sarpras"):
+            context.close()
+            return
+
+        self.goto(page, "/sarpras/inventory")
+        raw = page.eval_on_selector_all(
+            'a[href*="/sarpras/inventory/"]',
+            "els => els.map(e => e.getAttribute('href'))",
+        )
+        detail = None
+        for href in dict.fromkeys(raw):
+            if not href or not re.search(r"/sarpras/inventory/\d+$", href):
+                continue
+            path = re.sub(r"^https?://[^/]+", "", href)
+            if self.goto(page, path) == 200 and page.locator(".unit-status-action").count() > 0:
+                detail = path
+                break
+
+        if detail is None:
+            self.warn("Tidak ada barang individual dengan aksi status unit — skenario status dilewati", "sarpras", "status-unit", "")
+            context.close()
+            return
+
+        before = page.locator("#tab_status tbody tr:not(:has-text('Belum ada riwayat'))").count()
+        page.locator(".unit-status-action").first.click()
+        page.wait_for_timeout(500)
+        modal = page.locator("#statusUnitModal")
+        if not modal.is_visible():
+            self.fail("Modal ubah status unit tidak terbuka", "sarpras", "status-unit", "")
+            context.close()
+            return
+        self.screenshot(page, "sarpras", "status_unit_modal", "1366x768")
+
+        reason = page.locator("#status-reason")
+        if not reason.get_attribute("required"):
+            self.fail("Field alasan pada modal status tidak bertanda wajib", "sarpras", "status-unit", "")
+
+        url_before = page.url
+        age_before = page.locator("#statusUnitModal button[type=submit]").count()
+        if age_before:
+            page.locator("#statusUnitModal button[type=submit]").click()
+            page.wait_for_timeout(400)
+            if page.url != url_before:
+                self.fail("Modal status tersubmit meski alasan dikosongkan", "sarpras", "status-unit", "")
+
+        reason.fill("Diperiksa otomatis oleh browser smoke CI.")
+
+        if page.locator("#status-condition-wrap:not(.d-none)").count() > 0:
+            page.locator("#status-result-condition").select_option(index=0)
+        if page.locator('#status-confirm-wrap:not(.d-none) input[name="confirmed"]').count() > 0:
+            page.locator("#status-confirm").check()
+
+        self.events.clear()
+        self.tag = "status-unit submit"
+        with page.expect_navigation(wait_until="domcontentloaded", timeout=45000):
+            page.locator("#statusUnitModal button[type=submit]").click()
+        page.wait_for_load_state("networkidle", timeout=20000)
+
+        if "berhasil" not in self.body_text(page).lower():
+            self.warn("Flash sukses perubahan status unit tidak tampil", "sarpras", "status-unit", "")
+
+        after = page.locator("#tab_status tbody tr:not(:has-text('Belum ada riwayat'))").count()
+        if after <= before:
+            self.fail(f"Riwayat status unit tidak bertambah (sebelum {before}, sesudah {after})", "sarpras", "status-unit", "")
+        self.screenshot(page, "sarpras", "status_unit_riwayat", "1366x768")
+
+        # Unit yang dapat dipinjam tetap muncul pada dropdown peminjaman.
+        self.goto(page, "/sarpras/loans/create")
+        if page.locator(".select2-container").count() == 0:
+            self.warn("Dropdown peminjaman tidak memakai Select2 setelah perubahan status", "sarpras", "status-unit", "")
+        context.close()
+
+    # ------------------------------------------------------------------
+    # Skenario: peminjaman terlambat pada halaman detail (tanpa buka daftar)
+    # ------------------------------------------------------------------
+    def run_overdue_loan(self, browser):
+        discover = browser.new_context()
+        self.hook_context(discover)
+        page = discover.new_page()
+        page.set_viewport_size({"width": 1366, "height": 768})
+        if not self.login(page, "sarpras"):
+            discover.close()
+            return
+        self.goto(page, "/sarpras/loans?due=overdue")
+        link = page.locator('tr:has-text("Terlambat") a[href*="/sarpras/loans/"]').first
+        if link.count() == 0:
+            self.warn("Tidak ada peminjaman terlambat pada data demo — skenario dilewati", "sarpras", "peminjaman-terlambat", "")
+            discover.close()
+            return
+        path = re.sub(r"^https?://[^/]+", "", link.get_attribute("href") or "")
+        discover.close()
+
+        context = browser.new_context()
+        self.hook_context(context)
+        page = context.new_page()
+        page.set_viewport_size({"width": 1366, "height": 768})
+        if not self.login(page, "sarpras"):
+            context.close()
+            return
+        status = self.goto(page, path)
+        if status != 200:
+            self.fail(f"Detail peminjaman {path} status {status}", "sarpras", "peminjaman-terlambat", "")
+        body = self.body_text(page)
+        if "Terlambat" not in body:
+            self.fail("Status 'Terlambat' tidak tampil pada detail peminjaman", "sarpras", "peminjaman-terlambat", "")
+        self.screenshot(page, "sarpras", "peminjaman_terlambat_detail", "1366x768")
+        context.close()
+
+    # ------------------------------------------------------------------
+    # Skenario: alur impor inventaris (template, pratinjau, konfirmasi)
+    # ------------------------------------------------------------------
+    def run_import_flow(self, browser):
+        context = browser.new_context(accept_downloads=True)
+        self.hook_context(context)
+        page = context.new_page()
+        page.set_viewport_size({"width": 1366, "height": 768})
+        if not self.login(page, "sarpras"):
+            context.close()
+            return
+
+        status = self.goto(page, "/sarpras/inventory/import")
+        if status != 200:
+            self.fail(f"Halaman impor status {status}", "sarpras", "impor", "")
+        if page.locator('input[name="file"]').count() == 0:
+            self.fail("Form impor tidak menampilkan input berkas", "sarpras", "impor", "")
+        self.screenshot(page, "sarpras", "impor_unggah", "1366x768")
+
+        # Unduh template resmi.
+        try:
+            with page.expect_download(timeout=30000) as dl:
+                page.click('a[href*="/sarpras/inventory/import/template"]')
+            download = dl.value
+            target = self.artifact_dir / "downloads" / (download.suggested_filename or "template.xlsx")
+            download.save_as(str(target))
+            if target.read_bytes()[:2] != b"PK":
+                self.fail("Template impor bukan berkas xlsx", "sarpras", "impor", "")
+        except PlaywrightTimeoutError:
+            self.fail("Unduhan template impor tidak dimulai", "sarpras", "impor", "")
+
+        # Berkas salah -> pratinjau menampilkan kesalahan, konfirmasi nonaktif.
+        bad = self.artifact_dir / "downloads" / "impor_salah.csv"
+        with bad.open("w", newline="", encoding="utf-8") as fh:
+            writer = csv.writer(fh)
+            writer.writerow(["Nama Barang", "Tipe"])
+            writer.writerow(["", "salah-tipe"])
+        page.set_input_files('input[name="file"]', str(bad))
+        with page.expect_navigation(wait_until="domcontentloaded", timeout=45000):
+            page.click('form[action*="import/preview"] button[type="submit"]')
+        page.wait_for_load_state("networkidle", timeout=20000)
+        confirm = page.locator('form[action*="import/confirm"] button[type="submit"]')
+        if confirm.count() == 0:
+            self.fail("Halaman pratinjau impor tidak tampil untuk berkas salah", "sarpras", "impor", "")
+        elif not confirm.is_disabled():
+            self.fail("Tombol konfirmasi tetap aktif walau berkas memuat kesalahan", "sarpras", "impor", "")
+        self.screenshot(page, "sarpras", "impor_pratinjau_salah", "1366x768")
+
+        # Berkas benar -> pratinjau bersih -> konfirmasi -> barang muncul.
+        marker = f"ImporSmoke{datetime.now().strftime('%H%M%S')}"
+        good = self.artifact_dir / "downloads" / "impor_benar.csv"
+        with good.open("w", newline="", encoding="utf-8") as fh:
+            writer = csv.writer(fh)
+            writer.writerow(["Nama Barang", "Tipe"])
+            writer.writerow([marker, "individual"])
+        self.goto(page, "/sarpras/inventory/import")
+        page.set_input_files('input[name="file"]', str(good))
+        with page.expect_navigation(wait_until="domcontentloaded", timeout=45000):
+            page.click('form[action*="import/preview"] button[type="submit"]')
+        page.wait_for_load_state("networkidle", timeout=20000)
+
+        confirm = page.locator('form[action*="import/confirm"] button[type="submit"]')
+        if confirm.count() == 0 or confirm.is_disabled():
+            self.fail("Tombol konfirmasi impor tidak aktif untuk berkas valid", "sarpras", "impor", "")
+            context.close()
+            return
+        self.screenshot(page, "sarpras", "impor_pratinjau_benar", "1366x768")
+
+        self.events.clear()
+        self.tag = "impor konfirmasi"
+        with page.expect_navigation(wait_until="domcontentloaded", timeout=45000):
+            confirm.click()
+        page.wait_for_load_state("networkidle", timeout=20000)
+        if "berhasil" not in self.body_text(page).lower():
+            self.warn("Flash sukses impor tidak tampil", "sarpras", "impor", "")
+
+        self.goto(page, f"/sarpras/inventory?search={marker}")
+        if marker not in self.body_text(page):
+            self.warn(f"Barang hasil impor '{marker}' tidak terlihat pada pencarian inventaris", "sarpras", "impor", "")
+        context.close()
+
+    # ------------------------------------------------------------------
     # Halaman error khusus + throttle login
     # ------------------------------------------------------------------
     def run_special_pages(self, browser):
@@ -691,6 +1152,7 @@ class SmokeTest:
     # Indeks & laporan akhir
     # ------------------------------------------------------------------
     def write_index(self, exit_code: int):
+        a11y = self.write_a11y_report()
         rows = []
         rows.append("<html><head><meta charset='utf-8'></head><body>")
         rows.append(f"<h1>Browser Smoke SIILS</h1>")
@@ -711,6 +1173,19 @@ class SmokeTest:
         else:
             rows.append("<p>Tidak ada pelanggaran.</p>")
 
+        rows.append("<h2>Aksesibilitas (axe-core)</h2>")
+        rows.append(f"<p>Total temuan: {a11y['total_violations']} • per dampak: {a11y['by_impact']}</p>")
+        if a11y["by_rule"]:
+            rows.append("<table border='1' cellpadding='4' cellspacing='0'>")
+            rows.append("<tr><th>Rule</th><th>Dampak</th><th>Jumlah</th><th>Bantuan</th></tr>")
+            for rule in a11y["by_rule"]:
+                rows.append(
+                    f"<tr><td>{rule['rule']}</td><td>{rule['impact']}</td>"
+                    f"<td>{rule['count']}</td><td>{rule['help']}</td></tr>"
+                )
+            rows.append("</table>")
+            rows.append("<p><a href='a11y-report.json'>a11y-report.json</a></p>")
+
         rows.append("<h2>Screenshot</h2>")
         rows.append("<table border='1' cellpadding='4' cellspacing='0'>")
         rows.append("<tr><th>Role</th><th>Halaman</th><th>Viewport</th><th>Berkas</th><th>Gambar</th></tr>")
@@ -728,9 +1203,58 @@ class SmokeTest:
                 "exit_code": exit_code,
                 "violations": self.violations,
                 "screenshots": self.screenshots,
+                "a11y": {
+                    "total": a11y["total_violations"],
+                    "by_impact": a11y["by_impact"],
+                },
             }, indent=2, ensure_ascii=False),
             encoding="utf-8",
         )
+
+        self.write_markdown_index(exit_code, a11y)
+
+    def write_markdown_index(self, exit_code: int, a11y: dict):
+        fails = [v for v in self.violations if v["severity"] == "FAIL"]
+        warns = [v for v in self.violations if v["severity"] == "WARN"]
+        lines = [
+            "# Indeks Artefak Browser Smoke SIILS",
+            "",
+            f"- Dibuat: {datetime.now().isoformat()}",
+            f"- Base URL: {self.base_url}",
+            f"- Exit code: **{exit_code}**",
+            f"- Pelanggaran: {len(fails)} FAIL, {len(warns)} WARN",
+            f"- Aksesibilitas (axe-core): {a11y['total_violations']} temuan — {a11y['by_impact']}",
+            "",
+            "## Berkas",
+            "",
+            "- `index.html` — laporan visual (violations, a11y, galeri screenshot)",
+            "- `report.json` — ringkasan mesin (violations, screenshots, a11y)",
+            "- `a11y-report.json` — rincian temuan axe per rule/halaman/viewport",
+            "- `screenshots/` — tangkapan layar tiap role, halaman, dan viewport",
+            "- `downloads/` — berkas hasil unduhan (template impor, dataset uji)",
+            "",
+            "## Halaman laporan yang ditelusuri",
+            "",
+        ]
+        for report_type in REPORT_TYPES:
+            lines.append(f"- `/reports?type={report_type}` (+ ekspor PDF/Excel/Cetak)")
+        lines += [
+            "",
+            "## Skenario alur",
+            "",
+            "- Pengajuan → verifikasi Sarpras → persetujuan Kepsek → realisasi.",
+            "- Perubahan status unit individual (modal, alasan wajib, riwayat bertambah).",
+            "- Peminjaman terlambat pada halaman detail.",
+            "- Impor inventaris: unduh template, pratinjau salah/benar, konfirmasi.",
+            "",
+        ]
+        if fails:
+            lines.append("## Kegagalan")
+            lines.append("")
+            for v in fails:
+                lines.append(f"- [{v['role']}/{v['page']} @ {v['viewport']}] {v['message']}")
+            lines.append("")
+        (self.artifact_dir / "INDEX.md").write_text("\n".join(lines), encoding="utf-8")
 
 
 def main(argv=None):
@@ -771,12 +1295,18 @@ def main(argv=None):
         try:
             smoke.run_traversal(browser)
             smoke.run_interactive(browser)
+            smoke.run_reports(browser)
+            smoke.run_status_unit(browser)
+            smoke.run_overdue_loan(browser)
+            smoke.run_import_flow(browser)
             smoke.run_special_pages(browser)
         except Exception as exc:
             smoke.fail(f"Eksekusi gagal: {exc}")
             exit_code = 1
         finally:
             browser.close()
+
+    smoke.check_a11y()
 
     # Bundel peristiwa konsol untuk dipakai bila ada kegagalan referensi.
     if any(v["severity"] == "FAIL" for v in smoke.violations):

@@ -267,11 +267,11 @@ jobs:
           done
           curl -fsS http://127.0.0.1:8000/up
 
-      - name: Siapkan Python + Playwright (hanya di CI)
+      - name: Siapkan Python + Playwright + axe-core (hanya di CI)
         run: |
           python3 -m ensurepip --upgrade || true
           python3 -m pip install --upgrade pip
-          python3 -m pip install "playwright>=1.45,<2"
+          python3 -m pip install "playwright>=1.45,<2" axe-playwright-python
           python3 -m playwright install --with-deps chromium
 
       - name: Jalankan browser smoke (tests/Browser/smoke.py)
@@ -280,6 +280,16 @@ jobs:
             --base-url "http://127.0.0.1:8000" \
             --artifact-dir "storage/logs/browser-smoke" \
             > storage/logs/browser-smoke-run.log 2>&1 || { cat storage/logs/browser-smoke-run.log; exit 1; }
+
+      - name: Ringkasan aksesibilitas (axe-core)
+        if: always()
+        run: |
+          if [ -f storage/logs/browser-smoke/a11y-report.json ]; then
+            echo "=== a11y-report.json (ringkasan) ==="
+            python3 -c "import json;d=json.load(open('storage/logs/browser-smoke/a11y-report.json'));print('total temuan:',d['total_violations']);print('per dampak:',d['by_impact']);[print('  [%s] %s x%d - %s' % (r['impact'],r['rule'],r['count'],r['help'])) for r in d['by_rule']]"
+          else
+            echo "a11y-report.json belum tersedia"
+          fi
 
       - name: Tampilkan ringkasan browser smoke
         run: |
