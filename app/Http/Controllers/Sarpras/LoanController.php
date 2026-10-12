@@ -306,7 +306,7 @@ class LoanController extends Controller
                         ]);
                     }
 
-                    $unit->update(['current_status' => 'dipinjam']);
+                    $unit->applyLoanStatus('dipinjam', 'Dipinjam pada peminjaman '.$loan->loan_number, $request->user());
 
                     $item->update([
                         'current_status' => $item->recalculateAggregateStatus(),
@@ -397,15 +397,14 @@ class LoanController extends Controller
                         ]);
                     }
 
-                    $unit->update([
-                        'current_status' => $targetStatus,
-                        'current_condition' => $validated['condition_on_return'],
-                    ]);
+                    $unit->current_condition = $validated['condition_on_return'];
+                    $unit->save();
 
-                    $item->update([
-                        'current_status' => $item->recalculateAggregateStatus(),
-                        'current_condition' => $item->recalculateAggregateCondition(),
-                    ]);
+                    $unit->applyLoanStatus(
+                        $targetStatus,
+                        'Dikembalikan dari peminjaman '.$loan->loan_number,
+                        $request->user()
+                    );
                 } else {
                     if ($validated['condition_on_return'] !== $item->current_condition) {
                         ConditionHistory::create([

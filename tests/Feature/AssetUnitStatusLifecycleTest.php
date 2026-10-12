@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\AssetUnit;
 use App\Models\AssetUnitStatusHistory;
 use App\Models\Item;
+use App\Models\Loan;
 use App\Models\Location;
 use App\Models\User;
 use Illuminate\Database\QueryException;
@@ -387,6 +388,43 @@ class AssetUnitStatusLifecycleTest extends TestCase
         $this->assertDatabaseHas('items', [
             'code' => 'BRG-NEW-0001',
             'current_condition' => 'tidak_layak_pakai',
+        ]);
+    }
+
+    // =========================================================================
+    // 8. Riwayat status pada alur peminjaman (otomatis)
+    // =========================================================================
+
+    public function test_riwayat_status_tercatat_pada_persetujuan_dan_pengembalian(): void
+    {
+        $unit = AssetUnit::factory()->for($this->item)->create(['current_status' => 'aktif']);
+
+        $loan = Loan::factory()->create([
+            'item_id' => $this->item->id,
+            'asset_unit_id' => $unit->id,
+            'status' => 'menunggu',
+        ]);
+
+        $this->actingAs($this->sarpras)
+            ->post(route('sarpras.loans.approve', $loan))
+            ->assertRedirect();
+
+        $this->assertSame('dipinjam', $unit->fresh()->current_status);
+        $this->assertDatabaseHas('asset_unit_status_histories', [
+            'asset_unit_id' => $unit->id,
+            'from_status' => 'aktif',
+            'to_status' => 'dipinjam',
+        ]);
+
+        $this->actingAs($this->sarpras)
+            ->post(route('sarpras.loans.return', $loan), ['condition_on_return' => 'rusak_berat'])
+            ->assertRedirect();
+
+        $this->assertSame('dalam_perbaikan', $unit->fresh()->current_status);
+        $this->assertDatabaseHas('asset_unit_status_histories', [
+            'asset_unit_id' => $unit->id,
+            'from_status' => 'dipinjam',
+            'to_status' => 'dalam_perbaikan',
         ]);
     }
 }

@@ -233,19 +233,58 @@ class AssetUnit extends Model
             }
         }
 
-        if ($item) {
-            $item->current_status = $item->recalculateAggregateStatus();
-            $item->current_condition = $item->recalculateAggregateCondition();
-            $item->save();
+        $this->syncItemAggregate();
+
+        return $this->writeStatusHistory($from, $newStatus, $reason, $actor->id);
+    }
+
+    /**
+     * Ubah status unit untuk alur peminjaman (mis. aktif → dipinjam saat
+     * disetujui, dipinjam → aktif/dalam_perbaikan/tidak_aktif saat kembali).
+     * Transisi dari/ke `dipinjam` dikendalikan alur pinjam, bukan matriks
+     * transisi manual, tetapi setiap perubahan tetap dicatat sebagai riwayat.
+     */
+    public function applyLoanStatus(string $newStatus, ?string $reason, User $actor): void
+    {
+        $from = $this->current_status;
+
+        if ($from === $newStatus) {
+            return;
         }
 
+        $this->current_status = $newStatus;
+        $this->save();
+
+        $this->syncItemAggregate();
+
+        $this->writeStatusHistory($from, $newStatus, $reason, $actor->id);
+    }
+
+    /**
+     * Sinkronkan status & kondisi agregat item induk setelah unit berubah.
+     */
+    private function syncItemAggregate(): void
+    {
+        $item = $this->item;
+
+        if (! $item) {
+            return;
+        }
+
+        $item->current_status = $item->recalculateAggregateStatus();
+        $item->current_condition = $item->recalculateAggregateCondition();
+        $item->save();
+    }
+
+    private function writeStatusHistory(string $from, string $to, ?string $reason, int $userId): AssetUnitStatusHistory
+    {
         return AssetUnitStatusHistory::create([
             'asset_unit_id' => $this->id,
             'item_id' => $this->item_id,
             'from_status' => $from,
-            'to_status' => $newStatus,
+            'to_status' => $to,
             'reason' => $reason,
-            'user_id' => $actor->id,
+            'user_id' => $userId,
             'recorded_at' => now(),
         ]);
     }
