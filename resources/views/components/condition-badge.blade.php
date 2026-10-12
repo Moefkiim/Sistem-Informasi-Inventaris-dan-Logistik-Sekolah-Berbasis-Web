@@ -6,12 +6,8 @@
 @props(['condition', 'class' => ''])
 
 @php
-    $map = [
-        'baik'         => ['color' => 'success', 'label' => 'Baik'],
-        'rusak_ringan' => ['color' => 'warning', 'label' => 'Rusak Ringan'],
-        'rusak_berat'  => ['color' => 'danger',  'label' => 'Rusak Berat'],
-    ];
-    $entry = $map[$condition] ?? ['color' => 'secondary', 'label' => ucfirst(str_replace('_', ' ', $condition))];
+    $label = \App\Support\AssetCondition::label($condition) ?? '—';
+    $color = \App\Support\AssetCondition::color($condition);
 @endphp
 
-<span class="badge badge-light-{{ $entry['color'] }} {{ $class }}">{{ $entry['label'] }}</span>
+<span class="badge badge-light-{{ $color }} {{ $class }}">{{ $label }}</span>

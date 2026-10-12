@@ -9,6 +9,7 @@ use App\Models\ConditionHistory;
 use App\Models\Item;
 use App\Models\Loan;
 use App\Models\User;
+use App\Support\AssetCondition;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -354,7 +355,7 @@ class LoanController extends Controller
         }
 
         $validated = $request->validate([
-            'condition_on_return' => ['required', 'in:baik,rusak_ringan,rusak_berat'],
+            'condition_on_return' => ['required', 'in:'.implode(',', array_slice(AssetCondition::values(), 0, 4))],
             'notes' => ['nullable', 'string', 'max:500'],
         ]);
 
@@ -375,10 +376,13 @@ class LoanController extends Controller
             // Update status & kondisi aset individual berdasarkan kondisi fisik saat kembali:
             // - baik / rusak_ringan => status unit 'aktif'
             // - rusak_berat => status unit 'dalam_perbaikan' (tidak otomatis aktif)
+            // - tidak_layak_pakai => status unit 'tidak_aktif' (tidak layak dipakai)
             if ($item->isIndividual()) {
-                $targetStatus = ($validated['condition_on_return'] === 'rusak_berat')
-                    ? 'dalam_perbaikan'
-                    : 'aktif';
+                $targetStatus = match ($validated['condition_on_return']) {
+                    'rusak_berat' => 'dalam_perbaikan',
+                    'tidak_layak_pakai' => 'tidak_aktif',
+                    default => 'aktif',
+                };
 
                 if ($unit) {
                     if ($validated['condition_on_return'] !== $unit->current_condition) {

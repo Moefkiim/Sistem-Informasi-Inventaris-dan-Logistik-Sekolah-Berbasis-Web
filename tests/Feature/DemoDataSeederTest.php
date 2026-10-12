@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\ActivityLog;
 use App\Models\AssetUnit;
+use App\Models\AssetUnitStatusHistory;
 use App\Models\IncomingItem;
 use App\Models\Item;
 use App\Models\Loan;
@@ -37,12 +38,23 @@ class DemoDataSeederTest extends TestCase
         $this->assertNotEmpty($individual);
 
         foreach ($individual as $item) {
+            $nonDisposed = $item->assetUnits()->where('current_status', '!=', 'disposed')->count();
             $this->assertSame(
                 $item->stock,
-                $item->assetUnits()->count(),
-                "Jumlah unit fisik barang {$item->code} harus sama dengan stok."
+                $nonDisposed,
+                "Jumlah unit non-disposed barang {$item->code} harus sama dengan stok."
             );
         }
+    }
+
+    public function test_demo_inventory_memiliki_kondisi_dan_status_unit_baru(): void
+    {
+        $this->seed();
+
+        $this->assertTrue(AssetUnit::where('current_condition', 'tidak_layak_pakai')->exists());
+        $this->assertTrue(AssetUnit::where('current_condition', 'hilang')->exists());
+        $this->assertTrue(AssetUnit::where('current_status', 'disposed')->exists());
+        $this->assertTrue(AssetUnitStatusHistory::exists());
     }
 
     public function test_stok_tidak_pernah_negatif_dan_konsisten_dengan_transaksi(): void

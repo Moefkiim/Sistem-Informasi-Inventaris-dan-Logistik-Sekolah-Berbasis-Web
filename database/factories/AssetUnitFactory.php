@@ -4,7 +4,6 @@ namespace Database\Factories;
 
 use App\Models\AssetUnit;
 use App\Models\Item;
-use App\Models\Location;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 
@@ -15,14 +14,14 @@ class AssetUnitFactory extends Factory
     public function definition(): array
     {
         return [
-            'item_id'               => Item::factory()->individual(),
-            'unit_inventory_number' => strtoupper('UNIT-' . Str::random(6)),
-            'serial_number'         => null,
-            'current_condition'     => 'baik',
-            'current_status'        => 'aktif',
-            'location_id'           => null,
-            'is_legacy_migrated'    => false,
-            'notes'                 => null,
+            'item_id' => Item::factory()->individual(),
+            'unit_inventory_number' => strtoupper('UNIT-'.Str::random(6)),
+            'serial_number' => null,
+            'current_condition' => 'baik',
+            'current_status' => 'aktif',
+            'location_id' => null,
+            'is_legacy_migrated' => false,
+            'notes' => null,
         ];
     }
 

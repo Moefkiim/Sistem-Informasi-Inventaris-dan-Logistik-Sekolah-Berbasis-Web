@@ -156,7 +156,7 @@
                                 <div class="fw-bold text-dark">
                                     Barang dikembalikan
                                     @if($loan->condition_on_return)
-                                        (kondisi: {{ ucfirst(str_replace('_', ' ', $loan->condition_on_return)) }})
+                                        (kondisi: {{ \App\Support\AssetCondition::label($loan->condition_on_return) }})
                                     @endif
                                 </div>
                                 <div class="text-muted fs-7">
@@ -260,12 +260,13 @@
                             <label class="form-label required" for="condition_on_return">
                                 Kondisi Barang Saat Kembali
                             </label>
-                            <select name="condition_on_return" id="condition_on_return"
-                                    class="form-select form-select-solid @error('condition_on_return') is-invalid @enderror" required>
-                                <option value="baik" {{ old('condition_on_return') === 'baik' ? 'selected' : '' }}>Baik</option>
-                                <option value="rusak_ringan" {{ old('condition_on_return') === 'rusak_ringan' ? 'selected' : '' }}>Rusak Ringan</option>
-                                <option value="rusak_berat" {{ old('condition_on_return') === 'rusak_berat' ? 'selected' : '' }}>Rusak Berat</option>
-                            </select>
+@php $returnConditions = array_slice(\App\Support\AssetCondition::values(), 0, 4); @endphp
+                        <select name="condition_on_return" id="condition_on_return"
+                                class="form-select form-select-solid @error('condition_on_return') is-invalid @enderror" required>
+                            @foreach($returnConditions as $condition)
+                                <option value="{{ $condition }}" {{ old('condition_on_return') === $condition ? 'selected' : '' }}>{{ \App\Support\AssetCondition::label($condition) }}</option>
+                            @endforeach
+                        </select>
                             @error('condition_on_return')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror

@@ -161,9 +161,9 @@
                             <div class="col-md-4">
                                 <label class="form-label required">Kondisi Awal</label>
                                 <select class="form-select @error("lines.{$index}.new_condition") is-invalid @enderror" name="lines[{{ $index }}][new_condition]">
-                                    <option value="baik" {{ old("lines.{$index}.new_condition", 'baik') === 'baik' ? 'selected' : '' }}>Baik</option>
-                                    <option value="rusak_ringan" {{ old("lines.{$index}.new_condition") === 'rusak_ringan' ? 'selected' : '' }}>Rusak Ringan</option>
-                                    <option value="rusak_berat" {{ old("lines.{$index}.new_condition") === 'rusak_berat' ? 'selected' : '' }}>Rusak Berat</option>
+                                    @foreach(\App\Support\AssetCondition::all() as $value => $label)
+                                        <option value="{{ $value }}" {{ old("lines.{$index}.new_condition", 'baik') === $value ? 'selected' : '' }}>{{ $label }}</option>
+                                    @endforeach
                                 </select>
                                 @error("lines.{$index}.new_condition")
                                     <div class="invalid-feedback d-block">{{ $message }}</div>

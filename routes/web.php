@@ -90,6 +90,7 @@ Route::middleware(['auth', 'role', 'password.changed'])->group(function () {
         Route::get('/inventory/{item}', [App\Http\Controllers\Sarpras\InventoryController::class, 'show'])->name('inventory.show');
         Route::post('/inventory/{item}/location', [App\Http\Controllers\Sarpras\InventoryController::class, 'updateLocation'])->name('inventory.updateLocation');
         Route::post('/inventory/{item}/condition', [App\Http\Controllers\Sarpras\InventoryController::class, 'updateCondition'])->name('inventory.updateCondition');
+        Route::post('/inventory/{item}/status', [App\Http\Controllers\Sarpras\InventoryController::class, 'updateStatus'])->name('inventory.updateStatus');
 
         // Verifikasi & Proses Pengajuan Kajur
         Route::get('/submissions', [App\Http\Controllers\Sarpras\SubmissionController::class, 'index'])->name('submissions.index');

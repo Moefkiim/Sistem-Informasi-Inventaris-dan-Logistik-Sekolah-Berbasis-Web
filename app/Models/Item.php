@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\AssetCondition;
 use App\Support\Departments;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -113,6 +114,11 @@ class Item extends Model
         return $this->hasMany(ConditionHistory::class)->latest('recorded_at');
     }
 
+    public function statusHistories(): HasMany
+    {
+        return $this->hasMany(AssetUnitStatusHistory::class)->latest('recorded_at')->latest('id');
+    }
+
     public function incomingItems(): HasMany
     {
         return $this->hasMany(IncomingItem::class)->latest('entry_date');
@@ -165,13 +171,13 @@ class Item extends Model
             return $this->current_status;
         }
 
-        $units = $this->assetUnits()->get(['current_status']);
-        $total = $units->count();
-        if ($total === 0) {
-            return $this->current_status;
-        }
-
+        $units = $this->assetUnits()->where('current_status', '!=', 'disposed')->get(['current_status']);
         $statuses = $units->pluck('current_status')->all();
+        $total = count($statuses);
+        if ($total === 0) {
+            // Seluruh unit berstatus disposed (dihapuskan).
+            return 'disposed';
+        }
 
         // 1. Jika ada setidaknya 1 unit yang aktif (tersedia), master item berstatus aktif.
         if (in_array('aktif', $statuses, true)) {
@@ -210,17 +216,17 @@ class Item extends Model
             return $this->current_condition;
         }
 
-        $conditions = $this->assetUnits()->pluck('current_condition')->all();
+        $conditions = $this->assetUnits()
+            ->where('current_status', '!=', 'disposed')
+            ->pluck('current_condition')
+            ->all();
 
-        if (in_array('rusak_berat', $conditions, true)) {
-            return 'rusak_berat';
-        }
+        $worst = collect($conditions)
+            ->filter(fn ($condition) => AssetCondition::isValid($condition))
+            ->sortBy(fn ($condition) => AssetCondition::severity($condition))
+            ->last();
 
-        if (in_array('rusak_ringan', $conditions, true)) {
-            return 'rusak_ringan';
-        }
-
-        return 'baik';
+        return $worst ?? AssetCondition::BAIK;
     }
 
     /**
@@ -232,7 +238,7 @@ class Item extends Model
             return ucfirst(str_replace('_', ' ', $this->current_status));
         }
 
-        $total = $this->assetUnits()->count();
+        $total = $this->assetUnits()->where('current_status', '!=', 'disposed')->count();
         $active = $this->assetUnits()->where('current_status', 'aktif')->count();
         $borrowed = $this->assetUnits()->where('current_status', 'dipinjam')->count();
 

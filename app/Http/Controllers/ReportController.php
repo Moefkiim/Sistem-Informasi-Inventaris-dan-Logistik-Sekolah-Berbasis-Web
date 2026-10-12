@@ -11,6 +11,7 @@ use App\Models\Loan;
 use App\Models\Location;
 use App\Models\OutgoingItem;
 use App\Models\Submission;
+use App\Support\AssetCondition;
 use App\Support\Departments;
 use App\Support\ReportTypes;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -55,6 +56,7 @@ class ReportController extends Controller
             'type' => $type,
             'reportTitle' => ReportTypes::title($type),
             'filters' => $filters,
+            'showDisposed' => $filters['unit_status'] === 'disposed',
             'startDate' => $filters['start_date'],
             'endDate' => $filters['end_date'],
             'department' => $filters['department'],
@@ -96,6 +98,7 @@ class ReportController extends Controller
             'startDate' => $filters['start_date'],
             'endDate' => $filters['end_date'],
             'summary' => $summary,
+            'showDisposed' => $filters['unit_status'] === 'disposed',
             'filterSummary' => $this->filterSummary($filters, $summary, $type),
         ])->setPaper('a4', 'landscape');
 
@@ -122,7 +125,7 @@ class ReportController extends Controller
 
         foreach ($data as $record) {
             if ($type === 'inventory') {
-                foreach ($this->inventoryRows($record) as $row) {
+                foreach ($this->inventoryRows($record, $filters) as $row) {
                     $rows[] = $this->excelRow('inventory', $row);
                 }
 
@@ -230,7 +233,7 @@ class ReportController extends Controller
             'start_date' => $startDate ?: null,
             'end_date' => $endDate ?: null,
             'location_id' => $request->filled('location_id') ? (int) $request->get('location_id') : null,
-            'condition' => in_array($request->get('condition'), ['baik', 'rusak_ringan', 'rusak_berat'], true)
+            'condition' => AssetCondition::isValid($request->get('condition'))
                 ? $request->get('condition')
                 : null,
             'unit_status' => in_array($request->get('unit_status'), array_keys(AssetUnit::STATUS_LABELS), true)
@@ -454,7 +457,7 @@ class ReportController extends Controller
             ->groupBy('to_condition')
             ->pluck('total', 'to_condition');
 
-        $conditions = ['baik' => 0, 'rusak_ringan' => 0, 'rusak_berat' => 0];
+        $conditions = array_fill_keys(AssetCondition::values(), 0);
         foreach ($countsByCondition as $condition => $total) {
             $conditions[$condition] = (int) $total;
         }
@@ -604,10 +607,13 @@ class ReportController extends Controller
     }
 
     /**
-     * Item individual dengan unit dipecah menjadi satu baris per unit;
-     * consumable / item legacy tetap satu baris.
+     * Baris inventaris untuk ekspor; unit berstatus 'disposed' disembunyikan
+     * kecuali filter unit_status menyebut 'disposed' secara eksplisit.
+     *
+     * @param  array<string,mixed>  $filters
+     * @return array<int,object>
      */
-    private function inventoryRows(Item $item): array
+    private function inventoryRows(Item $item, array $filters = []): array
     {
         $asRow = function (?string $unitNo, ?string $serial, int $stock, string $condition, ?string $status, $location) use ($item) {
             return (object) [
@@ -626,7 +632,10 @@ class ReportController extends Controller
         };
 
         if ($item->isIndividual() && $item->assetUnits && $item->assetUnits->isNotEmpty()) {
+            $showDisposed = ($filters['unit_status'] ?? null) === 'disposed';
+
             return $item->assetUnits
+                ->filter(fn ($unit) => $showDisposed || $unit->current_status !== 'disposed')
                 ->map(fn ($unit) => $asRow(
                     $unit->unit_inventory_number,
                     $unit->serial_number,
@@ -635,6 +644,7 @@ class ReportController extends Controller
                     $unit->current_status,
                     $unit->location
                 ))
+                ->values()
                 ->all();
         }
 
@@ -701,8 +711,8 @@ class ReportController extends Controller
             'condition' => [
                 $record->item->name ?? '-',
                 $record->assetUnit->unit_inventory_number ?? ($record->item->inventory_number ?? '-'),
-                ucfirst(str_replace('_', ' ', (string) $record->from_condition)),
-                ucfirst(str_replace('_', ' ', (string) $record->to_condition)),
+                AssetCondition::label($record->from_condition) ?? '-',
+                AssetCondition::label($record->to_condition) ?? '-',
                 $record->recorded_at?->format('d/m/Y H:i') ?? '-',
                 $record->user->name ?? '-',
                 $record->notes ?? '-',
@@ -714,7 +724,7 @@ class ReportController extends Controller
                 $record->name,
                 $record->category,
                 $record->stock.' '.$record->unit,
-                ucfirst(str_replace('_', ' ', (string) $record->current_condition)),
+                AssetCondition::label($record->current_condition) ?? '-',
                 AssetUnit::STATUS_LABELS[$record->current_status] ?? ucfirst(str_replace('_', ' ', (string) $record->current_status)),
                 $record->location->name ?? '-',
                 Departments::label($record->department) ?? 'Umum',

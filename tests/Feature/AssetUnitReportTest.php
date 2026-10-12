@@ -97,7 +97,7 @@ class AssetUnitReportTest extends TestCase
             ->assertSee('BRG-KAM-U01')
             ->assertSee('BRG-KAM-U02')
             ->assertSee('SN-KAM-002')
-            ->assertSee('Rusak ringan')
+            ->assertSee('Rusak Ringan')
             ->assertSee('Lab RPL');
     }
 

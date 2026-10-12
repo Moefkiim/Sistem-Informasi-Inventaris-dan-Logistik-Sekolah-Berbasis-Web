@@ -2,12 +2,14 @@
 
 namespace App\Models;
 
+use App\Support\AssetCondition;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Validation\ValidationException;
 
 class AssetUnit extends Model
 {
@@ -28,11 +30,11 @@ class AssetUnit extends Model
      * Label baku status unit aset (urutan penampilan sama seperti items).
      */
     public const STATUS_LABELS = [
-        'aktif'          => 'Aktif',
-        'dipinjam'       => 'Dipinjam',
-        'dalam_perbaikan'=> 'Dalam Perbaikan',
-        'tidak_aktif'    => 'Tidak Aktif',
-        'disposed'       => 'Dihapuskan',
+        'aktif' => 'Aktif',
+        'dipinjam' => 'Dipinjam',
+        'dalam_perbaikan' => 'Dalam Perbaikan',
+        'tidak_aktif' => 'Tidak Aktif',
+        'disposed' => 'Dihapuskan',
     ];
 
     /**
@@ -45,11 +47,37 @@ class AssetUnit extends Model
      * Status warna badge untuk tampilan UI.
      */
     public const STATUS_BADGE_COLORS = [
-        'aktif'          => 'success',
-        'dipinjam'       => 'info',
-        'dalam_perbaikan'=> 'warning',
-        'tidak_aktif'    => 'secondary',
-        'disposed'       => 'danger',
+        'aktif' => 'success',
+        'dipinjam' => 'info',
+        'dalam_perbaikan' => 'warning',
+        'tidak_aktif' => 'secondary',
+        'disposed' => 'danger',
+    ];
+
+    /**
+     * Matriks transisi status yang diizinkan (dari status => daftar tujuan).
+     * Status 'dipinjam' tidak dapat diubah langsung dan 'disposed' bersifat
+     * final — bukti audit trail tidak boleh hilang.
+     *
+     * @var array<string, array<int,string>>
+     */
+    public const STATUS_TRANSITIONS = [
+        'aktif' => ['dalam_perbaikan', 'tidak_aktif', 'disposed'],
+        'dalam_perbaikan' => ['aktif', 'tidak_aktif', 'disposed'],
+        'tidak_aktif' => ['aktif', 'disposed'],
+        'dipinjam' => [],
+        'disposed' => [],
+    ];
+
+    /**
+     * Status yang diubah otomatis ketika kondisi unit menjadi tidak layak
+     * pakai / hilang. Diterapkan hanya saat unit tidak sedang dipinjam.
+     *
+     * @var array<string,string>
+     */
+    public const AUTO_STATUS_FOR_CONDITION = [
+        'tidak_layak_pakai' => 'tidak_aktif',
+        'hilang' => 'tidak_aktif',
     ];
 
     protected function casts(): array
@@ -124,5 +152,133 @@ class AssetUnit extends Model
     public function conditionHistories(): HasMany
     {
         return $this->hasMany(ConditionHistory::class)->latest('recorded_at');
+    }
+
+    public function statusHistories(): HasMany
+    {
+        return $this->hasMany(AssetUnitStatusHistory::class)->latest('recorded_at')->latest('id');
+    }
+
+    // === Status Lifecycle ===
+
+    /**
+     * Apakah transisi status dari $from ke $to diizinkan?
+     */
+    public static function canTransit(string $from, string $to): bool
+    {
+        return in_array($to, self::STATUS_TRANSITIONS[$from] ?? [], true);
+    }
+
+    /**
+     * Apakah unit sedang dipinjam (status 'dipinjam')?
+     */
+    public function isBorrowed(): bool
+    {
+        return $this->current_status === 'dipinjam';
+    }
+
+    /**
+     * Terapkan perubahan status unit dengan audit trail.
+     *
+     * Menolak transisi yang tidak diizinkan, unit yang sedang dipinjam, dan
+     * status yang sama. Saat status menjadi 'disposed', stok master dikurangi 1
+     * (tidak pernah di bawah 0) dan baris unit dipertahankan agar histori utuh.
+     *
+     *
+     * @throws ValidationException
+     */
+    public function changeStatus(string $newStatus, ?string $reason, User $actor): AssetUnitStatusHistory
+    {
+        $from = $this->current_status;
+        $item = $this->item;
+
+        if ($from === 'disposed') {
+            throw ValidationException::withMessages([
+                'to_status' => 'Unit yang sudah dihapuskan bersifat final dan tidak dapat diubah lagi.',
+            ]);
+        }
+
+        if ($from === 'dipinjam') {
+            throw ValidationException::withMessages([
+                'to_status' => 'Unit sedang dipinjam, selesaikan pengembalian terlebih dahulu.',
+            ]);
+        }
+
+        if ($newStatus === $from) {
+            throw ValidationException::withMessages([
+                'to_status' => 'Status unit sudah '.self::STATUS_LABELS[$from].'.',
+            ]);
+        }
+
+        if (! self::canTransit($from, $newStatus)) {
+            throw ValidationException::withMessages([
+                'to_status' => 'Transisi status tidak diizinkan: '.self::STATUS_LABELS[$from].' → '.self::STATUS_LABELS[$newStatus].'.',
+            ]);
+        }
+
+        if ($newStatus === 'disposed' && trim((string) $reason) === '') {
+            throw ValidationException::withMessages([
+                'reason' => 'Alasan penghapusan wajib diisi.',
+            ]);
+        }
+
+        $this->current_status = $newStatus;
+        $this->save();
+
+        if ($newStatus === 'disposed') {
+            $item = $this->item;
+            if ($item) {
+                $item->stock = max(0, (int) $item->stock - 1);
+                $item->save();
+            }
+        }
+
+        if ($item) {
+            $item->current_status = $item->recalculateAggregateStatus();
+            $item->current_condition = $item->recalculateAggregateCondition();
+            $item->save();
+        }
+
+        return AssetUnitStatusHistory::create([
+            'asset_unit_id' => $this->id,
+            'item_id' => $this->item_id,
+            'from_status' => $from,
+            'to_status' => $newStatus,
+            'reason' => $reason,
+            'user_id' => $actor->id,
+            'recorded_at' => now(),
+        ]);
+    }
+
+    /**
+     * Terapkan perubahan kondisi lalu otomatis ubah status bila kondisi baru
+     * tidak layak pakai / hilang. Riwayat kondisi dan status dicatat sekaligus.
+     *
+     *
+     * @throws ValidationException
+     */
+    public function changeCondition(string $newCondition, ?string $notes, User $actor): ConditionHistory
+    {
+        $oldCondition = $this->current_condition;
+
+        $history = ConditionHistory::create([
+            'item_id' => $this->item_id,
+            'asset_unit_id' => $this->id,
+            'from_condition' => $oldCondition,
+            'to_condition' => $newCondition,
+            'user_id' => $actor->id,
+            'notes' => $notes,
+            'recorded_at' => now(),
+        ]);
+
+        $this->current_condition = $newCondition;
+        $this->save();
+
+        $autoStatus = self::AUTO_STATUS_FOR_CONDITION[$newCondition] ?? null;
+        if ($autoStatus && ! $this->isBorrowed() && $autoStatus !== $this->current_status) {
+            $this->changeStatus($autoStatus, 'Kondisi: '.(AssetCondition::label($newCondition) ?? $newCondition), $actor);
+        }
+
+        return $history;
     }
 }

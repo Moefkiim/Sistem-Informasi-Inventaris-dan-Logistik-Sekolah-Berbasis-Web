@@ -9,6 +9,7 @@ use App\Models\Location;
 use App\Models\Submission;
 use App\Services\SubmissionNotifier;
 use App\Services\SubmissionRealizationService;
+use App\Support\AssetCondition;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -156,7 +157,7 @@ class SubmissionController extends Controller
             'lines.*.new_item_type' => ['required_if:lines.*.mode,new', 'nullable', 'in:individual,consumable'],
             'lines.*.new_unit' => ['required_if:lines.*.mode,new', 'nullable', 'string', 'max:50'],
             'lines.*.new_location_id' => ['nullable', Rule::exists('locations', 'id')->whereNull('deleted_at')],
-            'lines.*.new_condition' => ['required_if:lines.*.mode,new', 'nullable', 'in:baik,rusak_ringan,rusak_berat'],
+            'lines.*.new_condition' => ['required_if:lines.*.mode,new', 'nullable', AssetCondition::rule()],
         ], [
             'source.required' => 'Sumber perolehan wajib dipilih.',
             'source.in' => 'Sumber perolehan tidak valid.',

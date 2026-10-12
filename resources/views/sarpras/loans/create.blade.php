@@ -186,11 +186,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (!itemSelect) return;
 
-    const conditionLabels = {
-        baik: 'Baik',
-        rusak_ringan: 'Rusak Ringan',
-        rusak_berat: 'Rusak Berat'
-    };
+    const conditionLabels = @json(\App\Support\AssetCondition::LABELS);
     const statusLabels = {
         aktif: 'Aktif',
         dipinjam: 'Dipinjam',

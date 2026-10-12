@@ -12,7 +12,8 @@ class LocationFactory extends Factory
 
     public function definition(): array
     {
-        $code = strtoupper('LOC-' . Str::random(4));
+        $code = strtoupper('LOC-'.Str::random(4));
+
         return [
             'code' => $code,
             'name' => $this->faker->word(),

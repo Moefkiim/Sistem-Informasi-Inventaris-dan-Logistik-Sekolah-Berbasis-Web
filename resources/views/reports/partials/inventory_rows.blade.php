@@ -1,7 +1,10 @@
 @forelse($data as $item)
     @php
+        $showDisposed = isset($filters) && ($filters['unit_status'] ?? null) === 'disposed';
         $isUnit = $item->isIndividual() && $item->assetUnits !== null && $item->assetUnits->isNotEmpty();
-        $unitRows = $isUnit ? $item->assetUnits : collect([null]);
+        $unitRows = $isUnit
+            ? $item->assetUnits->filter(fn ($unit) => $showDisposed || $unit->current_status !== 'disposed')->values()
+            : collect([null]);
     @endphp
     @foreach($unitRows as $unit)
         @php

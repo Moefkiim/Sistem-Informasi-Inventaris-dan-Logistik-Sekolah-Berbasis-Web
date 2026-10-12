@@ -15,7 +15,7 @@
         || $filters['item'] || (! $isKajur && $filters['department'])
     );
 
-    $conditionLabels = ['baik' => 'Baik', 'rusak_ringan' => 'Rusak Ringan', 'rusak_berat' => 'Rusak Berat'];
+    $conditionLabels = \App\Support\AssetCondition::all();
     $statusLabels = \App\Models\AssetUnit::STATUS_LABELS;
     $statusColors = \App\Models\AssetUnit::STATUS_BADGE_COLORS;
     $loanStatusMeta = \App\Models\Loan::STATUS_META;

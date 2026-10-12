@@ -42,6 +42,7 @@ class ActivityLog extends Model
         'item_created' => 'Barang Ditambahkan',
         'item_location_updated' => 'Lokasi Barang Diubah',
         'item_condition_updated' => 'Kondisi Barang Diubah',
+        'unit_status_changed' => 'Status Unit Diubah',
         'submission_created' => 'Pengajuan Dibuat',
         'submission_submitted' => 'Pengajuan Dikirim',
         'submission_cancelled' => 'Pengajuan Dibatalkan',
@@ -107,6 +108,7 @@ class ActivityLog extends Model
 
     private const GROUP_PREFIXES = [
         'item' => 'Inventaris',
+        'unit' => 'Inventaris',
         'loan' => 'Peminjaman',
         'submission' => 'Pengajuan',
         'distribution' => 'Distribusi',
@@ -149,7 +151,12 @@ class ActivityLog extends Model
         'baik' => 'Baik',
         'rusak_ringan' => 'Rusak Ringan',
         'rusak_berat' => 'Rusak Berat',
+        'tidak_layak_pakai' => 'Tidak Layak Pakai',
+        'hilang' => 'Hilang',
         'aktif' => 'Aktif',
+        'dalam_perbaikan' => 'Dalam Perbaikan',
+        'tidak_aktif' => 'Tidak Aktif',
+        'disposed' => 'Dihapuskan',
     ];
 
     // === Relationships ===

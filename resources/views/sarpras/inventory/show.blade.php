@@ -17,9 +17,7 @@
                     <div><span class="text-muted">Lokasi Sekarang:</span> <span class="fw-bold text-primary">{{ $item->location?->name ?: 'Belum ditentukan' }}</span></div>
                     <div>
                         <span class="text-muted">Kondisi Fisik:</span>
-                        <span class="badge badge-light-{{ $item->current_condition === 'baik' ? 'success' : ($item->current_condition === 'rusak_ringan' ? 'warning' : 'danger') }}">
-                            {{ strtoupper(str_replace('_', ' ', $item->current_condition)) }}
-                        </span>
+                        <x-condition-badge :condition="$item->current_condition" />
                     </div>
                 </div>
 
@@ -149,9 +147,9 @@
                     @endif
                     <div class="mb-3">
                         <select name="to_condition" class="form-select form-select-solid form-select-sm @error('to_condition') is-invalid @enderror" required>
-                            <option value="baik" {{ old('to_condition', $item->current_condition) === 'baik' ? 'selected' : '' }}>Baik</option>
-                            <option value="rusak_ringan" {{ old('to_condition', $item->current_condition) === 'rusak_ringan' ? 'selected' : '' }}>Rusak Ringan</option>
-                            <option value="rusak_berat" {{ old('to_condition', $item->current_condition) === 'rusak_berat' ? 'selected' : '' }}>Rusak Berat</option>
+                            @foreach(\App\Support\AssetCondition::all() as $value => $label)
+                                <option value="{{ $value }}" {{ old('to_condition', $item->current_condition) === $value ? 'selected' : '' }}>{{ $label }}</option>
+                            @endforeach
                         </select>
                         @error('to_condition')
                             <div class="invalid-feedback">{{ $message }}</div>
@@ -165,6 +163,58 @@
                     </div>
                     <button type="submit" class="btn btn-sm btn-warning w-100 text-dark">Simpan Riwayat Kondisi</button>
                 </form>
+
+                @if($item->isIndividual() && $item->assetUnits && $item->assetUnits->isNotEmpty())
+                <div class="separator separator-dashed my-5"></div>
+
+                <!-- Form Ubah Status Unit -->
+                <h5 class="fw-bolder mb-1 text-dark"><i class="bi bi-sliders me-1 text-primary"></i> Ubah Status Unit</h5>
+                <p class="text-muted fs-7 mb-3">Siklus status aset: aktif → dipinjam → (dikembalikan) / dalam perbaikan / tidak aktif / dihapuskan. Hanya Sarpras yang dapat mengubah status.</p>
+                <form action="{{ route('sarpras.inventory.updateStatus', $item) }}" method="POST" data-disable-on-submit>
+                    @csrf
+                    <div class="mb-3">
+                        <select name="asset_unit_id" class="form-select form-select-solid form-select-sm @error('asset_unit_id') is-invalid @enderror" required>
+                            <option value="">-- Pilih Unit Aset --</option>
+                            @foreach($item->assetUnits as $unit)
+                                <option value="{{ $unit->id }}" {{ old('asset_unit_id') == $unit->id ? 'selected' : '' }}>
+                                    {{ $unit->unit_inventory_number }} — {{ \App\Support\AssetCondition::label($unit->current_condition) }} / {{ $unit->current_status }}
+                                </option>
+                            @endforeach
+                        </select>
+                        @error('asset_unit_id')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+                    <div class="mb-3">
+                        <select name="to_status" id="to_status" class="form-select form-select-solid form-select-sm @error('to_status') is-invalid @enderror" required>
+                            @foreach(\App\Models\AssetUnit::STATUS_LABELS as $value => $label)
+                                <option value="{{ $value }}" {{ old('to_status') === $value ? 'selected' : '' }}>{{ $label }}</option>
+                            @endforeach
+                        </select>
+                        @error('to_status')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+                    <div class="mb-3">
+                        <input type="text" name="reason" value="{{ old('reason') }}" class="form-control form-control-solid form-control-sm @error('reason') is-invalid @enderror" placeholder="Alasan perubahan status (wajib untuk penghapusan aset)">
+                        @error('reason')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+                    <div class="mb-3 d-none" id="dispose-confirm-wrap">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="confirmed" value="1" id="dispose-confirm" {{ old('confirmed') ? 'checked' : '' }}>
+                            <label class="form-check-label fs-7 text-danger" for="dispose-confirm">
+                                Saya yakin menghapuskan unit aset ini secara permanen (tidak dapat dibatalkan).
+                            </label>
+                        </div>
+                        @error('confirmed')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+                    <button type="submit" class="btn btn-sm btn-primary w-100">Simpan Perubahan Status</button>
+                </form>
+                @endif
             </div>
         </div>
     </div>
@@ -181,6 +231,9 @@
                     </li>
                     <li class="nav-item">
                         <a class="nav-link fw-bold" data-bs-toggle="tab" href="#tab_kondisi">Riwayat Kondisi</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link fw-bold" data-bs-toggle="tab" href="#tab_status">Riwayat Status Unit</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link fw-bold" data-bs-toggle="tab" href="#tab_masuk">Barang Masuk</a>
@@ -225,14 +278,38 @@
                                 @forelse($item->conditionHistories as $ch)
                                     <tr>
                                         <td class="font-monospace">{{ $ch->assetUnit?->unit_inventory_number ?: '-' }}</td>
-                                        <td>{{ str_replace('_', ' ', $ch->from_condition) }}</td>
-                                        <td class="fw-bolder">{{ str_replace('_', ' ', $ch->to_condition) }}</td>
+                                        <td>{{ \App\Support\AssetCondition::label($ch->from_condition) ?? '-' }}</td>
+                                        <td class="fw-bolder">{{ \App\Support\AssetCondition::label($ch->to_condition) ?? '-' }}</td>
                                         <td>{{ $ch->user?->name }}</td>
                                         <td>{{ $ch->notes ?: '-' }}</td>
                                         <td>{{ $ch->recorded_at->format('d/m/Y H:i') }}</td>
                                     </tr>
                                 @empty
                                     <tr><td colspan="6" class="text-center text-muted">Belum ada histori kondisi.</td></tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                        </div>
+                    </div>
+
+                    <div class="tab-pane fade" id="tab_status" role="tabpanel">
+                        <div class="table-responsive">
+                        <table class="table table-row-bordered fs-7 gy-3">
+                            <thead class="bg-light fw-bold">
+                                <tr><th>Unit</th><th>Status Asal</th><th>Status Baru</th><th>Pencatat</th><th>Alasan</th><th>Waktu</th></tr>
+                            </thead>
+                            <tbody>
+                                @forelse($item->statusHistories as $sh)
+                                    <tr>
+                                        <td class="font-monospace">{{ $sh->assetUnit?->unit_inventory_number ?: '-' }}</td>
+                                        <td>{{ $sh->from_status ? (\App\Models\AssetUnit::STATUS_LABELS[$sh->from_status] ?? $sh->from_status) : '-' }}</td>
+                                        <td class="fw-bolder">{{ \App\Models\AssetUnit::STATUS_LABELS[$sh->to_status] ?? $sh->to_status }}</td>
+                                        <td>{{ $sh->user?->name }}</td>
+                                        <td>{{ $sh->reason ?: '-' }}</td>
+                                        <td>{{ $sh->recorded_at->format('d/m/Y H:i') }}</td>
+                                    </tr>
+                                @empty
+                                    <tr><td colspan="6" class="text-center text-muted">Belum ada riwayat perubahan status unit.</td></tr>
                                 @endforelse
                             </tbody>
                         </table>
@@ -293,3 +370,19 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+    (function () {
+        const statusSelect = document.getElementById('to_status');
+        const confirmWrap = document.getElementById('dispose-confirm-wrap');
+        if (!statusSelect || !confirmWrap) return;
+
+        const toggle = function () {
+            confirmWrap.classList.toggle('d-none', statusSelect.value !== 'disposed');
+        };
+        statusSelect.addEventListener('change', toggle);
+        toggle();
+    })();
+</script>
+@endpush

@@ -12,18 +12,19 @@ class ItemFactory extends Factory
 
     public function definition(): array
     {
-        $code = strtoupper('BRG-' . Str::random(6));
+        $code = strtoupper('BRG-'.Str::random(6));
+
         return [
-            'code'             => $code,
-            'name'             => $this->faker->words(2, true),
-            'category'         => 'Alat',
-            'unit'             => 'Unit',
-            'stock'            => 10,
-            'source'           => 'pembelian',
-            'department'       => 'Umum',
-            'location_id'      => null,
+            'code' => $code,
+            'name' => $this->faker->words(2, true),
+            'category' => 'Alat',
+            'unit' => 'Unit',
+            'stock' => 10,
+            'source' => 'pembelian',
+            'department' => 'Umum',
+            'location_id' => null,
             'current_condition' => 'baik',
-            'description'      => null,
+            'description' => null,
         ];
     }
 

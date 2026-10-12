@@ -127,9 +127,9 @@
                 <div class="col-md-4">
                     <label class="form-label fw-bold required">Kondisi Fisik Awal</label>
                     <select name="current_condition" class="form-select form-select-solid" required>
-                        <option value="baik" {{ old('current_condition', 'baik') === 'baik' ? 'selected' : '' }}>Baik</option>
-                        <option value="rusak_ringan" {{ old('current_condition') === 'rusak_ringan' ? 'selected' : '' }}>Rusak Ringan</option>
-                        <option value="rusak_berat" {{ old('current_condition') === 'rusak_berat' ? 'selected' : '' }}>Rusak Berat</option>
+                        @foreach(\App\Support\AssetCondition::all() as $value => $label)
+                            <option value="{{ $value }}" {{ old('current_condition', 'baik') === $value ? 'selected' : '' }}>{{ $label }}</option>
+                        @endforeach
                     </select>
                 </div>
                 <div class="col-12">

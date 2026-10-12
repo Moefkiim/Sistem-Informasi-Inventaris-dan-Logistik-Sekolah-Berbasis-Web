@@ -4,10 +4,12 @@ namespace App\Http\Controllers\Sarpras;
 
 use App\Http\Controllers\Controller;
 use App\Models\ActivityLog;
+use App\Models\AssetUnit;
 use App\Models\ConditionHistory;
 use App\Models\Item;
 use App\Models\Location;
 use App\Models\LocationHistory;
+use App\Support\AssetCondition;
 use App\Support\Departments;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -67,7 +69,7 @@ class InventoryController extends Controller
             'acquisition_price' => ['nullable', 'numeric', 'min:0'],
             'department' => ['nullable', Rule::in(Departments::codes())],
             'location_id' => ['nullable', Rule::exists('locations', 'id')->whereNull('deleted_at')],
-            'current_condition' => ['required', 'in:baik,rusak_ringan,rusak_berat'],
+            'current_condition' => ['required', AssetCondition::rule()],
             'description' => ['nullable', 'string'],
         ]);
 
@@ -126,6 +128,8 @@ class InventoryController extends Controller
             'locationHistories.user',
             'conditionHistories.assetUnit',
             'conditionHistories.user',
+            'statusHistories.assetUnit',
+            'statusHistories.user',
             'incomingItems.user',
             'outgoingItems.user',
             'distributions.toLocation',
@@ -238,7 +242,7 @@ class InventoryController extends Controller
     {
         $validated = $request->validate([
             'asset_unit_id' => ['nullable', 'integer', Rule::exists('asset_units', 'id')],
-            'to_condition' => ['required', 'in:baik,rusak_ringan,rusak_berat'],
+            'to_condition' => ['required', AssetCondition::rule()],
             'notes' => ['nullable', 'string', 'max:255'],
         ]);
 
@@ -278,6 +282,51 @@ class InventoryController extends Controller
     }
 
     /**
+     * Ubah status operasional unit aset (hanya Sarpras).
+     */
+    public function updateStatus(Request $request, Item $item): RedirectResponse
+    {
+        $request->validate([
+            'asset_unit_id' => ['required', 'integer', Rule::exists('asset_units', 'id')],
+            'to_status' => ['required', 'in:'.implode(',', array_keys(AssetUnit::STATUS_LABELS))],
+            'reason' => ['nullable', 'string', 'max:500'],
+            'confirmed' => ['nullable', 'in:1,0,on'],
+        ]);
+
+        $toStatus = $request->input('to_status');
+
+        if ($toStatus === 'disposed' && $request->boolean('confirmed') !== true) {
+            return back()->withErrors(['confirmed' => 'Wajib mencentang konfirmasi penghapusan aset di halaman inventaris.']);
+        }
+
+        $unit = $item->assetUnits()->find((int) $request->input('asset_unit_id'));
+
+        if (! $unit) {
+            throw ValidationException::withMessages([
+                'asset_unit_id' => 'Unit aset tidak valid untuk barang ini.',
+            ]);
+        }
+
+        DB::transaction(function () use ($unit, $item, $toStatus, $request) {
+            $from = $unit->current_status;
+            $history = $unit->changeStatus($toStatus, $request->input('reason'), $request->user());
+
+            ActivityLog::log(
+                'unit_status_changed',
+                "Status unit {$unit->unit_inventory_number} ({$item->name}) diubah: "
+                    .(AssetUnit::STATUS_LABELS[$from] ?? $from).' → '.(AssetUnit::STATUS_LABELS[$toStatus] ?? $toStatus)
+                    .($history->reason ? ' ('.$history->reason.')' : ''),
+                $unit,
+                ['current_status' => $from],
+                ['current_status' => $toStatus, 'asset_unit_status_history_id' => $history->id],
+                $item->code
+            );
+        });
+
+        return back()->with('success', 'Status unit aset berhasil diperbarui (riwayat otomatis tercatat).');
+    }
+
+    /**
      * Perubahan kondisi per unit aset individual.
      */
     private function updateUnitCondition(Item $item, array $validated, Request $request): RedirectResponse
@@ -301,50 +350,31 @@ class InventoryController extends Controller
         }
 
         DB::transaction(function () use ($item, $unit, $validated, $request) {
-            ConditionHistory::create([
-                'item_id' => $item->id,
-                'asset_unit_id' => $unit->id,
-                'from_condition' => $unit->current_condition,
-                'to_condition' => $validated['to_condition'],
-                'user_id' => $request->user()->id,
-                'notes' => $validated['notes'] ?? 'Pembaruan kondisi fisik unit aset',
-                'recorded_at' => now(),
-            ]);
-
-            $unit->update(['current_condition' => $validated['to_condition']]);
+            $oldCondition = $unit->current_condition;
+            $history = $unit->changeCondition(
+                $validated['to_condition'],
+                $validated['notes'] ?? 'Pembaruan kondisi fisik unit aset',
+                $request->user()
+            );
 
             // Kondisi agregat item mengikuti kondisi terburuk antar unit agar
             // tampilan master tetap bermakna.
-            $item->update(['current_condition' => $this->worstUnitCondition($item)]);
+            $item->current_condition = $item->recalculateAggregateCondition();
+            $item->current_status = $item->recalculateAggregateStatus();
+            $item->save();
 
             ActivityLog::log(
                 'item_condition_updated',
                 "Kondisi unit {$unit->unit_inventory_number} ({$item->name}) diubah: "
-                    ."{$unit->getOriginal('current_condition')} → {$validated['to_condition']}",
+                    ."{$oldCondition} → {$validated['to_condition']}"
+                    .($history->to_condition === 'hilang' || $history->to_condition === 'tidak_layak_pakai' ? ' (status unit otomatis diperbarui)' : ''),
                 $unit,
-                ['current_condition' => $unit->getOriginal('current_condition')],
-                ['current_condition' => $validated['to_condition']],
+                ['current_condition' => $oldCondition],
+                ['current_condition' => $validated['to_condition'], 'condition_history_id' => $history->id],
                 $item->code
             );
         });
 
         return back()->with('success', 'Riwayat perubahan kondisi unit berhasil dicatat.');
-    }
-
-    private function worstUnitCondition(Item $item): string
-    {
-        $worst = 'baik';
-
-        foreach ($item->assetUnits()->get(['current_condition']) as $unit) {
-            if ($unit->current_condition === 'rusak_berat') {
-                return 'rusak_berat';
-            }
-
-            if ($unit->current_condition === 'rusak_ringan') {
-                $worst = 'rusak_ringan';
-            }
-        }
-
-        return $worst;
     }
 }

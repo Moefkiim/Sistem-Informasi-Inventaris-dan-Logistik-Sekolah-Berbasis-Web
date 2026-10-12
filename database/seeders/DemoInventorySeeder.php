@@ -4,18 +4,21 @@ namespace Database\Seeders;
 
 use App\Models\ActivityLog;
 use App\Models\AssetUnit;
+use App\Models\AssetUnitStatusHistory;
 use App\Models\ConditionHistory;
 use App\Models\Item;
 use App\Models\Location;
 use App\Models\LocationHistory;
 use App\Models\User;
+use App\Support\AssetCondition;
 use Database\Seeders\Concerns\GuardsDemoEnvironment;
 use Illuminate\Database\Seeder;
 
 /**
  * Barang master demo: aset individual (berbasis unit fisik) dan barang habis
- * pakai. Invarian yang dijaga: jumlah unit individual = items.stock, nomor unit
- * unik, dan setiap unit punya riwayat lokasi + kondisi awal.
+ * pakai. Invarian yang dijaga: jumlah unit non-disposed = items.stock, nomor
+ * unit unik, setiap unit punya riwayat lokasi + kondisi awal, dan status unit
+ * yang berpindah otomatis karena kondisi tercatat sebagai riwayat status.
  */
 class DemoInventorySeeder extends Seeder
 {
@@ -50,6 +53,7 @@ class DemoInventorySeeder extends Seeder
                 ['condition' => 'baik', 'status' => 'aktif'],
                 ['condition' => 'rusak_ringan', 'status' => 'aktif', 'history' => ['baik', 'rusak_ringan']],
                 ['condition' => 'rusak_berat', 'status' => 'dalam_perbaikan', 'history' => ['baik', 'rusak_berat']],
+                ['condition' => 'tidak_layak_pakai', 'status' => 'tidak_aktif', 'history' => ['baik', 'rusak_berat', 'tidak_layak_pakai'], 'status_history' => ['aktif', 'tidak_aktif']],
             ],
         ]);
 
@@ -68,6 +72,7 @@ class DemoInventorySeeder extends Seeder
             'units' => [
                 ['condition' => 'baik', 'status' => 'aktif'],
                 ['condition' => 'baik', 'status' => 'aktif'],
+                ['condition' => 'rusak_berat', 'status' => 'disposed', 'history' => ['baik', 'rusak_berat'], 'status_history' => ['aktif', 'disposed']],
             ],
         ]);
 
@@ -86,6 +91,7 @@ class DemoInventorySeeder extends Seeder
             'units' => [
                 ['condition' => 'baik', 'status' => 'aktif'],
                 ['condition' => 'baik', 'status' => 'aktif'],
+                ['condition' => 'hilang', 'status' => 'tidak_aktif', 'history' => ['baik', 'hilang'], 'status_history' => ['aktif', 'tidak_aktif']],
             ],
         ]);
 
@@ -171,7 +177,8 @@ class DemoInventorySeeder extends Seeder
             'current_status' => 'aktif',
             'description' => 'Aset individual demo '.$data['name'],
         ]);
-        $item->stock = count($units);
+        // Stok master = jumlah unit yang TIDAK dihapuskan (non-disposed).
+        $item->stock = count(array_filter($units, fn ($u) => ($u['status'] ?? 'aktif') !== 'disposed'));
         $item->save();
 
         LocationHistory::create([
@@ -208,6 +215,19 @@ class DemoInventorySeeder extends Seeder
                 'notes' => $from === $to ? 'Kondisi fisik saat registrasi aset' : 'Pembaruan kondisi unit aset',
                 'recorded_at' => now()->subMonths(6),
             ]);
+
+            if (! empty($unit['status_history'])) {
+                [$fromStatus, $toStatus] = $unit['status_history'];
+                AssetUnitStatusHistory::create([
+                    'asset_unit_id' => $assetUnit->id,
+                    'item_id' => $item->id,
+                    'from_status' => $fromStatus,
+                    'to_status' => $toStatus,
+                    'reason' => 'Kondisi: '.($toStatus === 'disposed' ? 'Penghapusan aset' : (AssetCondition::label($unit['condition']) ?? $unit['condition'])),
+                    'user_id' => $this->sarpras->id,
+                    'recorded_at' => now()->subMonths(5),
+                ]);
+            }
         }
 
         $item->current_condition = $item->recalculateAggregateCondition();

@@ -46,9 +46,9 @@
     <div class="summary">
         @if($type === 'inventory')
             <span>Total Unit: {{ $summary['rows'] ?? 0 }}</span>
-            <span>Baik: {{ $summary['conditions']['baik'] ?? 0 }}</span>
-            <span>Rusak Ringan: {{ $summary['conditions']['rusak_ringan'] ?? 0 }}</span>
-            <span>Rusak Berat: {{ $summary['conditions']['rusak_berat'] ?? 0 }}</span>
+            @foreach(\App\Support\AssetCondition::all() as $value => $label)
+                <span>{{ $label }}: {{ $summary['conditions'][$value] ?? 0 }}</span>
+            @endforeach
         @elseif($type === 'loan')
             @foreach(\App\Models\Loan::STATUS_META as $value => $meta)
                 <span>{{ $meta['label'] }}: {{ $summary['statuses'][$value] ?? 0 }}</span>
@@ -56,9 +56,9 @@
             <span>Terlambat: {{ $summary['overdue'] ?? 0 }}</span>
         @elseif($type === 'condition')
             <span>Jumlah Perubahan: {{ $summary['transactions'] ?? 0 }}</span>
-            <span>Ke Baik: {{ $summary['conditions']['baik'] ?? 0 }}</span>
-            <span>Ke Rusak Ringan: {{ $summary['conditions']['rusak_ringan'] ?? 0 }}</span>
-            <span>Ke Rusak Berat: {{ $summary['conditions']['rusak_berat'] ?? 0 }}</span>
+            @foreach(\App\Support\AssetCondition::all() as $value => $label)
+                <span>Ke {{ $label }}: {{ $summary['conditions'][$value] ?? 0 }}</span>
+            @endforeach
         @else
             <span>Jumlah Transaksi: {{ $summary['transactions'] ?? 0 }}</span>
             <span>Total Kuantitas: {{ $summary['quantity'] ?? 0 }}</span>
@@ -153,7 +153,9 @@
                 @if($type === 'inventory')
                     @php
                         $isUnit = $row->isIndividual() && $row->assetUnits !== null && $row->assetUnits->isNotEmpty();
-                        $unitRows = $isUnit ? $row->assetUnits : collect([null]);
+                        $unitRows = $isUnit
+                            ? $row->assetUnits->filter(fn ($unit) => $showDisposed || $unit->current_status !== 'disposed')->values()
+                            : collect([null]);
                         $rowNo = $loop->index + 1;
                     @endphp
                     @foreach($unitRows as $unit)
@@ -165,8 +167,8 @@
                             <td>{{ $row->name }}</td>
                             <td>{{ $row->category }}</td>
                             <td class="num">{{ $unit ? '1 '.$row->unit : $row->stock.' '.$row->unit }}</td>
-                            <td>{{ ucfirst(str_replace('_', ' ', $unit?->current_condition ?: $row->current_condition)) }}</td>
-                            <td>{{ \App\Models\AssetUnit::STATUS_LABELS[$unit?->current_status ?: $row->current_status] ?? ucfirst(str_replace('_', ' ', (string) ($unit?->current_status ?: $row->current_status))) }}</td>
+                            <td>{{ $unit?->current_condition ? \App\Support\AssetCondition::label($unit->current_condition) : \App\Support\AssetCondition::label($row->current_condition) }}</td>
+                            <td>{{ \App\Models\AssetUnit::STATUS_LABELS[$unit?->current_status ?: $row->current_status] ?? \App\Support\AssetCondition::label($unit?->current_status ?: $row->current_status) }}</td>
                             <td>{{ $unit?->location?->name ?: $row->location?->name ?: '-' }}</td>
                             <td>{{ \App\Support\Departments::display($row->department) }}</td>
                         </tr>
@@ -230,8 +232,8 @@
                         <td>{{ $idx + 1 }}</td>
                         <td>{{ $row->item->name ?? '-' }}</td>
                         <td>{{ $row->assetUnit->unit_inventory_number ?? ($row->item->inventory_number ?? '-') }}</td>
-                        <td>{{ ucfirst(str_replace('_', ' ', (string) $row->from_condition)) }}</td>
-                        <td>{{ ucfirst(str_replace('_', ' ', (string) $row->to_condition)) }}</td>
+                        <td>{{ \App\Support\AssetCondition::label($row->from_condition) ?? '-' }}</td>
+                        <td>{{ \App\Support\AssetCondition::label($row->to_condition) ?? '-' }}</td>
                         <td>{{ $row->recorded_at?->format('d/m/Y H:i') ?? '-' }}</td>
                         <td>{{ $row->user->name ?? '-' }}</td>
                         <td>{{ $row->notes ?? '-' }}</td>
