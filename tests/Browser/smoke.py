@@ -531,7 +531,7 @@ class SmokeTest:
         page = ctx_real.new_page()
         page.set_viewport_size({"width": 1366, "height": 768})
         if not self.login(page, "sarpras"):
-            ctx_real.stop_tracing()
+            ctx_real.tracing.stop(path=str(self.artifact_dir / "trace" / "alur-realisasi.zip"))
 
             ctx_real.close()
             return
@@ -542,7 +542,7 @@ class SmokeTest:
         realize_link = row.locator('a[href$="/realize"]')
         if realize_link.count() == 0:
             self.fail("Pengajuan disetujui tidak ditemukan di antrean realisasi", "sarpras", "realisasi", "")
-            ctx_real.stop_tracing()
+            ctx_real.tracing.stop(path=str(self.artifact_dir / "trace" / "alur-realisasi.zip"))
             ctx_real.close()
             return
         realize_link.first.click()
@@ -560,7 +560,7 @@ class SmokeTest:
                 f"Form realisasi tidak dirender (source select tidak ada). URL={page.url}. Akhir badan: {body_snippet}",
                 "sarpras", "realisasi", "",
             )
-            ctx_real.stop_tracing()
+            ctx_real.tracing.stop(path=str(self.artifact_dir / "trace" / "alur-realisasi.zip"))
             ctx_real.close()
             return
 
