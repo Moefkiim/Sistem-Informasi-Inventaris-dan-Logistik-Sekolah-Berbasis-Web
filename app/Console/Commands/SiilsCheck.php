@@ -37,6 +37,7 @@ class SiilsCheck extends Command
         $this->checkDatabase();
         $this->checkPendingMigrations();
         $this->checkWritablePaths();
+        $this->checkBackups();
         $this->checkDebugInProduction();
 
         $this->newLine();
@@ -273,6 +274,48 @@ class SiilsCheck extends Command
     private function shortenPath(string $path): string
     {
         return str_replace(base_path().DIRECTORY_SEPARATOR, '', $path);
+    }
+
+    private function checkBackups(): void
+    {
+        $directory = (string) config('siils.backup_path', storage_path('app/backups'));
+        $latest = null;
+
+        if (is_dir($directory)) {
+            foreach ((array) glob($directory.DIRECTORY_SEPARATOR.'siils-backup-*.zip') as $archive) {
+                $time = filemtime($archive);
+
+                if ($time !== false && ($latest === null || $time > $latest)) {
+                    $latest = $time;
+                }
+            }
+        }
+
+        $maxAgeDays = (int) config('siils.backup_max_age_days', 7);
+
+        if ($latest === null) {
+            $this->warnings[] = [
+                'ok' => false,
+                'label' => 'Belum ada arsip cadangan',
+                'fix' => 'Jalankan "php artisan siils:backup" dan simpan arsipnya di lokasi terpisah.',
+            ];
+
+            return;
+        }
+
+        $ageDays = (int) floor((time() - $latest) / 86400);
+
+        if ($ageDays > $maxAgeDays) {
+            $this->warnings[] = [
+                'ok' => false,
+                'label' => "Arsip cadangan terbaru berumur {$ageDays} hari (disarankan maksimal {$maxAgeDays} hari)",
+                'fix' => 'Jalankan "php artisan siils:backup" untuk membuat cadangan terbaru.',
+            ];
+
+            return;
+        }
+
+        $this->line('  ✔ Arsip cadangan terbaru berumur '.$ageDays.' hari');
     }
 
     private function checkDebugInProduction(): void

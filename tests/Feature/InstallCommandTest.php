@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Console\Commands\SiilsInstall;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 use Tests\TestCase;
 
 class InstallCommandTest extends TestCase
@@ -35,9 +36,29 @@ class InstallCommandTest extends TestCase
     {
         $this->artisan('migrate --force')->assertExitCode(0);
 
+        $backupDirectory = sys_get_temp_dir().'/siils_check_'.bin2hex(random_bytes(6));
+        File::makeDirectory($backupDirectory, 0755, true);
+        touch($backupDirectory.'/siils-backup-'.now()->format('Ymd-His').'.zip');
+        config()->set('siils.backup_path', $backupDirectory);
+
+        try {
+            $this->artisan('siils:check')
+                ->assertSuccessful()
+                ->expectsOutputToContain('Semua prasyarat terpenuhi');
+        } finally {
+            File::deleteDirectory($backupDirectory);
+        }
+    }
+
+    public function test_siils_check_memperingatkan_tanpa_arsip_cadangan(): void
+    {
+        $this->artisan('migrate --force')->assertExitCode(0);
+
+        config()->set('siils.backup_path', sys_get_temp_dir().'/siils_tanpa_'.bin2hex(random_bytes(6)));
+
         $this->artisan('siils:check')
             ->assertSuccessful()
-            ->expectsOutputToContain('Semua prasyarat terpenuhi');
+            ->expectsOutputToContain('Belum ada arsip cadangan');
     }
 
     public function test_siils_install_idempoten_tidak_menggandakan_data(): void
