@@ -449,6 +449,7 @@ class ReportController extends Controller
     {
         $base = $this->buildQuery('condition', $filters);
         $countsByCondition = (clone $base)
+            ->reorder()
             ->selectRaw('to_condition, count(*) as total')
             ->groupBy('to_condition')
             ->pluck('total', 'to_condition');
