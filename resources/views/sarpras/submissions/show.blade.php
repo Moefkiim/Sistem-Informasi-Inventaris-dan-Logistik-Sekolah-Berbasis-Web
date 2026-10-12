@@ -7,8 +7,8 @@
 <div class="card border-0 shadow-sm mb-5">
     <div class="card-header pt-6">
         <h3 class="fw-bolder">Pengajuan #{{ $submission->submission_number }}</h3>
-        <div class="card-toolbar">
-            <span class="badge badge-light-primary fs-7 py-2 px-4">Pengaju: {{ $submission->user->name }} (Jurusan {{ $submission->department }})</span>
+        <div class="card-toolbar flex-wrap">
+            <span class="badge badge-light-primary fs-7 py-2 px-4 text-start" style="white-space: normal; max-width: 100%;">Pengaju: {{ $submission->user->name }} (Jurusan {{ $submission->department }})</span>
         </div>
     </div>
     <div class="card-body">

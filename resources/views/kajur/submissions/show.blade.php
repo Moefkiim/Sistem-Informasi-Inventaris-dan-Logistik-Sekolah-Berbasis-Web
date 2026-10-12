@@ -168,13 +168,13 @@
             <x-submission-timeline :submission="$submission" />
         @endif
     </div>
-    <div class="card-footer d-flex justify-content-between">
+    <div class="card-footer d-flex flex-wrap justify-content-between align-items-center gap-3">
         <a href="{{ route('kajur.submissions.index') }}" class="btn btn-light">
             <i class="bi bi-arrow-left me-1"></i> Kembali ke Daftar
         </a>
 
         @if($submission->isDraft())
-            <div class="d-flex gap-2">
+            <div class="d-flex flex-wrap gap-2">
                 <a href="{{ route('kajur.submissions.edit', $submission) }}" class="btn btn-light-warning">
                     <i class="bi bi-pencil me-1"></i> Edit Draft
                 </a>
