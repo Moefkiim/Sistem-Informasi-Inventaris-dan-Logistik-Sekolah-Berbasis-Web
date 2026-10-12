@@ -225,11 +225,19 @@ class SmokeTest:
         try:
             dims = page.evaluate("""() => {
                 const d = document.documentElement;
-                return { sw: d.scrollWidth, cw: d.clientWidth };
+                let culprits = [];
+                for (const el of document.querySelectorAll('body *')) {
+                    if (el.getBoundingClientRect().right > d.clientWidth + 2) {
+                        const r = el.getBoundingClientRect();
+                        culprits.push(`${el.tagName}.${String(el.className).slice(0,60)} (left=${Math.round(r.left)}, width=${Math.round(r.width)})`);
+                        if (culprits.length >= 8) break;
+                    }
+                }
+                return { sw: d.scrollWidth, cw: d.clientWidth, culprits };
             }""")
             if dims["sw"] - dims["cw"] > 2:
                 self.fail(
-                    f"Overflow horizontal: scrollWidth={dims['sw']} > clientWidth={dims['cw']}",
+                    f"Overflow horizontal: scrollWidth={dims['sw']} > clientWidth={dims['cw']}; tersangka: {dims['culprits']}",
                     role, page_name, viewport,
                 )
         except Exception as exc:
@@ -507,8 +515,12 @@ class SmokeTest:
         with page.expect_navigation(wait_until="domcontentloaded", timeout=45000):
             page.click('button[name="action"][value="approve"]')
         page.wait_for_load_state("networkidle", timeout=20000)
-        if "DISETUJUI" not in self.body_text(page) and "Disetujui" not in self.body_text(page):
-            self.fail("Status 'Disetujui' tidak tampil setelah approval Kepsek", "kepsek", "approve", "")
+        if "disetujui" not in self.body_text(page).lower():
+            body_snippet = " / ".join(self.body_text(page).splitlines()[-12:])[:400]
+            self.fail(
+                f"Status 'Disetujui' tidak tampil setelah approval Kepsek. URL={page.url}. Akhir badan: {body_snippet}",
+                "kepsek", "approve", "",
+            )
         self.screenshot(page, "alur", "kepsek_approve_selesai", "1366x768")
         ctx_kepsek.close()
 
@@ -538,6 +550,19 @@ class SmokeTest:
 
         if "/realize" not in page.url:
             self.fail(f"Form realisasi tidak terbuka (URL: {page.url})", "sarpras", "realisasi", "")
+
+        # Snapshot keadaan halaman untuk diagnosa bila form tidak dirender.
+        page.screenshot(path=str(self.artifact_dir / "screenshots" / "alur_sarpras_form_realisasi_1366x768.png"), full_page=True)
+        has_source = page.locator('select[name="source"]').count()
+        if not has_source:
+            body_snippet = " / ".join(self.body_text(page).splitlines()[-12:])[:500]
+            self.fail(
+                f"Form realisasi tidak dirender (source select tidak ada). URL={page.url}. Akhir badan: {body_snippet}",
+                "sarpras", "realisasi", "",
+            )
+            ctx_real.stop_tracing()
+            ctx_real.close()
+            return
 
         # Select2 sudah terinisialisasi pada dropdown item inventaris.
         if page.locator(".select2-container").count() == 0:
