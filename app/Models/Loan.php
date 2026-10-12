@@ -174,4 +174,27 @@ class Loan extends Model
 
         return (int) $this->due_date->startOfDay()->diffInDays(now()->startOfDay(), false);
     }
+
+    /**
+     * Hari keterlambatan untuk keperluan laporan: dihitung dari rencana kembali
+     * ke tanggal kembali aktual (bila sudah dikembalikan) atau ke hari ini (bila
+     * masih dipinjam/terlambat). Memakai Carbon pada zona waktu aplikasi
+     * (Asia/Jakarta) sehingga konsisten di SQLite, MySQL, maupun MariaDB tanpa
+     * fungsi SQL khusus driver.
+     */
+    public function lateDays(): int
+    {
+        if (! $this->due_date || ! in_array($this->status, ['dipinjam', 'terlambat', 'dikembalikan'], true)) {
+            return 0;
+        }
+
+        if ($this->status === 'dikembalikan' && ! $this->return_date) {
+            return 0;
+        }
+
+        $due = $this->due_date->copy()->startOfDay();
+        $end = ($this->return_date ?? now())->copy()->startOfDay();
+
+        return max(0, (int) $due->diffInDays($end, false));
+    }
 }

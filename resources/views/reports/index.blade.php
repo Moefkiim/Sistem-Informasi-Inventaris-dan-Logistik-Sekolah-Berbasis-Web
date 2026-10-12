@@ -12,12 +12,13 @@
     $hasActiveFilters = (bool) (
         $filters['start_date'] || $filters['end_date'] || $filters['location_id']
         || $filters['condition'] || $filters['unit_status'] || $filters['status']
-        || (! $isKajur && $filters['department'])
+        || $filters['item'] || (! $isKajur && $filters['department'])
     );
 
     $conditionLabels = ['baik' => 'Baik', 'rusak_ringan' => 'Rusak Ringan', 'rusak_berat' => 'Rusak Berat'];
     $statusLabels = \App\Models\AssetUnit::STATUS_LABELS;
     $statusColors = \App\Models\AssetUnit::STATUS_BADGE_COLORS;
+    $loanStatusMeta = \App\Models\Loan::STATUS_META;
     $totalRows = $data instanceof \Illuminate\Pagination\LengthAwarePaginator ? $data->total() : $data->count();
 @endphp
 
@@ -123,6 +124,22 @@
                 </div>
             @endif
 
+            @if($type === 'loan')
+                <div class="col-12 col-md-4 col-lg-3">
+                    <label class="form-label fw-bold" for="filter-status">Status Peminjaman</label>
+                    <select id="filter-status" name="status" class="form-select form-select-solid">
+                        <option value="">Semua Status</option>
+                        @foreach($loanStatusMeta as $value => $meta)
+                            <option value="{{ $value }}" {{ $filters['status'] === $value ? 'selected' : '' }}>{{ $meta['label'] }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-12 col-md-4 col-lg-3">
+                    <label class="form-label fw-bold" for="filter-item">Barang / Unit</label>
+                    <input type="search" id="filter-item" name="item" class="form-control form-control-solid" value="{{ $filters['item'] }}" placeholder="Cari nama/kode barang atau nomor unit">
+                </div>
+            @endif
+
             <div class="col-12 col-lg-auto ms-lg-auto">
                 <div class="d-flex flex-wrap gap-2">
                     <button type="submit" class="btn btn-primary">
@@ -184,7 +201,11 @@
             @endif
             @if($filters['status'])
                 @php $anyChip = true; @endphp
-                <x-filter-chip label="Status" :value="\App\Models\Submission::statusLabel($filters['status'])" :remove-url="route('reports.index', array_merge(Arr::except($q, ['status', 'page']), ['type' => $type]))" />
+                <x-filter-chip label="Status" :value="$type === 'loan' ? ($loanStatusMeta[$filters['status']]['label'] ?? $filters['status']) : \App\Models\Submission::statusLabel($filters['status'])" :remove-url="route('reports.index', array_merge(Arr::except($q, ['status', 'page']), ['type' => $type]))" />
+            @endif
+            @if($filters['item'])
+                @php $anyChip = true; @endphp
+                <x-filter-chip label="Barang/Unit" :value="$filters['item']" :remove-url="route('reports.index', array_merge(Arr::except($q, ['item', 'page']), ['type' => $type]))" />
             @endif
 
             @unless($anyChip)
@@ -230,6 +251,21 @@
                         </div>
                     </div>
                 @endforeach
+            @elseif($type === 'loan')
+                @foreach($loanStatusMeta as $value => $meta)
+                    <div class="col-6 col-lg-3">
+                        <div class="border border-gray-300 border-dashed rounded p-4 h-100">
+                            <div class="text-muted fw-bold fs-7 text-uppercase">{{ $meta['label'] }}</div>
+                            <div class="fs-2 fw-bolder text-{{ $meta['color'] }}">{{ number_format($summary['statuses'][$value] ?? 0, 0, ',', '.') }}</div>
+                        </div>
+                    </div>
+                @endforeach
+                <div class="col-6 col-lg-3">
+                    <div class="border border-gray-300 border-dashed rounded p-4 h-100">
+                        <div class="text-muted fw-bold fs-7 text-uppercase">Terlambat</div>
+                        <div class="fs-2 fw-bolder text-danger">{{ number_format($summary['overdue'] ?? 0, 0, ',', '.') }}</div>
+                    </div>
+                </div>
             @else
                 <div class="col-6 col-lg-3">
                     <div class="border border-gray-300 border-dashed rounded p-4 h-100">
@@ -352,6 +388,48 @@
                                     <td>{{ $row->title }}</td>
                                     <td><x-submission-status-badge :status="$row->status" /></td>
                                     <td>{{ $row->created_at->format('d/m/Y H:i') }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                @elseif($type === 'loan')
+                    <table class="table table-hover table-row-dashed align-middle report-table fs-7 gy-3">
+                        <thead class="fw-bold text-muted text-uppercase">
+                            <tr>
+                                <th>No. Peminjaman</th>
+                                <th>Barang</th>
+                                <th>Peminjam</th>
+                                <th>Jurusan</th>
+                                <th>Tanggal Pinjam</th>
+                                <th>Rencana Kembali</th>
+                                <th>Tanggal Kembali</th>
+                                <th>Status</th>
+                                <th class="text-end">Hari Terlambat</th>
+                            </tr>
+                        </thead>
+                        <tbody class="fw-semibold text-gray-700">
+                            @foreach($data as $row)
+                                <tr>
+                                    <td>{{ $row->loan_number }}</td>
+                                    <td>
+                                        {{ $row->item->name ?? '—' }}
+                                        @if($row->assetUnit)
+                                            <span class="text-muted">({{ $row->assetUnit->unit_inventory_number }})</span>
+                                        @endif
+                                    </td>
+                                    <td>{{ $row->borrower_name }}</td>
+                                    <td>{{ \App\Support\Departments::display($row->borrower_department) }}</td>
+                                    <td>{{ $row->loan_date?->format('d/m/Y') ?? '—' }}</td>
+                                    <td>{{ $row->due_date?->format('d/m/Y') ?? '—' }}</td>
+                                    <td>{{ $row->return_date?->format('d/m/Y') ?? '—' }}</td>
+                                    <td><x-loan-status-badge :status="$row->status" /></td>
+                                    <td class="text-end">
+                                        @if($row->lateDays() > 0)
+                                            <span class="badge badge-light-danger">{{ $row->lateDays() }} hari</span>
+                                        @else
+                                            <span class="empty-dash">—</span>
+                                        @endif
+                                    </td>
                                 </tr>
                             @endforeach
                         </tbody>

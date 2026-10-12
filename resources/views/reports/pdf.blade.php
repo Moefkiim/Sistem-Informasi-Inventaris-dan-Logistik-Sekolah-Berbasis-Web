@@ -45,6 +45,11 @@
             <span>Baik: {{ $summary['conditions']['baik'] ?? 0 }}</span>
             <span>Rusak Ringan: {{ $summary['conditions']['rusak_ringan'] ?? 0 }}</span>
             <span>Rusak Berat: {{ $summary['conditions']['rusak_berat'] ?? 0 }}</span>
+        @elseif($type === 'loan')
+            @foreach(\App\Models\Loan::STATUS_META as $value => $meta)
+                <span>{{ $meta['label'] }}: {{ $summary['statuses'][$value] ?? 0 }}</span>
+            @endforeach
+            <span>Terlambat: {{ $summary['overdue'] ?? 0 }}</span>
         @else
             <span>Jumlah Transaksi: {{ $summary['transactions'] ?? 0 }}</span>
             <span>Total Kuantitas: {{ $summary['quantity'] ?? 0 }}</span>
@@ -106,6 +111,20 @@
                     <th>Pengaju</th>
                     <th>Status</th>
                     <th>Tanggal</th>
+                </tr>
+            @elseif($type === 'loan')
+                <tr>
+                    <th>#</th>
+                    <th>No. Peminjaman</th>
+                    <th>Barang</th>
+                    <th>No. Unit</th>
+                    <th>Peminjam</th>
+                    <th>Jurusan</th>
+                    <th>Tanggal Pinjam</th>
+                    <th>Rencana Kembali</th>
+                    <th>Tanggal Kembali</th>
+                    <th>Status</th>
+                    <th>Hari Terlambat</th>
                 </tr>
             @endif
         </thead>
@@ -171,6 +190,20 @@
                         <td>{{ $row->user->name ?? '-' }}</td>
                         <td>{{ \App\Models\Submission::statusLabel($row->status) }}</td>
                         <td>{{ $row->created_at->format('d/m/Y') }}</td>
+                    </tr>
+                @elseif($type === 'loan')
+                    <tr>
+                        <td>{{ $idx + 1 }}</td>
+                        <td>{{ $row->loan_number }}</td>
+                        <td>{{ $row->item->name ?? '-' }}</td>
+                        <td>{{ $row->assetUnit->unit_inventory_number ?? '-' }}</td>
+                        <td>{{ $row->borrower_name }}</td>
+                        <td>{{ \App\Support\Departments::display($row->borrower_department) }}</td>
+                        <td>{{ $row->loan_date?->format('d/m/Y') ?? '-' }}</td>
+                        <td>{{ $row->due_date?->format('d/m/Y') ?? '-' }}</td>
+                        <td>{{ $row->return_date?->format('d/m/Y') ?? '-' }}</td>
+                        <td>{{ \App\Models\Loan::STATUS_META[$row->status]['label'] ?? $row->status }}</td>
+                        <td class="num">{{ $row->lateDays() }}</td>
                     </tr>
                 @endif
             @empty

@@ -6,6 +6,7 @@ use App\Models\AssetUnit;
 use App\Models\Distribution;
 use App\Models\IncomingItem;
 use App\Models\Item;
+use App\Models\Loan;
 use App\Models\Location;
 use App\Models\OutgoingItem;
 use App\Models\Submission;
@@ -171,7 +172,7 @@ class ReportController extends Controller
     private function validatedType(Request $request): array
     {
         return $request->validate([
-            'type' => ['required', 'in:inventory,incoming,outgoing,distribution,submission'],
+            'type' => ['required', 'in:inventory,incoming,outgoing,distribution,submission,loan'],
             'start_date' => ['nullable', 'date'],
             'end_date' => ['nullable', 'date'],
         ]);
@@ -234,9 +235,13 @@ class ReportController extends Controller
             'unit_status' => in_array($request->get('unit_status'), array_keys(AssetUnit::STATUS_LABELS), true)
                 ? $request->get('unit_status')
                 : null,
-            'status' => in_array($request->get('status'), ['draft', 'submitted', 'reviewed_sarpras', 'approved', 'rejected', 'cancelled'], true)
+            'status' => in_array($request->get('status'), array_merge(
+                ['draft', 'submitted', 'reviewed_sarpras', 'approved', 'rejected', 'cancelled'],
+                array_keys(Loan::STATUS_META),
+            ), true)
                 ? $request->get('status')
                 : null,
+            'item' => $request->filled('item') ? trim((string) $request->get('item')) : null,
         ];
     }
 
@@ -282,6 +287,30 @@ class ReportController extends Controller
                 }
                 if ($filters['status']) {
                     $query->where('status', $filters['status']);
+                }
+                break;
+
+            case 'loan':
+                $query = Loan::with(['item', 'assetUnit', 'borrower', 'recordedBy'])
+                    ->orderByDesc('loan_date')
+                    ->orderByDesc('id');
+                $this->applyDateRange($query, 'loan_date', $startDate, $endDate);
+                if ($department) {
+                    $query->where('borrower_department', $department);
+                }
+                if ($filters['status']) {
+                    $query->where('status', $filters['status']);
+                }
+                if ($filters['item']) {
+                    $search = $filters['item'];
+                    $query->where(function ($q) use ($search) {
+                        $q->whereHas('item', fn ($i) => $i
+                            ->where('name', 'like', "%{$search}%")
+                            ->orWhere('code', 'like', "%{$search}%"))
+                            ->orWhereHas('assetUnit', fn ($u) => $u
+                                ->where('unit_inventory_number', 'like', "%{$search}%")
+                                ->orWhere('serial_number', 'like', "%{$search}%"));
+                    });
                 }
                 break;
 
@@ -344,6 +373,10 @@ class ReportController extends Controller
             return $this->inventorySummary($filters);
         }
 
+        if ($type === 'loan') {
+            return $this->loanSummary($filters);
+        }
+
         $base = $this->buildQuery($type, $filters);
 
         if ($type === 'submission') {
@@ -358,6 +391,34 @@ class ReportController extends Controller
         return [
             'transactions' => (clone $base)->count(),
             'quantity' => (int) (clone $base)->sum('quantity'),
+        ];
+    }
+
+    /**
+     * Agregat peminjaman: jumlah per status dan jumlah baris terlambat.
+     * Hari terlambat dihitung dengan Carbon (bukan fungsi SQL) agar hasil
+     * sama di SQLite, MySQL, dan MariaDB.
+     *
+     * @return array<string,mixed>
+     */
+    private function loanSummary(array $filters): array
+    {
+        $rows = $this->buildQuery('loan', $filters)->get();
+        $statuses = array_fill_keys(array_keys(Loan::STATUS_META), 0);
+        $overdue = 0;
+
+        foreach ($rows as $loan) {
+            $statuses[$loan->status] = ($statuses[$loan->status] ?? 0) + 1;
+            if ($loan->lateDays() > 0) {
+                $overdue++;
+            }
+        }
+
+        return [
+            'transactions' => $rows->count(),
+            'quantity' => (int) $rows->sum('quantity'),
+            'statuses' => $statuses,
+            'overdue' => $overdue,
         ];
     }
 
@@ -492,6 +553,7 @@ class ReportController extends Controller
             'outgoing' => ['No. Transaksi', 'Nama Barang', 'Jumlah', 'Alasan Keluar', 'Tanggal Keluar', 'Pencatat'],
             'distribution' => ['No. Distribusi', 'Nama Barang', 'Jumlah', 'Lokasi Tujuan', 'Jurusan Penerima', 'Tanggal'],
             'submission' => ['No. Pengajuan', 'Judul', 'Jurusan', 'Pengaju', 'Status', 'Tanggal'],
+            'loan' => ['No. Peminjaman', 'Barang', 'No. Unit', 'Peminjam', 'Jurusan', 'Tanggal Pinjam', 'Rencana Kembali', 'Tanggal Kembali', 'Status', 'Hari Terlambat'],
             default => ['Kode Barang', 'No. Unit', 'No. Seri', 'Nama Barang', 'Kategori', 'Jumlah/Stok', 'Kondisi', 'Status Unit', 'Lokasi', 'Jurusan'],
         };
     }
@@ -578,6 +640,18 @@ class ReportController extends Controller
                 $record->user->name ?? '-',
                 Submission::statusLabel($record->status),
                 $record->created_at->format('d/m/Y'),
+            ],
+            'loan' => [
+                $record->loan_number,
+                $record->item->name ?? '-',
+                $record->assetUnit->unit_inventory_number ?? ($record->item->inventory_number ?? '-'),
+                $record->borrower_name,
+                Departments::label($record->borrower_department) ?? ($record->borrower_department ?: '-'),
+                $record->loan_date?->format('d/m/Y') ?? '-',
+                $record->due_date?->format('d/m/Y') ?? '-',
+                $record->return_date?->format('d/m/Y') ?? '-',
+                Loan::STATUS_META[$record->status]['label'] ?? $record->status,
+                $record->lateDays(),
             ],
             default => [
                 $record->code,
