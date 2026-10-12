@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Support\Departments;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -114,6 +115,28 @@ class Loan extends Model
         return $this->belongsTo(User::class, 'returned_to');
     }
 
+    /**
+     * Batas keterlambatan: status `dipinjam`/`terlambat` yang tenggatnya
+     * lebih awal dari hari ini (zona waktu aplikasi). Tanpa penulisan data,
+     * sehingga GET tidak pernah mengubah status tersimpan.
+     */
+    public function scopeOverdue(Builder $query): Builder
+    {
+        return $query->whereIn('status', self::STATUS_BORROWED)
+            ->whereDate('due_date', '<', today());
+    }
+
+    /**
+     * Status efektif untuk tampilan: "terlambat" bila peminjaman masih
+     * berjalan dan melewati tenggat, selain itu status tersimpan.
+     */
+    protected function effectiveStatus(): Attribute
+    {
+        return Attribute::make(
+            get: fn () => $this->isOverdue() ? 'terlambat' : $this->status,
+        );
+    }
+
     // === Helper Methods ===
 
     public function isPending(): bool
@@ -139,7 +162,7 @@ class Loan extends Model
     public function isOverdue(): bool
     {
         return $this->status === 'terlambat'
-            || ($this->isOnLoan() && $this->due_date && $this->due_date->isPast());
+            || ($this->isOnLoan() && $this->due_date && $this->due_date->lt(today()));
     }
 
     public function isActive(): bool

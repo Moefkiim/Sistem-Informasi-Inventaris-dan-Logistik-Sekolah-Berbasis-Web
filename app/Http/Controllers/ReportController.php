@@ -303,7 +303,11 @@ class ReportController extends Controller
                     $query->where('borrower_department', $department);
                 }
                 if ($filters['status']) {
-                    $query->where('status', $filters['status']);
+                    // "Terlambat" dihitung efektif: mencakup baris berstatus
+                    // dipinjam yang sudah melewati tenggat.
+                    $filters['status'] === 'terlambat'
+                        ? $query->overdue()
+                        : $query->where('status', $filters['status']);
                 }
                 if ($filters['item']) {
                     $search = $filters['item'];
@@ -429,7 +433,10 @@ class ReportController extends Controller
         $overdue = 0;
 
         foreach ($rows as $loan) {
-            $statuses[$loan->status] = ($statuses[$loan->status] ?? 0) + 1;
+            // Status efektif: pinjaman `dipinjam` yang lewat tenggat dihitung
+            // sebagai `terlambat` tanpa mengubah data tersimpan.
+            $effective = $loan->effective_status;
+            $statuses[$effective] = ($statuses[$effective] ?? 0) + 1;
             if ($loan->lateDays() > 0) {
                 $overdue++;
             }

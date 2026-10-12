@@ -224,7 +224,7 @@
                         <td>{{ $row->loan_date?->format('d/m/Y') ?? '-' }}</td>
                         <td>{{ $row->due_date?->format('d/m/Y') ?? '-' }}</td>
                         <td>{{ $row->return_date?->format('d/m/Y') ?? '-' }}</td>
-                        <td>{{ \App\Models\Loan::STATUS_META[$row->status]['label'] ?? $row->status }}</td>
+                        <td>{{ \App\Models\Loan::STATUS_META[$row->effective_status]['label'] ?? $row->effective_status }}</td>
                         <td class="num">{{ $row->lateDays() }}</td>
                     </tr>
                 @elseif($type === 'condition')

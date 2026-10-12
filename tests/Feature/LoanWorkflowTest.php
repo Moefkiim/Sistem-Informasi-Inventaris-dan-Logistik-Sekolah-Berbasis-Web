@@ -384,7 +384,7 @@ class LoanWorkflowTest extends TestCase
             ->assertSee('BRG-KERTAS');
     }
 
-    public function test_overdue_loan_is_automatically_marked_late(): void
+    public function test_overdue_loan_is_shown_late_without_writing_status(): void
     {
         $loan = Loan::factory()->create([
             'status' => 'dipinjam',
@@ -393,9 +393,12 @@ class LoanWorkflowTest extends TestCase
 
         $this->actingAs($this->sarpras())
             ->get(route('sarpras.loans.index'))
-            ->assertOk();
+            ->assertOk()
+            ->assertSee('Terlambat');
 
-        $this->assertSame('terlambat', $loan->fresh()->status);
+        // GET tidak boleh mengubah data: status tersimpan tetap 'dipinjam'.
+        $this->assertSame('dipinjam', $loan->fresh()->status);
+        $this->assertSame('terlambat', $loan->fresh()->effective_status);
         $this->assertSame(3, $loan->fresh()->overdueDays());
     }
 

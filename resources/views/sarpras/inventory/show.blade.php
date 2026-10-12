@@ -71,8 +71,8 @@
                                                 @endif
                                             </td>
                                             <td>
-                                                <span class="badge badge-light-{{ \App\Models\Loan::STATUS_META[$loan->status]['color'] ?? 'secondary' }}">
-                                                    {{ \App\Models\Loan::STATUS_META[$loan->status]['label'] ?? $loan->status }}
+                                                <span class="badge badge-light-{{ \App\Models\Loan::STATUS_META[$loan->effective_status]['color'] ?? 'secondary' }}">
+                                                    {{ \App\Models\Loan::STATUS_META[$loan->effective_status]['label'] ?? $loan->effective_status }}
                                                 </span>
                                             </td>
                                             <td>{{ $loan->quantity }}</td>

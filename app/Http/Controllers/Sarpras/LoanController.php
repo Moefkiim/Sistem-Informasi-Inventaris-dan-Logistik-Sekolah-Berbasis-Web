@@ -25,15 +25,14 @@ class LoanController extends Controller
      */
     public function index(Request $request): View
     {
-        // Tandai otomatis pinjaman yang lewat tanggal kembali
-        Loan::where('status', 'dipinjam')
-            ->whereDate('due_date', '<', now())
-            ->update(['status' => 'terlambat']);
-
         $query = Loan::with(['item', 'borrower', 'approvedBy'])->latest();
 
         if ($request->filled('status')) {
-            $query->where('status', $request->string('status')->toString());
+            $status = $request->string('status')->toString();
+            // "Terlambat" dihitung efektif, bukan dari status tersimpan.
+            $status === 'terlambat'
+                ? $query->overdue()
+                : $query->where('status', $status);
         }
 
         if ($request->filled('search')) {
@@ -51,19 +50,30 @@ class LoanController extends Controller
         }
 
         match ($request->string('due')->toString()) {
-            'overdue' => $query->where('status', 'terlambat'),
-            'today' => $query->whereIn('status', ['dipinjam', 'terlambat'])
+            'overdue' => $query->overdue(),
+            'today' => $query->whereIn('status', Loan::STATUS_BORROWED)
                 ->whereDate('due_date', now()),
-            'week' => $query->whereIn('status', ['dipinjam', 'terlambat'])
+            'week' => $query->whereIn('status', Loan::STATUS_BORROWED)
                 ->whereDate('due_date', '>=', now())
                 ->whereDate('due_date', '<=', now()->addDays(7)),
             default => null,
         };
 
         $loans = $query->paginate(15)->withQueryString();
-        $statusCounts = Loan::selectRaw('status, count(*) as total')
+
+        // Ringkasan per status efektif: pinjaman lewat tenggat dipindahkan
+        // ke "Terlambat" tanpa mengubah data tersimpan.
+        $statusCounts = Loan::query()
+            ->selectRaw('status, count(*) as total')
             ->groupBy('status')
-            ->pluck('total', 'status');
+            ->pluck('total', 'status')
+            ->all();
+        $overdueDipinjam = Loan::query()
+            ->where('status', 'dipinjam')
+            ->whereDate('due_date', '<', today())
+            ->count();
+        $statusCounts['dipinjam'] = max(0, (int) ($statusCounts['dipinjam'] ?? 0) - $overdueDipinjam);
+        $statusCounts['terlambat'] = (int) ($statusCounts['terlambat'] ?? 0) + $overdueDipinjam;
 
         return view('sarpras.loans.index', compact('loans', 'statusCounts'));
     }

@@ -449,7 +449,7 @@
                                     <td>{{ $row->loan_date?->format('d/m/Y') ?? '—' }}</td>
                                     <td>{{ $row->due_date?->format('d/m/Y') ?? '—' }}</td>
                                     <td>{{ $row->return_date?->format('d/m/Y') ?? '—' }}</td>
-                                    <td><x-loan-status-badge :status="$row->status" /></td>
+                                    <td><x-loan-status-badge :status="$row->effective_status" /></td>
                                     <td class="text-end">
                                         @if($row->lateDays() > 0)
                                             <span class="badge badge-light-danger">{{ $row->lateDays() }} hari</span>

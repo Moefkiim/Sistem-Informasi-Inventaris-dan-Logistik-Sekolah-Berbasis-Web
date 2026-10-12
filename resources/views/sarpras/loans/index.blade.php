@@ -128,7 +128,7 @@
                                 @endif
                             </td>
                             <td>
-                                <x-loan-status-badge :status="$loan->status" />
+                                <x-loan-status-badge :status="$loan->effective_status" />
                             </td>
                             <td class="text-end">
                                 <a href="{{ route('sarpras.loans.show', $loan) }}"
