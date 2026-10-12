@@ -252,6 +252,20 @@ class SubmissionRealizationTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_form_realisasi_approved_merender_tanpa_error(): void
+    {
+        $sarpras = User::factory()->sarpras()->create();
+        $kajur = User::factory()->kajur()->create();
+        $submission = $this->approvedSubmissionWithItems($kajur);
+
+        $this->actingAs($sarpras)
+            ->get(route('sarpras.submissions.realize_form', $submission))
+            ->assertOk()
+            ->assertSee('data-control="select2"', false)
+            ->assertSee('name="source"', false)
+            ->assertSee('name="lines[0][mode]"', false);
+    }
+
     public function test_riwayat_lokasi_dan_kondisi_dibuat_untuk_unit_baru(): void
     {
         $sarpras = User::factory()->sarpras()->create();

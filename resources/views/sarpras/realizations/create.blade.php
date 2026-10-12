@@ -22,7 +22,7 @@
             <div class="row">
                 <div class="col-md-6">
                     <p class="text-muted mb-0 fs-7">Pengaju</p>
-                    <p class="fw-bolder mb-0">{{ $submission->user->name }} ({{ $submission->departmentLabel() }})</p>
+                    <p class="fw-bolder mb-0">{{ $submission->user->name }} ({{ $submission->department }})</p>
                 </div>
                 <div class="col-md-6">
                     <p class="text-muted mb-0 fs-7">Judul Kebutuhan</p>
