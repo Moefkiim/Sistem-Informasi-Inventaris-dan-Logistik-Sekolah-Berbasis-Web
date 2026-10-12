@@ -5,7 +5,7 @@ namespace App\Console\Commands;
 use App\Support\DatabaseSnapshot;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
-use Illuminate\Support\Facades\Process;
+use Symfony\Component\Process\Process;
 use ZipArchive;
 
 /**
