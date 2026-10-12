@@ -936,3 +936,77 @@ Setelah TASK 9 dikerjakan, rangkaian commit ditutup dengan **`9584022`**
 dengan `git ls-remote origin main`. Rantai commit F1–K2 tercantum di §14.1 (commit fitur TASK 9:
 `78d47d6`).
 
+---
+
+## 15. Perbaikan Hasil Review R1–R6 (realisasi, sesi, verifikasi browser, laporan) — 12 Okt 2026
+
+Prompt: `prompt-perbaikan-hasil-review.md`. Semua commit ter-push, semua job CI pada run terakhir
+(`38223711449`) **hijau**. Test akhir: **317 test hijau** (SQLite lokal dan CI MySQL 8.0 /
+MariaDB 10.11). Playwright dijalankan hanya di CI (tidak tersedia `pip` di lingkungan lokal) —
+sesuai izin prompt "cukup jalankan lewat CI".
+
+### 15.1 Status R1–R6
+
+| ID | Temuan | Status | Commit | Bukti (test gagal → hijau, run CI) |
+|---|---|---|---|---|
+| R1 | **Kategori kosong pada "buat barang baru" di realisasi** | **Selesai** | `d1bf382`, `ad0f54f` | **Ya, R1 benar-benar menghasilkan 500** saat direproduksi (lihat §15.2). `RealizationIntegrityTest::test_kategori_null_pada_barang_baru_dinormalisasi_menjadi_umum` & `test_kategori_string_kosong_pada_barang_baru_dinormalisasi_menjadi_umum` **gagal sebelum** `d1bf382` (nilai `null` diteruskan ke kolom `items.category` NOT NULL → SQLSTATE), lalu **hijau** setelah normalisasi `'Umum'`. Selain itu reproduksi membuka form mengungkap T500 kedua: `resources/views/sarpras/realizations/create.blade.php:25` memanggil `$submission->departmentLabel()` yang tidak ada di `Submission` → `test_form_realisasi_approved_merender_tanpa_error` (regression, `ad0f54f`) **gagal 500 → hijau**. CI run `38155827558` dan `38203116135` **hijau** |
+| R2 | **Realisasi menerima baris ganda / tidak lengkap / milik pengajuan lain** | **Selesai** | `d1bf382` | `RealizationIntegrityTest`: `test_submission_item_id_ganda_ditolak`, `test_realisasi_sebagian_baris_pengajuan_ditolak`, `test_layanan_menolak_himpunan_baris_yang_tidak_sama_persis` (service-level, tidak bergantung controller), `test_kuantitas_melebihi_permintaan_ditolak`, `test_baris_dari_pengajuan_lain_ditolak`, `test_nama_barang_baru_kosong_ditolak`, `test_layanan_menolak_nama_baru_kosong`, `test_entry_date_tahun_1900_ditolak`, `test_entry_date_masa_mendatang_ditolak`, `test_item_inventaris_yang_tidak_ada_ditolak` — **semua gagal sebelum, hijau sesudah**; CI run `38155827558` **hijau** |
+| R3 | **Kode barang baru bentrok** | **Selesai** | `d1bf382` | Generator kode dibuat ulang sampai 3× saat bentrok unique `items.code`. `RealizationIntegrityTest::test_kode_barang_baru_tidak_bentrok_dengan_kode_sudah_ada` (menyisipkan kode yang akan dihasilkan lebih dulu) **gagal sebelum → hijau sesudah**; CI run `38155827558` **hijau** |
+| R4 | **Pengerasan sesi & kata sandi sementara** | **Selesai** | `3e5f9c1` | `SessionHardeningTest` (5): `test_sesi_lama_tidak_berlaku_setelah_ganti_kata_sandi`, `test_sesi_lama_dihapus_setelah_reset_sandi_dari_antarmuka`, `test_kata_sandi_sementara_tidak_tersisa_di_payload_sesi_setelah_halaman_dibaca`, `test_kata_sandi_sementara_tidak_tercatat_di_log_aplikasi`, `test_activity_log_reset_tidak_memuat_kata_sandi_sementara` — **gagal sebelum → hijau sesudah**. `ProfileController` memanggil `session()->regenerate()` + pencabutan sesi lain (via `SessionStore`, khusus driver `database`); `SESSION_ENCRYPT=true` di `.env.example`; `TemporaryPassword` mengganti `shuffle()` dengan pengacakan berbasis `random_int`. CI run `38160270321` **hijau** |
+| R5 | **Tidak ada verifikasi browser** | **Selesai** | `a0cbd5e` + perbaikan `a63db21`, `669f98d`, `42ac361`, `34004d1`, `4f58530` | Job CI baru `Browser smoke` (MySQL 8.0, PHP 8.4, `php artisan serve` + Playwright/Python + Chromium) menjalankan `tests/Browser/smoke.py`: penelusuran halaman ketiga role pada 1366×768 / 768×1024 / 375×812, pemantauan `console.error`/`pageerror`, `scrollWidth <= clientWidth`, tanpa teks "SQLSTATE"/"Whoops"/"Exception", skenario interaktif (alur pengajuan→persetujuan→realisasi, mode existing/new, **Select2**, lonceng notifikasi, halaman 404/403, throttle 6× login salah). Run akhir **`38203116135` hijau**: browser-smoke `exit_code 0`, **0 pelanggaran**, **123 screenshot** — diunggah sebagai artifact **`browser-smoke-artifacts`** (retensi 14 hari, berisi screenshot bertanda role/halaman/viewport + trace + indeks) |
+| R6 | **Laporan Peminjaman & Riwayat Kondisi tidak ada** | **Selesai** | `d3edfe0`, `d264d80`, `4d238e6` | `ReportLoanTest` (8) + `ReportConditionHistoryTest` (7) hijau: filter periode/status/jurusan/barang-unit (loan) & kondisi tujuan (condition), scoping Kajur (jurusan sendiri), Kepala Sekolah read-only, ekspor PDF/Excel/Cetak membawa filter sama, `Loan::lateDays()` dihitung Carbon zona `Asia/Jakarta`. Commit `4d238e6` memperbaiki regresi lintas-driver yang ditangkap CI MySQL 8.0 (`only_full_group_by` pada agregat `condition` → `->reorder()` sebelum `groupBy`). CI run **`38222682658` merah** (bukti gagal dulu) → **`38223711449` hijau** |
+
+**HEAD akhir:** `4d238e6ef5f79e401ee419409dfceb238f764de0` — `git rev-parse HEAD` identik dengan
+`git rev-parse origin/main` dan `git status --short` bersih (hanya `prompt-perbaikan-alur-dan-ui.md`
+untracked yang memang tidak di-commit).
+
+### 15.2 Apakah R1 benar-benar menghasilkan 500 saat direproduksi?
+
+**Ya — direproduksi dan terbukti dua kali:**
+
+1. **Kategori kosong pada mode `new`** — test `test_kategori_null_pada_barang_baru_dinormalisasi_menjadi_umum`
+   gagal terhadap kode sebelum `d1bf382` dengan SQL error karena `items.category` (NOT NULL, default
+   `'Umum'`) diisi `null` eksplisit oleh `SubmissionRealizationService::resolveItem`; `entry_date`
+   juga membiarkan tanggal ekstrem lolos. Setelah normalisasi `'Umum'` + validasi `required_if` mode
+   `new` + `distinct`/`exists`/batas `entry_date`, semua test hijau di SQLite & MySQL.
+2. **500 kedua yang tidak terduga** — membuka form realisasi (`GET /sarpras/submissions/{id}/realize`)
+   untuk pengajuan berstatus `approved` menghasilkan **`BadMethodCallException` 500** karena
+   `$submission->departmentLabel()` tidak ada di `Submission`. Ini bukan download `500` "JSON" melainkan
+   halaman debug Laravel. Diperbaiki memakai `$submission->department` + regression test
+   `test_form_realisasi_approved_merender_tanpa_error`.
+
+### 15.3 Temuan baru dari `browser-smoke` (di luar daftar R1–R4)
+
+| Temuan | Perbaikan | Bukti |
+|---|---|---|
+| **T500 format realisasi** (lihat §15.2 butir 2 — `departmentLabel` di `Submission`) | `ad0f54f` | regression test; halaman render ulang di browser-smoke |
+| **Overflow horizontal 375 px** pada detail pengajuan Kajur (`kajur/submissions/show`) & Sarpras (`sarpras/submissions/show`) — footer aksi & badge status meluap | `4f58530` | strict-mode violation `scrollWidth > clientWidth` di hitungan browser-smoke → 0 pelanggaran pada run `38203116135` |
+| Bug skrip smoke (bukan fitur): memanggil `ctx.stop_tracing()` yang tidak ada; `ancestor::div[contains(@class,'col')]` ambigu (mencocokkan `flex-column`) | `42ac361`, `34004d1` | run `38202758930` → `38203116135` |
+
+### 15.4 Hal yang tidak bisa diverifikasi secara otomatis / keterbatasan
+
+- **Melihat screenshot "dengan mata"** — screenshot tersedia sebagai artifact `browser-smoke-artifacts`
+  di run `38203116135`, tetapi tidak ada peramban manusia/manual di lingkungan ini; penegakan kebenaran
+  visual dilakukan lewat asersi DOM (200, bebas JS error, tanpa overflow, `.select2-container` ada).
+- **Playwright lokal** tidak dijalankan karena `pip` tidak tersedia; seluruh eksekusi browser hanya via CI.
+- **Job MySQL 8.0 pertama TASK 4** (`38222682658`) merah karena regresi `only_full_group_by` — ini
+  *terbukti* sebagai bukti "gagal dulu, hijau sesudah" (commit `4d238e6`), bukan batasan.
+- **Uji manual Laragon** (§13.8) tetap terbuka untuk pemilik.
+
+### 15.5 Ringkasan commit dan CI sesi ini
+
+```
+d1bf382  fix(realisasi): cegah 500, baris ganda/sebagian, kode barang bentrok      -> run 38155827558 HIJAU
+3e5f9c1  fix: perkuat sesi dan kata sandi sementara                                -> run 38160270321 HIJAU
+a0cbd5e  ci: tambah job browser-smoke (Playwright/Python) + screenshot artifact    -> run 38163223521 MERAH (skrip)
+a63db21  fix(browser-smoke): cocokkan href absolut, buka review sarpras ...        -> run 38200386985 MERAH (skrip)
+669f98d  fix(browser-smoke): diagnosa overflow & form realisasi, Disetujui case..   -> run 38201221224 MERAH (skrip)
+42ac361  fix(ci/browser-smoke): hentikan tracing lewat ctx.tracing.stop            -> run 38202758930 MERAH (1 pelanggaran)
+4f58530  fix(ui): cegah overflow horizontal pada detail pengajuan kajur & sarpras  -> (bersama 34004d1)
+34004d1  fix(ci/browser-smoke): batasi ancestor kolom item ke col-md-4             -> run 38203116135 HIJAU (0 violation, 123 screenshot)
+ad0f54f  fix(realisasi): cegah 500 pada form realisasi (departmentLabel)           -> run 38203116135 HIJAU
+d3edfe0  feat: laporan peminjaman                                                 -> run 38222682658 (mencakup d264d80) MERAH
+d264d80  feat: laporan riwayat kondisi                                             -> (run merah = bukti gagal dulu, 4d238e6)
+4d238e6  fix(laporan): reorder sebelum groupBy aggregat kond (only_full_group_by)  -> run 38223711449 HIJAU
+```
+

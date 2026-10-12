@@ -416,7 +416,7 @@ Sumber tunggal daftar jurusan berada di `config/departments.php` (helper `app/Su
 
 ## 7. Menjalankan Test
 
-Proyek ini dilengkapi suite pengujian otomatis berbasis PHPUnit (**285 test** pada **39 file**) untuk menguji alur autentikasi, pembatasan hak akses antar peran, alur bisnis, logistik, laporan, seeder demo, instalasi, dan lokalisasi. Suite yang sama dijalankan terhadap **SQLite (in-memory)** dan **MySQL/MariaDB sungguhan** di CI.
+Proyek ini dilengkapi suite pengujian otomatis berbasis PHPUnit (**317 test**) untuk menguji alur autentikasi, pembatasan hak akses antar peran, alur bisnis, logistik, laporan (termasuk Laporan Peminjaman dan Riwayat Kondisi), seeder demo, instalasi, dan lokalisasi. Suite yang sama dijalankan terhadap **SQLite (in-memory)** dan **MySQL/MariaDB sungguhan** di CI.
 
 ### Perintah Pengujian
 
@@ -506,6 +506,7 @@ php artisan test
 - **Job `SQLite`** — matriks **PHP 8.3 & 8.4**. Menjalankan `composer install`, `composer check-platform-reqs`, migrasi SQLite, lalu seluruh suite (`php artisan test`).
 - **Job `MySQL/MariaDB`** — matriks **`mysql:8.0` (PHP 8.4), `mariadb:10.11` (PHP 8.4), dan `mysql:8.0` (PHP 8.3)** memakai `services` dengan healthcheck. Menjalankan `composer install`, `composer check-platform-reqs`, lalu `php artisan siils:install --force` yang **membuat database secara otomatis**, memigrasi, dan mengisi data demo pada database sungguhan; dilanjutkan `php artisan siils:check`, pemanggilan `siils:install` kedua (membuktikan idempotensi), dan seluruh suite terhadap MySQL/MariaDB.
 - **Job `Composer setup`** — **clone bersih tanpa `.env`** terhadap `mysql:8.0` (PHP 8.4). Menjalankan `composer setup` **persis seperti README** (membuat `.env` dari `.env.example`, `APP_KEY`, database, migrasi, dan seeder), lalu `php artisan siils:check`, dan **uji asap per role** (`DemoReadinessTest`: login Kajur, Sarpras, Kepala Sekolah, dan akun nonaktif).
+- **Job `Browser smoke`** — **verifikasi browser nyata** dengan Playwright/Python (bukan feature aplikasi, hanya untuk CI): menjalankan `php artisan serve`, `pip install playwright` + Chromium, lalu `python3 tests/Browser/smoke.py`. Skrip menelusuri halaman utama ketiga role (Kajur, Sarpras, Kepala Sekolah) pada viewport 1366×768, 768×1024, dan 375×812, memeriksa status 200, bebas `console.error`/`pageerror`, tanpa overflow horizontal (`scrollWidth <= clientWidth`), tanpa teks error ("SQLSTATE"/"Whoops"/"Exception"), serta menjalankan skenario interaktif (alur pengajuan → review → persetujuan → realisasi dengan kategori kosong, toggling mode existing/new, inisialisasi **Select2** pada dropdown barang, lonceng notifikasi, halaman 404/403 khusus, dan throttle setelah 6× login salah). Seluruh screenshot + trace diunggah sebagai artifact CI **`browser-smoke-artifacts`** (retensi 14 hari) beserta berkas indeks (role, halaman, viewport).
 
 Workflow memastikan regresi terdeteksi — termasuk perbedaan perilaku MySQL vs SQLite — sebelum perubahan digabung ke `main`.
 
