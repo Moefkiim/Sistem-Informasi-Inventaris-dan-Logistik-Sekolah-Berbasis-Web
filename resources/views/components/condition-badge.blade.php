@@ -10,4 +10,4 @@
     $color = \App\Support\AssetCondition::color($condition);
 @endphp
 
-<span class="badge badge-light-{{ $color }} {{ $class }}">{{ $label }}</span>
+<span class="badge badge-{{ $color }} {{ $class }}">{{ $label }}</span>

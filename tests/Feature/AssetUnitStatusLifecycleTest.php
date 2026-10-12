@@ -392,6 +392,47 @@ class AssetUnitStatusLifecycleTest extends TestCase
     }
 
     // =========================================================================
+    // 9. Reaktivasi dari perbaikan: kondisi hasil + kembali bisa dipinjam
+    // =========================================================================
+
+    public function test_reactivasi_dalam_perbaikan_memilih_kondisi_hasil(): void
+    {
+        $unit = AssetUnit::factory()->for($this->item)->create([
+            'current_status' => 'dalam_perbaikan',
+            'current_condition' => 'rusak_berat',
+        ]);
+
+        $this->postStatus($unit, 'aktif', ['result_condition' => 'rusak_ringan'])->assertRedirect();
+
+        $this->assertSame('aktif', $unit->fresh()->current_status);
+        $this->assertSame('rusak_ringan', $unit->fresh()->current_condition);
+
+        $this->assertDatabaseHas('condition_histories', [
+            'asset_unit_id' => $unit->id,
+            'from_condition' => 'rusak_berat',
+            'to_condition' => 'rusak_ringan',
+        ]);
+        $this->assertDatabaseHas('asset_unit_status_histories', [
+            'asset_unit_id' => $unit->id,
+            'from_status' => 'dalam_perbaikan',
+            'to_status' => 'aktif',
+        ]);
+
+        // Unit kembali tersedia untuk dipinjam.
+        $this->assertTrue(AssetUnit::loanable()->whereKey($unit->id)->exists());
+    }
+
+    public function test_alasan_wajib_diisi_saat_mengubah_status(): void
+    {
+        $unit = AssetUnit::factory()->for($this->item)->create(['current_status' => 'aktif']);
+
+        $this->postStatus($unit, 'dalam_perbaikan', ['reason' => ''])->assertSessionHasErrors('reason');
+
+        $this->assertSame('aktif', $unit->fresh()->current_status);
+        $this->assertDatabaseCount('asset_unit_status_histories', 0);
+    }
+
+    // =========================================================================
     // 8. Riwayat status pada alur peminjaman (otomatis)
     // =========================================================================
 

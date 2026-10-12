@@ -167,53 +167,48 @@
                 @if($item->isIndividual() && $item->assetUnits && $item->assetUnits->isNotEmpty())
                 <div class="separator separator-dashed my-5"></div>
 
-                <!-- Form Ubah Status Unit -->
-                <h5 class="fw-bolder mb-1 text-dark"><i class="bi bi-sliders me-1 text-primary"></i> Ubah Status Unit</h5>
-                <p class="text-muted fs-7 mb-3">Siklus status aset: aktif → dipinjam → (dikembalikan) / dalam perbaikan / tidak aktif / dihapuskan. Hanya Sarpras yang dapat mengubah status.</p>
-                <form action="{{ route('sarpras.inventory.updateStatus', $item) }}" method="POST" data-disable-on-submit>
-                    @csrf
-                    <div class="mb-3">
-                        <select name="asset_unit_id" class="form-select form-select-solid form-select-sm @error('asset_unit_id') is-invalid @enderror" required>
-                            <option value="">-- Pilih Unit Aset --</option>
-                            @foreach($item->assetUnits as $unit)
-                                <option value="{{ $unit->id }}" {{ old('asset_unit_id') == $unit->id ? 'selected' : '' }}>
-                                    {{ $unit->unit_inventory_number }} — {{ \App\Support\AssetCondition::label($unit->current_condition) }} / {{ $unit->current_status }}
-                                </option>
-                            @endforeach
-                        </select>
-                        @error('asset_unit_id')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                    </div>
-                    <div class="mb-3">
-                        <select name="to_status" id="to_status" class="form-select form-select-solid form-select-sm @error('to_status') is-invalid @enderror" required>
-                            @foreach(\App\Models\AssetUnit::STATUS_LABELS as $value => $label)
-                                <option value="{{ $value }}" {{ old('to_status') === $value ? 'selected' : '' }}>{{ $label }}</option>
-                            @endforeach
-                        </select>
-                        @error('to_status')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                    </div>
-                    <div class="mb-3">
-                        <input type="text" name="reason" value="{{ old('reason') }}" class="form-control form-control-solid form-control-sm @error('reason') is-invalid @enderror" placeholder="Alasan perubahan status (wajib untuk penghapusan aset)">
-                        @error('reason')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                    </div>
-                    <div class="mb-3 d-none" id="dispose-confirm-wrap">
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" name="confirmed" value="1" id="dispose-confirm" {{ old('confirmed') ? 'checked' : '' }}>
-                            <label class="form-check-label fs-7 text-danger" for="dispose-confirm">
-                                Saya yakin menghapuskan unit aset ini secara permanen (tidak dapat dibatalkan).
-                            </label>
+                <!-- Siklus Status Unit (tombol aksi sesuai transisi yang diizinkan) -->
+                <h5 class="fw-bolder mb-1 text-dark"><i class="bi bi-sliders me-1 text-primary"></i> Siklus Status Unit</h5>
+                <p class="text-muted fs-7 mb-3">Pilih aksi sesuai transisi yang diizinkan. Setiap perubahan wajib memberi alasan dan tercatat otomatis di riwayat status. Hanya Sarpras yang dapat mengubah status.</p>
+
+                <div class="d-flex flex-column gap-3">
+                    @foreach($item->assetUnits as $unit)
+                        <div class="border border-gray-300 border-dashed rounded p-3">
+                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                <div>
+                                    <span class="fw-bolder font-monospace">{{ $unit->unit_inventory_number }}</span>
+                                    <x-condition-badge :condition="$unit->current_condition" class="ms-2" />
+                                    <x-unit-status-badge :status="$unit->current_status" class="ms-1" />
+                                </div>
+                                <div class="d-flex flex-wrap gap-2 justify-content-end">
+                                    @if($unit->current_status === 'dipinjam')
+                                        <span class="text-muted fs-7 align-self-center">
+                                            <i class="bi bi-hourglass-split me-1"></i> Selesaikan pengembalian peminjaman terlebih dahulu
+                                        </span>
+                                    @elseif($unit->current_status === 'disposed')
+                                        <span class="text-muted fs-7 align-self-center">
+                                            <i class="bi bi-lock me-1"></i> Status final (tidak dapat diubah)
+                                        </span>
+                                    @else
+                                        @foreach(\App\Models\AssetUnit::STATUS_TRANSITIONS[$unit->current_status] ?? [] as $to)
+                                            <button type="button"
+                                                class="btn btn-sm {{ $to === 'disposed' ? 'btn-light-danger' : 'btn-light-primary' }} btn-status-action"
+                                                data-bs-toggle="modal" data-bs-target="#statusUnitModal"
+                                                data-unit-id="{{ $unit->id }}"
+                                                data-unit-label="{{ $unit->unit_inventory_number }}"
+                                                data-from-status="{{ $unit->current_status }}"
+                                                data-to-status="{{ $to }}"
+                                                data-from-label="{{ \App\Models\AssetUnit::STATUS_LABELS[$unit->current_status] ?? $unit->current_status }}"
+                                                data-to-label="{{ \App\Models\AssetUnit::STATUS_LABELS[$to] ?? $to }}">
+                                                <i class="bi bi-arrow-right-circle me-1"></i> {{ \App\Models\AssetUnit::STATUS_LABELS[$to] ?? $to }}
+                                            </button>
+                                        @endforeach
+                                    @endif
+                                </div>
+                            </div>
                         </div>
-                        @error('confirmed')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                    </div>
-                    <button type="submit" class="btn btn-sm btn-primary w-100">Simpan Perubahan Status</button>
-                </form>
+                    @endforeach
+                </div>
                 @endif
             </div>
         </div>
@@ -371,18 +366,90 @@
 </div>
 @endsection
 
+@if($item->isIndividual() && $item->assetUnits && $item->assetUnits->isNotEmpty())
+<div class="modal fade" id="statusUnitModal" tabindex="-1" aria-labelledby="statusUnitModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form action="{{ route('sarpras.inventory.updateStatus', $item) }}" method="POST" class="modal-content" data-disable-on-submit>
+            @csrf
+            <input type="hidden" name="asset_unit_id" id="status-unit-id">
+            <input type="hidden" name="to_status" id="status-to-status">
+            <div class="modal-header">
+                <h5 class="modal-title" id="statusUnitModalLabel">Ubah Status Unit</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted fs-7">
+                    Unit <span class="fw-bolder font-monospace" id="status-unit-label"></span>:
+                    <span class="fw-bold" id="status-from-label"></span>
+                    <i class="bi bi-arrow-right mx-1"></i>
+                    <span class="fw-bolder text-primary" id="status-to-label"></span>
+                </p>
+                <div class="mb-3">
+                    <label for="status-reason" class="form-label fw-bold">Alasan <span class="text-danger">*</span></label>
+                    <textarea name="reason" id="status-reason" rows="3" class="form-control form-control-solid" required
+                        placeholder="Contoh: layar rusak ringan, perlu pemeriksaan"></textarea>
+                </div>
+                <div class="mb-3 d-none" id="status-condition-wrap">
+                    <label for="status-result-condition" class="form-label fw-bold">Kondisi hasil perbaikan</label>
+                    <select name="result_condition" id="status-result-condition" class="form-select form-select-solid">
+                        @foreach(\App\Support\AssetCondition::all() as $value => $label)
+                            <option value="{{ $value }}" {{ $value === \App\Support\AssetCondition::BAIK ? 'selected' : '' }}>{{ $label }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="d-none" id="status-confirm-wrap">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="confirmed" value="1" id="status-confirm">
+                        <label class="form-check-label fs-7 text-danger" for="status-confirm">
+                            Saya yakin menghapuskan unit aset ini secara permanen (tidak dapat dibatalkan).
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
+                <button type="submit" class="btn btn-primary">Simpan Perubahan</button>
+            </div>
+        </form>
+    </div>
+</div>
+@endif
+
 @push('scripts')
 <script>
     (function () {
-        const statusSelect = document.getElementById('to_status');
-        const confirmWrap = document.getElementById('dispose-confirm-wrap');
-        if (!statusSelect || !confirmWrap) return;
+        const modalEl = document.getElementById('statusUnitModal');
+        if (!modalEl) return;
 
-        const toggle = function () {
-            confirmWrap.classList.toggle('d-none', statusSelect.value !== 'disposed');
-        };
-        statusSelect.addEventListener('change', toggle);
-        toggle();
+        const idField = document.getElementById('status-unit-id');
+        const toField = document.getElementById('status-to-status');
+        const unitLabel = document.getElementById('status-unit-label');
+        const fromLabel = document.getElementById('status-from-label');
+        const toLabel = document.getElementById('status-to-label');
+        const conditionWrap = document.getElementById('status-condition-wrap');
+        const confirmWrap = document.getElementById('status-confirm-wrap');
+        const reasonField = document.getElementById('status-reason');
+        const confirmField = document.getElementById('status-confirm');
+
+        modalEl.addEventListener('show.bs.modal', function (event) {
+            const btn = event.relatedTarget;
+            if (!btn) return;
+
+            const from = btn.getAttribute('data-from-status');
+            const to = btn.getAttribute('data-to-status');
+
+            idField.value = btn.getAttribute('data-unit-id');
+            toField.value = to;
+            unitLabel.textContent = btn.getAttribute('data-unit-label');
+            fromLabel.textContent = btn.getAttribute('data-from-label');
+            toLabel.textContent = btn.getAttribute('data-to-label');
+
+            conditionWrap.classList.toggle('d-none', !(from === 'dalam_perbaikan' && to === 'aktif'));
+            confirmWrap.classList.toggle('d-none', to !== 'disposed');
+
+            reasonField.value = '';
+            confirmField.checked = false;
+        });
     })();
 </script>
 @endpush

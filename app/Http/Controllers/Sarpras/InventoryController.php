@@ -286,20 +286,21 @@ class InventoryController extends Controller
      */
     public function updateStatus(Request $request, Item $item): RedirectResponse
     {
-        $request->validate([
+        $validated = $request->validate([
             'asset_unit_id' => ['required', 'integer', Rule::exists('asset_units', 'id')],
             'to_status' => ['required', 'in:'.implode(',', array_keys(AssetUnit::STATUS_LABELS))],
-            'reason' => ['nullable', 'string', 'max:500'],
+            'reason' => ['required', 'string', 'max:500'],
+            'result_condition' => ['nullable', AssetCondition::rule()],
             'confirmed' => ['nullable', 'in:1,0,on'],
         ]);
 
-        $toStatus = $request->input('to_status');
+        $toStatus = $validated['to_status'];
 
         if ($toStatus === 'disposed' && $request->boolean('confirmed') !== true) {
             return back()->withErrors(['confirmed' => 'Wajib mencentang konfirmasi penghapusan aset di halaman inventaris.']);
         }
 
-        $unit = $item->assetUnits()->find((int) $request->input('asset_unit_id'));
+        $unit = $item->assetUnits()->find((int) $validated['asset_unit_id']);
 
         if (! $unit) {
             throw ValidationException::withMessages([
@@ -307,9 +308,31 @@ class InventoryController extends Controller
             ]);
         }
 
-        DB::transaction(function () use ($unit, $item, $toStatus, $request) {
+        DB::transaction(function () use ($unit, $item, $toStatus, $validated, $request) {
             $from = $unit->current_status;
-            $history = $unit->changeStatus($toStatus, $request->input('reason'), $request->user());
+
+            // Reaktivasi dari perbaikan mewajibkan pemilihan kondisi hasil
+            // perbaikan (bawaan baik); dicatat sebagai riwayat kondisi.
+            if ($from === 'dalam_perbaikan' && $toStatus === 'aktif') {
+                $resultCondition = $validated['result_condition'] ?? AssetCondition::BAIK;
+
+                if ($resultCondition !== $unit->current_condition) {
+                    ConditionHistory::create([
+                        'item_id' => $item->id,
+                        'asset_unit_id' => $unit->id,
+                        'from_condition' => $unit->current_condition,
+                        'to_condition' => $resultCondition,
+                        'user_id' => $request->user()->id,
+                        'notes' => 'Kondisi hasil perbaikan unit '.$unit->unit_inventory_number,
+                        'recorded_at' => now(),
+                    ]);
+
+                    $unit->current_condition = $resultCondition;
+                    $unit->save();
+                }
+            }
+
+            $history = $unit->changeStatus($toStatus, $validated['reason'] ?? null, $request->user());
 
             ActivityLog::log(
                 'unit_status_changed',
