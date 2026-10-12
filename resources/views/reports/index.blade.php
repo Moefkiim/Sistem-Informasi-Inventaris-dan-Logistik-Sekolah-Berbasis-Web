@@ -140,6 +140,18 @@
                 </div>
             @endif
 
+            @if($type === 'condition')
+                <div class="col-12 col-md-4 col-lg-3">
+                    <label class="form-label fw-bold" for="filter-condition">Kondisi Tujuan</label>
+                    <select id="filter-condition" name="condition" class="form-select form-select-solid">
+                        <option value="">Semua Kondisi</option>
+                        @foreach($conditionLabels as $value => $label)
+                            <option value="{{ $value }}" {{ $filters['condition'] === $value ? 'selected' : '' }}>{{ $label }}</option>
+                        @endforeach
+                    </select>
+                </div>
+            @endif
+
             <div class="col-12 col-lg-auto ms-lg-auto">
                 <div class="d-flex flex-wrap gap-2">
                     <button type="submit" class="btn btn-primary">
@@ -193,7 +205,7 @@
             @endif
             @if($filters['condition'])
                 @php $anyChip = true; @endphp
-                <x-filter-chip label="Kondisi" :value="$conditionLabels[$filters['condition']] ?? $filters['condition']" :remove-url="route('reports.index', array_merge(Arr::except($q, ['condition', 'page']), ['type' => $type]))" />
+                <x-filter-chip label="{{ $type === 'condition' ? 'Kondisi Tujuan' : 'Kondisi' }}" :value="$conditionLabels[$filters['condition']] ?? $filters['condition']" :remove-url="route('reports.index', array_merge(Arr::except($q, ['condition', 'page']), ['type' => $type]))" />
             @endif
             @if($filters['unit_status'])
                 @php $anyChip = true; @endphp
@@ -266,6 +278,21 @@
                         <div class="fs-2 fw-bolder text-danger">{{ number_format($summary['overdue'] ?? 0, 0, ',', '.') }}</div>
                     </div>
                 </div>
+            @elseif($type === 'condition')
+                <div class="col-6 col-lg-3">
+                    <div class="border border-gray-300 border-dashed rounded p-4 h-100">
+                        <div class="text-muted fw-bold fs-7 text-uppercase">Jumlah Perubahan</div>
+                        <div class="fs-2 fw-bolder">{{ number_format($summary['transactions'] ?? 0, 0, ',', '.') }}</div>
+                    </div>
+                </div>
+                @foreach($conditionLabels as $value => $label)
+                    <div class="col-6 col-lg-3">
+                        <div class="border border-gray-300 border-dashed rounded p-4 h-100">
+                            <div class="text-muted fw-bold fs-7 text-uppercase">Ke {{ $label }}</div>
+                            <div class="fs-2 fw-bolder">{{ number_format($summary['conditions'][$value] ?? 0, 0, ',', '.') }}</div>
+                        </div>
+                    </div>
+                @endforeach
             @else
                 <div class="col-6 col-lg-3">
                     <div class="border border-gray-300 border-dashed rounded p-4 h-100">
@@ -430,6 +457,36 @@
                                             <span class="empty-dash">—</span>
                                         @endif
                                     </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                @elseif($type === 'condition')
+                    <table class="table table-hover table-row-dashed align-middle report-table fs-7 gy-3">
+                        <thead class="fw-bold text-muted text-uppercase">
+                            <tr>
+                                <th>Barang / Unit</th>
+                                <th>Dari</th>
+                                <th>Ke</th>
+                                <th>Tanggal</th>
+                                <th>Pencatat</th>
+                                <th>Catatan</th>
+                            </tr>
+                        </thead>
+                        <tbody class="fw-semibold text-gray-700">
+                            @foreach($data as $row)
+                                <tr>
+                                    <td>
+                                        {{ $row->item->name ?? '—' }}
+                                        @if($row->assetUnit)
+                                            <span class="text-muted">({{ $row->assetUnit->unit_inventory_number }})</span>
+                                        @endif
+                                    </td>
+                                    <td><span class="badge badge-light">{{ $conditionLabels[$row->from_condition] ?? $row->from_condition }}</span></td>
+                                    <td><span class="badge badge-light-info">{{ $conditionLabels[$row->to_condition] ?? $row->to_condition }}</span></td>
+                                    <td>{{ $row->recorded_at?->format('d/m/Y H:i') ?? '—' }}</td>
+                                    <td>{{ $row->user->name ?? '—' }}</td>
+                                    <td class="text-muted">{{ $row->notes ?: '—' }}</td>
                                 </tr>
                             @endforeach
                         </tbody>

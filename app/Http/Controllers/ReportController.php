@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\AssetUnit;
+use App\Models\ConditionHistory;
 use App\Models\Distribution;
 use App\Models\IncomingItem;
 use App\Models\Item;
@@ -172,7 +173,7 @@ class ReportController extends Controller
     private function validatedType(Request $request): array
     {
         return $request->validate([
-            'type' => ['required', 'in:inventory,incoming,outgoing,distribution,submission,loan'],
+            'type' => ['required', 'in:inventory,incoming,outgoing,distribution,submission,loan,condition'],
             'start_date' => ['nullable', 'date'],
             'end_date' => ['nullable', 'date'],
         ]);
@@ -314,6 +315,19 @@ class ReportController extends Controller
                 }
                 break;
 
+            case 'condition':
+                $query = ConditionHistory::with(['item', 'assetUnit', 'user'])
+                    ->latest('recorded_at')
+                    ->latest('id');
+                $this->applyDateRange($query, 'recorded_at', $startDate, $endDate, true);
+                if ($department) {
+                    $query->whereHas('item', fn ($q) => $q->where('department', $department));
+                }
+                if ($filters['condition']) {
+                    $query->where('to_condition', $filters['condition']);
+                }
+                break;
+
             case 'inventory':
             default:
                 $query = Item::with(['location', 'assetUnits.location'])->orderBy('code')->orderBy('id');
@@ -377,6 +391,10 @@ class ReportController extends Controller
             return $this->loanSummary($filters);
         }
 
+        if ($type === 'condition') {
+            return $this->conditionSummary($filters);
+        }
+
         $base = $this->buildQuery($type, $filters);
 
         if ($type === 'submission') {
@@ -419,6 +437,31 @@ class ReportController extends Controller
             'quantity' => (int) $rows->sum('quantity'),
             'statuses' => $statuses,
             'overdue' => $overdue,
+        ];
+    }
+
+    /**
+     * Agregat riwayat kondisi: jumlah perubahan dan jumlah per kondisi tujuan.
+     *
+     * @return array<string,mixed>
+     */
+    private function conditionSummary(array $filters): array
+    {
+        $base = $this->buildQuery('condition', $filters);
+        $countsByCondition = (clone $base)
+            ->selectRaw('to_condition, count(*) as total')
+            ->groupBy('to_condition')
+            ->pluck('total', 'to_condition');
+
+        $conditions = ['baik' => 0, 'rusak_ringan' => 0, 'rusak_berat' => 0];
+        foreach ($countsByCondition as $condition => $total) {
+            $conditions[$condition] = (int) $total;
+        }
+
+        return [
+            'transactions' => (clone $base)->count(),
+            'quantity' => 0,
+            'conditions' => $conditions,
         ];
     }
 
@@ -554,6 +597,7 @@ class ReportController extends Controller
             'distribution' => ['No. Distribusi', 'Nama Barang', 'Jumlah', 'Lokasi Tujuan', 'Jurusan Penerima', 'Tanggal'],
             'submission' => ['No. Pengajuan', 'Judul', 'Jurusan', 'Pengaju', 'Status', 'Tanggal'],
             'loan' => ['No. Peminjaman', 'Barang', 'No. Unit', 'Peminjam', 'Jurusan', 'Tanggal Pinjam', 'Rencana Kembali', 'Tanggal Kembali', 'Status', 'Hari Terlambat'],
+            'condition' => ['Barang', 'No. Unit', 'Dari Kondisi', 'Ke Kondisi', 'Tanggal Perubahan', 'Pencatat', 'Catatan'],
             default => ['Kode Barang', 'No. Unit', 'No. Seri', 'Nama Barang', 'Kategori', 'Jumlah/Stok', 'Kondisi', 'Status Unit', 'Lokasi', 'Jurusan'],
         };
     }
@@ -652,6 +696,15 @@ class ReportController extends Controller
                 $record->return_date?->format('d/m/Y') ?? '-',
                 Loan::STATUS_META[$record->status]['label'] ?? $record->status,
                 $record->lateDays(),
+            ],
+            'condition' => [
+                $record->item->name ?? '-',
+                $record->assetUnit->unit_inventory_number ?? ($record->item->inventory_number ?? '-'),
+                ucfirst(str_replace('_', ' ', (string) $record->from_condition)),
+                ucfirst(str_replace('_', ' ', (string) $record->to_condition)),
+                $record->recorded_at?->format('d/m/Y H:i') ?? '-',
+                $record->user->name ?? '-',
+                $record->notes ?? '-',
             ],
             default => [
                 $record->code,

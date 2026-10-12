@@ -54,6 +54,11 @@
                 <span>{{ $meta['label'] }}: {{ $summary['statuses'][$value] ?? 0 }}</span>
             @endforeach
             <span>Terlambat: {{ $summary['overdue'] ?? 0 }}</span>
+        @elseif($type === 'condition')
+            <span>Jumlah Perubahan: {{ $summary['transactions'] ?? 0 }}</span>
+            <span>Ke Baik: {{ $summary['conditions']['baik'] ?? 0 }}</span>
+            <span>Ke Rusak Ringan: {{ $summary['conditions']['rusak_ringan'] ?? 0 }}</span>
+            <span>Ke Rusak Berat: {{ $summary['conditions']['rusak_berat'] ?? 0 }}</span>
         @else
             <span>Jumlah Transaksi: {{ $summary['transactions'] ?? 0 }}</span>
             <span>Total Kuantitas: {{ $summary['quantity'] ?? 0 }}</span>
@@ -129,6 +134,17 @@
                     <th>Tanggal Kembali</th>
                     <th>Status</th>
                     <th>Hari Terlambat</th>
+                </tr>
+            @elseif($type === 'condition')
+                <tr>
+                    <th>#</th>
+                    <th>Barang</th>
+                    <th>No. Unit</th>
+                    <th>Dari Kondisi</th>
+                    <th>Ke Kondisi</th>
+                    <th>Tanggal Perubahan</th>
+                    <th>Pencatat</th>
+                    <th>Catatan</th>
                 </tr>
             @endif
         </thead>
@@ -208,6 +224,17 @@
                         <td>{{ $row->return_date?->format('d/m/Y') ?? '-' }}</td>
                         <td>{{ \App\Models\Loan::STATUS_META[$row->status]['label'] ?? $row->status }}</td>
                         <td class="num">{{ $row->lateDays() }}</td>
+                    </tr>
+                @elseif($type === 'condition')
+                    <tr>
+                        <td>{{ $idx + 1 }}</td>
+                        <td>{{ $row->item->name ?? '-' }}</td>
+                        <td>{{ $row->assetUnit->unit_inventory_number ?? ($row->item->inventory_number ?? '-') }}</td>
+                        <td>{{ ucfirst(str_replace('_', ' ', (string) $row->from_condition)) }}</td>
+                        <td>{{ ucfirst(str_replace('_', ' ', (string) $row->to_condition)) }}</td>
+                        <td>{{ $row->recorded_at?->format('d/m/Y H:i') ?? '-' }}</td>
+                        <td>{{ $row->user->name ?? '-' }}</td>
+                        <td>{{ $row->notes ?? '-' }}</td>
                     </tr>
                 @endif
             @empty

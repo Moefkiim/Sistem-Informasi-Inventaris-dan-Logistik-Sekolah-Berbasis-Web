@@ -44,7 +44,7 @@ Sistem Informasi Inventaris dan Logistik Sekolah (SIILS) adalah aplikasi manajem
 | **Laporan Rekapitulasi & Mode Cetak** | Filter laporan berdasarkan jenis transaksi, rentang tanggal, dan jurusan yang dilengkapi halaman khusus siap cetak (*print mode*). |
 | **Manajemen Pengguna & Toggle Status** | Pengelolaan data staf pengguna oleh Sarpras termasuk pengaktifan dan penonaktifan akun pengguna. |
 
-**Jenis laporan yang tersedia:** Rekap Inventaris Barang, Log Barang Masuk, Log Barang Keluar, Log Distribusi/Penyaluran, Riwayat Pengajuan, dan **Laporan Peminjaman**. Semua laporan mendukung filter (periode, jurusan, status, dan filter spesifik tiap jenis), paginasi, mode cetak, serta ekspor PDF dan Excel.
+**Jenis laporan yang tersedia:** Rekap Inventaris Barang, Log Barang Masuk, Log Barang Keluar, Log Distribusi/Penyaluran, Riwayat Pengajuan, **Laporan Peminjaman**, dan **Riwayat Kondisi Barang**. Semua laporan mendukung filter (periode, jurusan, status, dan filter spesifik tiap jenis), paginasi, mode cetak, serta ekspor PDF dan Excel.
 
 ---
 
@@ -207,7 +207,7 @@ graph TD
 
 #### Tugas 2: Filter dan Cetak Laporan
 1. Masuk ke menu **Laporan & Monitoring**.
-2. Pilih jenis rekapitulasi (Inventaris, Barang Masuk, Barang Keluar, Distribusi, Pengajuan, atau Peminjaman).
+2. Pilih jenis rekapitulasi (Inventaris, Barang Masuk, Barang Keluar, Distribusi, Pengajuan, Peminjaman, atau Riwayat Kondisi).
 3. Tentukan rentang tanggal dan jurusan (jika diperlukan), lalu klik **Filter**.
 4. Klik tombol **Cetak** untuk membuka halaman versi cetak bebas komponen navigasi web.
    ![Cetak Laporan Window](docs/img/report_print_view.png)

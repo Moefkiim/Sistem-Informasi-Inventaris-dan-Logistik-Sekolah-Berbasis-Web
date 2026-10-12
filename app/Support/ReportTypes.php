@@ -20,6 +20,7 @@ class ReportTypes
         'distribution' => 'Log Distribusi / Penyaluran',
         'submission' => 'Riwayat Pengajuan',
         'loan' => 'Laporan Peminjaman',
+        'condition' => 'Riwayat Kondisi Barang',
     ];
 
     public static function titles(): array
