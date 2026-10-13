@@ -9,6 +9,7 @@ use App\Models\Location;
 use App\Models\User;
 use App\Support\AssetCondition;
 use App\Support\Departments;
+use App\Support\Import\LimitedReadFilter;
 use Illuminate\Support\Str;
 use PhpOffice\PhpSpreadsheet\Reader\Csv;
 use PhpOffice\PhpSpreadsheet\Reader\Xlsx;
@@ -151,6 +152,10 @@ class InventoryImportService
         try {
             $reader = $extension === 'csv' ? new Csv : new Xlsx;
             $reader->setReadDataOnly(true);
+
+            // Batasi pembacaan agar berkas raksasa tidak dimuat utuh ke memori.
+            // Satu baris di atas batas tetap dibaca agar pelanggaran terdeteksi.
+            $reader->setReadFilter(new LimitedReadFilter(self::MAX_ROWS + 2, count(self::HEADERS)));
 
             if ($reader instanceof Csv) {
                 $reader->setInputEncoding('UTF-8');

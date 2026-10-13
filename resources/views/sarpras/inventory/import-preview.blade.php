@@ -78,6 +78,33 @@
                 Semua baris valid. {{ $analysis['summary']['barang'] }} barang dan {{ $analysis['summary']['unit'] }} unit siap dibuat.
             </div>
 
+            @if(count($analysis['warnings'] ?? []) > 0)
+                <div class="alert alert-warning">
+                    <strong>{{ count($analysis['warnings']) }} penyesuaian otomatis</strong> diterapkan agar status tetap konsisten dengan kondisi barang:
+                </div>
+
+                <div class="table-responsive mb-4" style="max-height: 240px;">
+                    <table class="table table-row-bordered table-row-gray-200 align-middle gs-4 gy-2">
+                        <thead class="sticky-top bg-white">
+                            <tr class="fw-bold text-muted">
+                                <th style="width: 80px;">Baris</th>
+                                <th style="width: 200px;">Kolom</th>
+                                <th>Keterangan</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($analysis['warnings'] as $warning)
+                                <tr>
+                                    <td>{{ $warning['row'] ?: '-' }}</td>
+                                    <td class="fw-semibold">{{ $warning['column'] }}</td>
+                                    <td class="text-warning">{{ $warning['message'] }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @endif
+
             <h5 class="fw-bold mb-3">Ringkasan Barang</h5>
             <div class="table-responsive" style="max-height: 360px;">
                 <table class="table table-row-bordered table-row-gray-200 align-middle gs-4 gy-2">

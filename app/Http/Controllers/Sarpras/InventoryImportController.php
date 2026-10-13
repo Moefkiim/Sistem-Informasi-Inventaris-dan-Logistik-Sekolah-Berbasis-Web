@@ -27,6 +27,8 @@ class InventoryImportController extends Controller
 
     private const IMPORT_DIRECTORY = 'imports';
 
+    private const PREVIEW_TTL_HOURS = 24;
+
     public function __construct(private readonly InventoryImportService $import) {}
 
     public function create(): View
@@ -125,7 +127,20 @@ class InventoryImportController extends Controller
         $extension = strtolower((string) $file->getClientOriginalExtension()) === 'csv' ? 'csv' : 'xlsx';
         $token = now()->format('YmdHis').'-'.bin2hex(random_bytes(8)).'.'.$extension;
 
+        $this->purgeStalePreviews();
+
         Storage::disk(self::DISK)->putFileAs(self::IMPORT_DIRECTORY, $file, $token);
+
+        // Metadata pemilik: berkas pratinjau hanya dapat dikonfirmasi/diunduh
+        // kesalahannya oleh pengunggah.
+        Storage::disk(self::DISK)->put(
+            self::IMPORT_DIRECTORY.'/'.$this->metaName($token),
+            json_encode([
+                'user_id' => (int) $request->user()->id,
+                'original_name' => $file->getClientOriginalName(),
+                'created_at' => now()->toIso8601String(),
+            ])
+        );
 
         $path = Storage::disk(self::DISK)->path(self::IMPORT_DIRECTORY.'/'.$token);
         $analysis = $this->import->analyze($path);
@@ -144,6 +159,7 @@ class InventoryImportController extends Controller
         ]);
 
         $token = basename($validated['token']);
+        $this->authorizePreview($request, $token);
         $path = Storage::disk(self::DISK)->path(self::IMPORT_DIRECTORY.'/'.$token);
 
         if (! Storage::disk(self::DISK)->exists(self::IMPORT_DIRECTORY.'/'.$token)) {
@@ -160,7 +176,10 @@ class InventoryImportController extends Controller
 
         $result = $this->import->commit($analysis, $request->user());
 
-        Storage::disk(self::DISK)->delete(self::IMPORT_DIRECTORY.'/'.$token);
+        Storage::disk(self::DISK)->delete([
+            self::IMPORT_DIRECTORY.'/'.$token,
+            self::IMPORT_DIRECTORY.'/'.$this->metaName($token),
+        ]);
 
         return redirect()->route('sarpras.inventory.index')->with(
             'success',
@@ -171,6 +190,7 @@ class InventoryImportController extends Controller
     public function errors(Request $request, string $token): Response
     {
         $token = basename($token);
+        $this->authorizePreview($request, $token);
         $path = Storage::disk(self::DISK)->path(self::IMPORT_DIRECTORY.'/'.$token);
 
         if (! Storage::disk(self::DISK)->exists(self::IMPORT_DIRECTORY.'/'.$token)) {
@@ -194,5 +214,62 @@ class InventoryImportController extends Controller
             'Content-Type' => 'text/csv; charset=UTF-8',
             'Content-Disposition' => 'attachment; filename="kesalahan-impor.csv"',
         ]);
+    }
+
+    /**
+     * Nama berkas metadata pemilik untuk sebuah token.
+     */
+    private function metaName(string $token): string
+    {
+        return $token.'.meta.json';
+    }
+
+    /**
+     * Pastikan berkas pratinjau diunggah oleh pengguna yang sama. Metadata yang
+     * hilang (mis. sisa versi lama) tidak diblokir demi kompatibilitas.
+     */
+    private function authorizePreview(Request $request, string $token): void
+    {
+        $metaPath = self::IMPORT_DIRECTORY.'/'.$this->metaName($token);
+
+        if (! Storage::disk(self::DISK)->exists($metaPath)) {
+            return;
+        }
+
+        $meta = json_decode((string) Storage::disk(self::DISK)->get($metaPath), true);
+
+        if (! is_array($meta)) {
+            return;
+        }
+
+        if ((int) ($meta['user_id'] ?? 0) !== (int) $request->user()->id) {
+            abort(404, 'Berkas pratinjau tidak ditemukan.');
+        }
+    }
+
+    /**
+     * Hapus berkas pratinjau (beserta metadatanya) yang lebih tua dari TTL agar
+     * direktori impor tidak menumpuk sisa unggahan yang tidak dikonfirmasi.
+     */
+    private function purgeStalePreviews(): void
+    {
+        $disk = Storage::disk(self::DISK);
+        $threshold = now()->subHours(self::PREVIEW_TTL_HOURS)->getTimestamp();
+
+        foreach ($disk->files(self::IMPORT_DIRECTORY) as $path) {
+            if (str_ends_with($path, '.meta.json')) {
+                continue;
+            }
+
+            $modified = $disk->lastModified($path);
+
+            if ($modified >= $threshold) {
+                continue;
+            }
+
+            $token = basename($path);
+
+            $disk->delete([$path, self::IMPORT_DIRECTORY.'/'.$this->metaName($token)]);
+        }
     }
 }
