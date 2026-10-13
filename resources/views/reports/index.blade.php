@@ -326,7 +326,7 @@
                     description="Data akan muncul di sini setelah inventaris atau transaksi dicatat." />
             @endif
         @else
-            <div class="table-responsive">
+            <div class="table-responsive" tabindex="0" role="region" aria-label="Tabel hasil laporan">
                 @if($type === 'inventory')
                     <table class="table table-hover table-row-dashed align-middle report-table fs-7 gy-3">
                         <thead class="fw-bold text-muted text-uppercase">

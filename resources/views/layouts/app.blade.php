@@ -44,12 +44,15 @@
         .btn.btn-light-danger { color: #b3123a !important; }
         .btn.btn-light-info { color: #5b2fbf !important; }
         .btn.btn-light-secondary { color: #4b5675 !important; }
+        .badge.badge-light { color: #4b5675 !important; }
         .badge.badge-light-primary { color: #0a58ca !important; }
         .badge.badge-light-success { color: #0f7a43 !important; }
         .badge.badge-light-warning { color: #7a5f00 !important; }
         .badge.badge-light-danger { color: #b3123a !important; }
         .badge.badge-light-info { color: #5b2fbf !important; }
         .badge.badge-light-secondary { color: #4b5675 !important; }
+        /* Judul menu aktif pada sidebar gelap: naikkan kontras dari #009ef7 */
+        .aside-dark .menu .menu-link.active, .aside-dark .menu .menu-link.active .menu-title { color: #8cc0ff !important; }
         .aside-dark .text-gray-500 { color: #b5b5c3 !important; }
         .badge-role { background: linear-gradient(135deg, #009ef7, #0066cc); color: #fff; padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; }
         .user-info-card { background: linear-gradient(135deg, rgba(0,158,247,0.12), rgba(0,102,204,0.08)); border: 1px solid rgba(0,158,247,0.2); border-radius: 12px; }
@@ -425,7 +428,7 @@
                                         — {{ auth()->user()->departmentLabel() }}
                                     @endif
                                 </span>
-                                <a href="{{ route('profile.show') }}" class="btn btn-sm btn-light-primary fw-bolder">
+                                <a href="{{ route('profile.show') }}" class="btn btn-sm btn-light-primary fw-bolder" aria-label="Akun Saya">
                                     <i class="bi bi-person-gear me-1"></i> <span class="d-none d-lg-inline">Akun Saya</span>
                                 </a>
                                 <form action="{{ route('logout') }}" method="POST" class="d-inline">

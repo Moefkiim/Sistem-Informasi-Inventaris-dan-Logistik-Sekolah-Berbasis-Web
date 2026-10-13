@@ -145,10 +145,10 @@ BLOCKING_IMPACTS = ("serious", "critical")
 # memperluas axe-core ke seluruh halaman yang ditelusuri.
 A11Y_FULL_TRAVERSAL = False
 
-# Tahap 1 (pelaporan) hanya memperingatkan temuan serious/critical. Setelah
-# temuan diperbaiki atau didaftarkan di a11y-allowlist.json, ubah ke True agar
-# temuan serious/critical baru menggagalkan job.
-A11Y_ENFORCE = False
+# Temuan serious/critical wajib berjumlah nol (selain yang didaftarkan di
+# a11y-allowlist.json). Aktifkan kembali ke True hanya jika suite memang
+# sedang mendata temuan lama.
+A11Y_ENFORCE = True
 
 # Berkas pengecualian aksesibilitas (hanya diperbolehkan dengan alasan tertulis).
 A11Y_ALLOWLIST_PATH = Path(__file__).with_name("a11y-allowlist.json")
