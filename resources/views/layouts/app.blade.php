@@ -51,8 +51,12 @@
         .badge.badge-light-danger { color: #b3123a !important; }
         .badge.badge-light-info { color: #5b2fbf !important; }
         .badge.badge-light-secondary { color: #4b5675 !important; }
-        /* Judul menu aktif pada sidebar gelap: naikkan kontras dari #009ef7 */
-        .aside-dark .menu .menu-link.active, .aside-dark .menu .menu-link.active .menu-title { color: #8cc0ff !important; }
+        /* Judul menu sidebar gelap: jamin kontras WCAG AA (termasuk bila tertimpa overlay gulir) */
+        .aside-dark .menu .menu-item .menu-link .menu-title { color: #e4e6ef !important; }
+        .aside-dark .menu .menu-item .menu-link.active .menu-title,
+        .aside-dark .menu .menu-item.here > .menu-link .menu-title,
+        .aside-dark .menu .menu-item.show > .menu-link .menu-title,
+        .aside-dark .menu .menu-item:not(.here) .menu-link:hover:not(.disabled):not(.active) .menu-title { color: #fff !important; }
         .aside-dark .text-gray-500 { color: #b5b5c3 !important; }
         .badge-role { background: linear-gradient(135deg, #009ef7, #0066cc); color: #fff; padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; }
         .user-info-card { background: linear-gradient(135deg, rgba(0,158,247,0.12), rgba(0,102,204,0.08)); border: 1px solid rgba(0,158,247,0.2); border-radius: 12px; }

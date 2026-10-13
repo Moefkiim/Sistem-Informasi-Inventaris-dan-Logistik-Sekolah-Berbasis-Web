@@ -327,7 +327,28 @@ class SmokeTest:
                 "help_url": violation.get("helpUrl"),
                 "nodes": len(nodes),
                 "targets": targets,
+                "details": self._a11y_node_details(nodes),
             })
+
+    @staticmethod
+    def _a11y_node_details(nodes: list) -> list:
+        details = []
+        for node in nodes[:5]:
+            check_data = {}
+            for check in node.get("any", []) + node.get("all", []):
+                if isinstance(check.get("data"), dict):
+                    check_data.update(check["data"])
+                    break
+            details.append({
+                "target": node.get("target"),
+                "html": node.get("html"),
+                "fgColor": check_data.get("fgColor"),
+                "bgColor": check_data.get("bgColor"),
+                "contrastRatio": check_data.get("contrastRatio"),
+                "expected": check_data.get("expectedContrastRatio"),
+                "summary": node.get("failureSummary"),
+            })
+        return details
 
     def load_a11y_allowlist(self) -> dict:
         if not A11Y_ALLOWLIST_PATH.exists():
@@ -356,7 +377,17 @@ class SmokeTest:
                 if key in seen_blockers:
                     continue
                 seen_blockers.add(key)
-                message = f"a11y {impact}: {rule} — {v['help']} ({v['nodes']} elemen; mis. {v['targets']})"
+                detail = (v.get("details") or [{}])[0]
+                colors = ""
+                if detail.get("fgColor") and detail.get("bgColor"):
+                    colors = (
+                        f" [{detail['fgColor']} di atas {detail['bgColor']}"
+                        f" = {detail.get('contrastRatio')}:1, minimal {detail.get('expected')}]"
+                    )
+                message = (
+                    f"a11y {impact}: {rule} — {v['help']} "
+                    f"({v['nodes']} elemen; mis. {v['targets']}){colors}"
+                )
                 if A11Y_ENFORCE:
                     self.fail(message, v["role"], v["page"], v["viewport"])
                 else:
@@ -381,9 +412,10 @@ class SmokeTest:
             })
             bucket["count"] += 1
             page_key = f"{v['role']}/{v['page']} @ {v['viewport']}"
-            bucket["pages"].setdefault(page_key, {"nodes": 0, "targets": []})
+            bucket["pages"].setdefault(page_key, {"nodes": 0, "targets": [], "details": []})
             bucket["pages"][page_key]["nodes"] += v["nodes"]
             bucket["pages"][page_key]["targets"].extend(v["targets"])
+            bucket["pages"][page_key]["details"].extend(v.get("details", []))
 
         summary = {}
         for v in self.a11y_violations:
