@@ -25,7 +25,7 @@ class LoanController extends Controller
      */
     public function index(Request $request): View
     {
-        $query = Loan::with(['item', 'borrower', 'approvedBy'])->latest();
+        $query = Loan::with(['item', 'assetUnit', 'borrower', 'approvedBy'])->latest();
 
         if ($request->filled('status')) {
             $status = $request->string('status')->toString();

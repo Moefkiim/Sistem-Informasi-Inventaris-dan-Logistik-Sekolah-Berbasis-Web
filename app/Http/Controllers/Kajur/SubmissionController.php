@@ -107,7 +107,7 @@ class SubmissionController extends Controller
     public function show(Submission $submission): View
     {
         $this->authorizeKajur($submission);
-        $submission->load(['items', 'sarprasUser', 'principalUser', 'realizedBy', 'documents', 'histories.actor', 'incomingItems.item']);
+        $submission->load(['items.item', 'sarprasUser', 'principalUser', 'realizedBy', 'documents', 'histories.actor', 'incomingItems.item']);
 
         return view('kajur.submissions.show', compact('submission'));
     }

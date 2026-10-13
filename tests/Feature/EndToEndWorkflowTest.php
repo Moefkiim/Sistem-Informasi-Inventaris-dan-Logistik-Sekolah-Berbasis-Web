@@ -85,7 +85,7 @@ class EndToEndWorkflowTest extends TestCase
             ->assertRedirect()
             ->assertSessionHas('success');
 
-        $submission->refresh();
+        $submission->refresh()->load('items.item');
         $this->assertSame('realized', $submission->status);
 
         $incoming = IncomingItem::where('submission_id', $submission->id)->get();

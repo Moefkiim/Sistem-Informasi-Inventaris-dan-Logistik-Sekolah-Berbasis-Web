@@ -40,7 +40,7 @@ class ApprovalController extends Controller
      */
     public function show(Submission $submission): View
     {
-        $submission->load(['user', 'sarprasUser', 'items', 'realizedBy', 'documents', 'histories.actor', 'incomingItems.item']);
+        $submission->load(['user', 'sarprasUser', 'items.item', 'realizedBy', 'documents', 'histories.actor', 'incomingItems.item']);
 
         return view('principal.approval.show', compact('submission'));
     }

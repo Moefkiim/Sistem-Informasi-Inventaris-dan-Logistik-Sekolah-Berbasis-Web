@@ -45,7 +45,7 @@ class SubmissionController extends Controller
      */
     public function show(Submission $submission): View
     {
-        $submission->load(['user', 'items', 'sarprasUser', 'principalUser', 'realizedBy', 'documents', 'histories.actor', 'incomingItems.item']);
+        $submission->load(['user', 'items.item', 'sarprasUser', 'principalUser', 'realizedBy', 'documents', 'histories.actor', 'incomingItems.item']);
 
         return view('sarpras.submissions.show', compact('submission'));
     }

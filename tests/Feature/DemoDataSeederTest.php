@@ -130,7 +130,7 @@ class DemoDataSeederTest extends TestCase
             'realized_by' => User::where('username', 'sarpras')->value('id'),
         ]);
 
-        foreach ($realized->items as $submissionItem) {
+        foreach ($realized->load('items.item')->items as $submissionItem) {
             $this->assertNotNull($submissionItem->item_id, 'Baris pengajuan harus tertaut ke master barang.');
             $this->assertSame($submissionItem->quantity, $submissionItem->received_quantity);
 

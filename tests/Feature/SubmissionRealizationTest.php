@@ -80,7 +80,7 @@ class SubmissionRealizationTest extends TestCase
             ->assertRedirect(route('sarpras.submissions.show', $submission))
             ->assertSessionHas('success');
 
-        $submission->refresh();
+        $submission->refresh()->load('items.item');
 
         $this->assertSame('realized', $submission->status);
         $this->assertSame($sarpras->id, $submission->realized_by);
@@ -280,7 +280,7 @@ class SubmissionRealizationTest extends TestCase
 
         $laptop = $submission->items->first()->item;
 
-        foreach ($laptop->assetUnits as $unit) {
+        foreach ($laptop->load('assetUnits')->assetUnits as $unit) {
             $this->assertSame($location->id, $unit->location_id);
             $this->assertSame('aktif', $unit->current_status);
             $this->assertSame('baik', $unit->current_condition);
