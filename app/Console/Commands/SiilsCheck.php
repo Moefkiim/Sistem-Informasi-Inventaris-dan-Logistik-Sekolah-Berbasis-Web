@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use Illuminate\Console\Command;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Throwable;
 
 /**
@@ -36,6 +37,7 @@ class SiilsCheck extends Command
         $this->checkAppKey();
         $this->checkDatabase();
         $this->checkPendingMigrations();
+        $this->checkDataInvariants();
         $this->checkWritablePaths();
         $this->checkBackups();
         $this->checkDebugInProduction();
@@ -249,6 +251,82 @@ class SiilsCheck extends Command
             $this->errors[] = [
                 'ok' => false,
                 'label' => 'Tidak dapat memeriksa status migrasi: '.$e->getMessage(),
+                'fix' => 'Hubungi pengelola aplikasi.',
+            ];
+        }
+    }
+
+    /**
+     * Memeriksa invarian data penting (hanya-baca): stok item individual
+     * terhadap jumlah unit fisik, unit dipinjam tanpa peminjaman aktif, dan
+     * unit aktif dengan kondisi tidak layak. Temuan dilaporkan sebagai
+     * peringatan agar tidak mengubah kode keluar instalasi.
+     */
+    private function checkDataInvariants(): void
+    {
+        if (! Schema::hasTable('items') || ! Schema::hasTable('asset_units')) {
+            return;
+        }
+
+        try {
+            $mismatchedStock = DB::table('items')
+                ->leftJoin('asset_units', function ($join) {
+                    $join->on('asset_units.item_id', '=', 'items.id')
+                        ->whereNull('asset_units.deleted_at')
+                        ->where('asset_units.current_status', '!=', 'disposed');
+                })
+                ->where('items.item_type', 'individual')
+                ->whereNull('items.deleted_at')
+                ->groupBy('items.id', 'items.stock')
+                ->havingRaw('items.stock <> count(asset_units.id)')
+                ->count();
+
+            $borrowedWithoutLoan = DB::table('asset_units')
+                ->leftJoin('loans', function ($join) {
+                    $join->on('loans.asset_unit_id', '=', 'asset_units.id')
+                        ->whereIn('loans.status', ['menunggu', 'disetujui', 'dipinjam', 'terlambat'])
+                        ->whereNull('loans.deleted_at');
+                })
+                ->whereNull('asset_units.deleted_at')
+                ->where('asset_units.current_status', 'dipinjam')
+                ->whereNull('loans.id')
+                ->count();
+
+            $activeButUnusable = DB::table('asset_units')
+                ->whereNull('deleted_at')
+                ->where('current_status', 'aktif')
+                ->whereIn('current_condition', ['hilang', 'tidak_layak_pakai'])
+                ->count();
+
+            $issues = [];
+
+            if ($mismatchedStock > 0) {
+                $issues[] = "{$mismatchedStock} item individual dengan stok tidak sama dengan jumlah unit fisik";
+            }
+
+            if ($borrowedWithoutLoan > 0) {
+                $issues[] = "{$borrowedWithoutLoan} unit berstatus dipinjam tanpa peminjaman aktif";
+            }
+
+            if ($activeButUnusable > 0) {
+                $issues[] = "{$activeButUnusable} unit aktif dengan kondisi hilang/tidak layak pakai";
+            }
+
+            if ($issues === []) {
+                $this->line('  ✔ Tidak ada pelanggaran invarian data terdeteksi');
+
+                return;
+            }
+
+            $this->warnings[] = [
+                'ok' => false,
+                'label' => 'Invarian data perlu ditinjau: '.implode('; ', $issues).'.',
+                'fix' => 'Perbaiki lewat menu inventaris/peminjaman atau hubungi pengelola aplikasi.',
+            ];
+        } catch (Throwable $e) {
+            $this->warnings[] = [
+                'ok' => false,
+                'label' => 'Tidak dapat memeriksa invarian data: '.$e->getMessage(),
                 'fix' => 'Hubungi pengelola aplikasi.',
             ];
         }

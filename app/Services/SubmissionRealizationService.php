@@ -171,7 +171,7 @@ class SubmissionRealizationService
         $item->department = $submission->department;
         $item->location_id = $locationId;
         $item->current_condition = $condition;
-        $item->current_status = 'aktif';
+        $item->current_status = AssetUnit::normalizeInitialState($condition, 'aktif')['status'];
         $item->stock = 0;
         $item->save();
 
@@ -209,13 +209,15 @@ class SubmissionRealizationService
 
     private function registerAssetUnits(Item $item, int $quantity, ?int $locationId, string $condition, User $actor): void
     {
+        $initialStatus = AssetUnit::normalizeInitialState($condition, 'aktif')['status'];
+
         for ($i = 0; $i < $quantity; $i++) {
             $unit = AssetUnit::create([
                 'item_id' => $item->id,
                 'unit_inventory_number' => $this->generateUnitNumber($item),
                 'serial_number' => null,
                 'current_condition' => $condition,
-                'current_status' => 'aktif',
+                'current_status' => $initialStatus,
                 'location_id' => $locationId,
                 'is_legacy_migrated' => false,
             ]);

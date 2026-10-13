@@ -45,6 +45,33 @@ class AssetUnit extends Model
     public const LOANABLE_STATUSES = ['aktif'];
 
     /**
+     * Kondisi unit yang menghalangi peminjaman (pertahanan berlapis di samping
+     * status). Unit hilang / tidak layak pakai tidak boleh muncul di pilihan.
+     *
+     * @var array<int,string>
+     */
+    public const NON_LOANABLE_CONDITIONS = [AssetCondition::HILANG, AssetCondition::TIDAK_LAYAK_PAKAI];
+
+    /**
+     * Status yang boleh dihasilkan lewat registrasi/impor. `dipinjam` hanya
+     * dari alur peminjaman dan `disposed` hanya lewat aksi penghapusan unit.
+     *
+     * @var array<int,string>
+     */
+    public const IMPORTABLE_STATUSES = ['aktif', 'dalam_perbaikan', 'tidak_aktif'];
+
+    /**
+     * Kondisi hasil perbaikan yang diizinkan saat unit kembali aktif.
+     *
+     * @var array<int,string>
+     */
+    public const REACTIVATION_CONDITIONS = [
+        AssetCondition::BAIK,
+        AssetCondition::RUSAK_RINGAN,
+        AssetCondition::RUSAK_BERAT,
+    ];
+
+    /**
      * Status warna badge untuk tampilan UI.
      */
     public const STATUS_BADGE_COLORS = [
@@ -122,6 +149,10 @@ class AssetUnit extends Model
             return false;
         }
 
+        if (in_array($this->current_condition, self::NON_LOANABLE_CONDITIONS, true)) {
+            return false;
+        }
+
         return ! $this->loans()
             ->whereIn('status', Loan::STATUS_ACTIVE)
             ->exists();
@@ -142,6 +173,7 @@ class AssetUnit extends Model
     {
         return $query
             ->whereIn('current_status', self::LOANABLE_STATUSES)
+            ->whereNotIn('current_condition', self::NON_LOANABLE_CONDITIONS)
             ->whereDoesntHave('loans', fn ($q) => $q->whereIn('status', Loan::STATUS_ACTIVE));
     }
 
@@ -171,6 +203,40 @@ class AssetUnit extends Model
     }
 
     /**
+     * Satu tempat penegak invarian kondisi–status saat pembuatan unit
+     * (registrasi, impor, realisasi):
+     * - kondisi tak dikenal dikembalikan ke 'baik';
+     * - status di luar daftar yang boleh dibuat dipaksa ke 'aktif';
+     * - kondisi `hilang` / `tidak_layak_pakai` memaksa status `tidak_aktif`.
+     *
+     * @return array{condition:string,status:string,adjusted:bool}
+     */
+    public static function normalizeInitialState(?string $condition, ?string $status): array
+    {
+        $condition = AssetCondition::isValid($condition) ? (string) $condition : AssetCondition::BAIK;
+        $status = in_array($status, self::IMPORTABLE_STATUSES, true) ? (string) $status : 'aktif';
+        $adjusted = false;
+
+        $autoStatus = self::AUTO_STATUS_FOR_CONDITION[$condition] ?? null;
+
+        if ($autoStatus !== null && $status !== $autoStatus) {
+            $status = $autoStatus;
+            $adjusted = true;
+        }
+
+        return ['condition' => $condition, 'status' => $status, 'adjusted' => $adjusted];
+    }
+
+    /**
+     * Apakah status boleh dibuat lewat registrasi/impor (bukan alur pinjam /
+     * penghapusan)?
+     */
+    public static function isImportableStatus(?string $status): bool
+    {
+        return in_array($status, self::IMPORTABLE_STATUSES, true);
+    }
+
+    /**
      * Apakah unit sedang dipinjam (status 'dipinjam')?
      */
     public function isBorrowed(): bool
@@ -188,9 +254,9 @@ class AssetUnit extends Model
      *
      * @throws ValidationException
      */
-    public function changeStatus(string $newStatus, ?string $reason, User $actor): AssetUnitStatusHistory
+    public function changeStatus(string $newStatus, ?string $reason, User $actor, ?string $resultCondition = null): AssetUnitStatusHistory
     {
-        return DB::transaction(function () use ($newStatus, $reason, $actor) {
+        return DB::transaction(function () use ($newStatus, $reason, $actor, $resultCondition) {
             $locked = self::query()->lockForUpdate()->find($this->getKey());
 
             if (! $locked) {
@@ -228,6 +294,40 @@ class AssetUnit extends Model
             if ($newStatus === 'disposed' && trim((string) $reason) === '') {
                 throw ValidationException::withMessages([
                     'reason' => 'Alasan penghapusan wajib diisi.',
+                ]);
+            }
+
+            // Reaktivasi dari perbaikan: unit hanya boleh kembali aktif dengan
+            // kondisi layak (bawaan Baik).
+            if ($from === 'dalam_perbaikan' && $newStatus === 'aktif') {
+                $result = $resultCondition ?? AssetCondition::BAIK;
+
+                if (! in_array($result, self::REACTIVATION_CONDITIONS, true)) {
+                    throw ValidationException::withMessages([
+                        'result_condition' => 'Kondisi hasil perbaikan hanya boleh Baik, Rusak Ringan, atau Rusak Berat.',
+                    ]);
+                }
+
+                if ($result !== $locked->current_condition) {
+                    ConditionHistory::create([
+                        'item_id' => $locked->item_id,
+                        'asset_unit_id' => $locked->id,
+                        'from_condition' => $locked->current_condition,
+                        'to_condition' => $result,
+                        'user_id' => $actor->id,
+                        'notes' => $reason ? 'Kondisi hasil perbaikan: '.$reason : 'Kondisi hasil perbaikan unit '.$locked->unit_inventory_number,
+                        'recorded_at' => now(),
+                    ]);
+
+                    $locked->current_condition = $result;
+                    $locked->save();
+                }
+            }
+
+            // Invarian: unit aktif tidak boleh dalam kondisi hilang / tidak layak pakai.
+            if ($newStatus === 'aktif' && in_array((string) $locked->current_condition, self::NON_LOANABLE_CONDITIONS, true)) {
+                throw ValidationException::withMessages([
+                    'to_status' => 'Unit berkondisi '.AssetCondition::label($locked->current_condition).' tidak bisa diaktifkan. Perbarui kondisinya lebih dulu.',
                 ]);
             }
 

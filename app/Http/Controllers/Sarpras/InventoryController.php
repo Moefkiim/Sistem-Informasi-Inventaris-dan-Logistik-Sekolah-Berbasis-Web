@@ -255,7 +255,7 @@ class InventoryController extends Controller
             'asset_unit_id' => ['required', 'integer', Rule::exists('asset_units', 'id')],
             'to_status' => ['required', 'in:'.implode(',', array_keys(AssetUnit::STATUS_LABELS))],
             'reason' => ['required', 'string', 'max:500'],
-            'result_condition' => ['nullable', AssetCondition::rule()],
+            'result_condition' => ['nullable', Rule::in(AssetUnit::REACTIVATION_CONDITIONS)],
             'confirmed' => ['nullable', 'in:1,0,on'],
         ]);
 
@@ -279,34 +279,19 @@ class InventoryController extends Controller
 
             $from = (string) $unit->current_status;
 
-            // Reaktivasi dari perbaikan mewajibkan pemilihan kondisi hasil
-            // perbaikan (bawaan baik); dicatat sebagai riwayat kondisi.
-            if ($from === 'dalam_perbaikan' && $toStatus === 'aktif') {
-                $resultCondition = $validated['result_condition'] ?? AssetCondition::BAIK;
-
-                if ($resultCondition !== $unit->current_condition) {
-                    ConditionHistory::create([
-                        'item_id' => $item->id,
-                        'asset_unit_id' => $unit->id,
-                        'from_condition' => $unit->current_condition,
-                        'to_condition' => $resultCondition,
-                        'user_id' => $request->user()->id,
-                        'notes' => 'Kondisi hasil perbaikan unit '.$unit->unit_inventory_number,
-                        'recorded_at' => now(),
-                    ]);
-
-                    $unit->current_condition = $resultCondition;
-                    $unit->save();
-                }
-            }
-
-            $history = $unit->changeStatus($toStatus, $validated['reason'] ?? null, $request->user());
+            // Reaktivasi dari perbaikan, penegakan invarian kondisi–status, dan
+            // riwayat kondisi ditangani terpusat di AssetUnit::changeStatus.
+            $history = $unit->changeStatus(
+                $toStatus,
+                $validated['reason'] ?? null,
+                $request->user(),
+                $validated['result_condition'] ?? null,
+            );
 
             ActivityLog::log(
                 'unit_status_changed',
                 "Status unit {$unit->unit_inventory_number} ({$item->name}) diubah: "
-                    .(AssetUnit::STATUS_LABELS[$from] ?? $from).' → '.(AssetUnit::STATUS_LABELS[$toStatus] ?? $toStatus)
-                    .($history->reason ? ' ('.$history->reason.')' : ''),
+                    .(AssetUnit::STATUS_LABELS[$from] ?? $from).' → '.(AssetUnit::STATUS_LABELS[$toStatus] ?? $toStatus),
                 $unit,
                 ['current_status' => $from],
                 ['current_status' => $toStatus, 'asset_unit_status_history_id' => $history->id],

@@ -93,7 +93,7 @@ class InventoryImportController extends Controller
             ['Tahun Perolehan', 'Tidak', 'Angka 4 digit, contoh 2024.'],
             ['Harga Perolehan', 'Tidak', 'Angka tanpa simbol, contoh 8500000.'],
             ['Kondisi', 'Tidak', 'Salah satu: '.implode(', ', array_values(AssetCondition::LABELS)).'.'],
-            ['Status', 'Tidak', 'Bawaan Aktif. Salah satu: '.implode(', ', array_values(AssetUnit::STATUS_LABELS)).'.'],
+            ['Status', 'Tidak', 'Bawaan Aktif. Salah satu: '.implode(', ', array_map(fn ($status) => AssetUnit::STATUS_LABELS[$s = $status], AssetUnit::IMPORTABLE_STATUSES)).'. Kondisi Hilang / Tidak Layak Pakai otomatis menjadi Tidak Aktif. Status Dipinjam/Dihapuskan tidak boleh diimpor.'],
             ['Stok Awal', 'Tidak', 'Wajib untuk barang habis pakai.'],
             ['Stok Minimum', 'Tidak', 'Untuk barang habis pakai.'],
         ];

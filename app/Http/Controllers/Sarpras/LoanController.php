@@ -181,10 +181,10 @@ class LoanController extends Controller
                         ]);
                     }
 
-                    // Blokir unit yang tidak dalam status loanable (dalam_perbaikan, tidak_aktif, disposed)
-                    if (! in_array($unit->current_status, AssetUnit::LOANABLE_STATUSES, true)) {
+                    // Blokir unit yang tidak loanable (status atau kondisi tidak layak).
+                    if (! $unit->isAvailableForLoan() && ! Loan::where('asset_unit_id', $unit->id)->whereIn('status', Loan::STATUS_ACTIVE)->exists()) {
                         throw ValidationException::withMessages([
-                            'asset_unit_id' => 'Unit aset tidak tersedia (status: '.str_replace('_', ' ', $unit->current_status).').',
+                            'asset_unit_id' => 'Unit aset tidak tersedia (status: '.str_replace('_', ' ', (string) $unit->current_status).', kondisi: '.str_replace('_', ' ', (string) $unit->current_condition).').',
                         ]);
                     }
 

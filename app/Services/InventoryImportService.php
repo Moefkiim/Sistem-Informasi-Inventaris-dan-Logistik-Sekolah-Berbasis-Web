@@ -123,17 +123,20 @@ class InventoryImportService
     /**
      * @param  array<int,array<string,mixed>>  $items
      * @param  array<int,array<string,mixed>>  $errors
-     * @return array{items:array<int,array<string,mixed>>,errors:array<int,array<string,mixed>>,summary:array<string,int>}
+     * @param  array<int,array<string,mixed>>  $warnings
+     * @return array{items:array<int,array<string,mixed>>,errors:array<int,array<string,mixed>>,warnings:array<int,array<string,mixed>>,summary:array<string,int>}
      */
-    private function result(array $items, array $errors): array
+    private function result(array $items, array $errors, array $warnings = []): array
     {
         return [
             'items' => $items,
             'errors' => $errors,
+            'warnings' => $warnings,
             'summary' => [
                 'barang' => count($items),
                 'unit' => array_sum(array_map(fn ($group) => count($group['units']), $items)),
                 'errors' => count($errors),
+                'warnings' => count($warnings),
             ],
         ];
     }
@@ -224,12 +227,13 @@ class InventoryImportService
     /**
      * @param  array<int,array{row:int,cells:array<int,string>}>  $rows
      * @param  array<int,string>  $headerMap
-     * @return array{items:array<int,array<string,mixed>>,errors:array<int,array<string,mixed>>,summary:array<string,int>}
+     * @return array{items:array<int,array<string,mixed>>,errors:array<int,array<string,mixed>>,warnings:array<int,array<string,mixed>>,summary:array<string,int>}
      */
     private function build(array $rows, array $headerMap): array
     {
         $locations = Location::query()->pluck('id', 'name');
         $errors = [];
+        $warnings = [];
         $groups = [];
         $groupIndexByCode = [];
         $consumableCodes = [];
@@ -295,10 +299,23 @@ class InventoryImportService
             $status = $this->normalizeStatus($rawStatus);
 
             if ($rawStatus !== '' && $status === null) {
-                $add('Status', 'Status tidak dikenal. Nilai valid: '.implode(', ', array_values(AssetUnit::STATUS_LABELS)).'.');
+                $add('Status', 'Status tidak dikenal atau tidak boleh diimpor. Nilai valid: '.implode(', ', array_map(fn ($s) => AssetUnit::STATUS_LABELS[$s], AssetUnit::IMPORTABLE_STATUSES)).'. Status "Dipinjam"/"Dihapuskan" hanya lewat alur peminjaman/penghapusan.');
             }
 
             $status ??= 'aktif';
+
+            // Invarian kondisi–status: kondisi hilang / tidak layak pakai
+            // memaksa unit menjadi tidak aktif walau berkas menuliskan aktif.
+            $state = AssetUnit::normalizeInitialState($condition, $status);
+
+            if ($state['adjusted']) {
+                $warnings[] = [
+                    'row' => $rowNumber,
+                    'column' => 'Status',
+                    'message' => 'Baris '.$rowNumber.': kondisi '.AssetCondition::label($condition).' tidak boleh berstatus '.AssetUnit::STATUS_LABELS[$status].'; disimpan sebagai '.AssetUnit::STATUS_LABELS[$state['status']].'.',
+                ];
+                $status = $state['status'];
+            }
 
             $year = null;
 
@@ -429,7 +446,7 @@ class InventoryImportService
             $groups[] = $group;
         }
 
-        return $this->result($groups, $errors);
+        return $this->result($groups, $errors, $warnings);
     }
 
     private function normalizeItemType(string $value): ?string
@@ -459,7 +476,8 @@ class InventoryImportService
         $needle = strtolower(trim($value));
 
         foreach (AssetUnit::STATUS_LABELS as $canonical => $label) {
-            if ($needle === $canonical || $needle === strtolower($label)) {
+            if (($needle === $canonical || $needle === strtolower($label))
+                && AssetUnit::isImportableStatus($canonical)) {
                 return $canonical;
             }
         }

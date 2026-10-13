@@ -39,7 +39,7 @@ class InventoryRegistrationService
             $data['unit'] = $data['unit'] ?? 'Unit';
             $data['source'] = $data['source'] ?? 'pembelian';
             $data['current_condition'] = $condition;
-            $data['current_status'] = $data['current_status'] ?? 'aktif';
+            $data['current_status'] = AssetUnit::normalizeInitialState($condition, $data['current_status'] ?? null)['status'];
             $data['code'] = ! empty($data['code']) ? $data['code'] : $this->generateItemCode($data['department'] ?? null);
 
             $item = new Item($data);
@@ -98,7 +98,9 @@ class InventoryRegistrationService
     private function createUnit(Item $item, array $unitData, User $actor, string $condition, ?int $locationId): AssetUnit
     {
         $unitCondition = $this->normalizeCondition($unitData['current_condition'] ?? null) ?? $condition;
-        $status = $unitData['current_status'] ?? 'aktif';
+        $state = AssetUnit::normalizeInitialState($unitCondition, $unitData['current_status'] ?? null);
+        $unitCondition = $state['condition'];
+        $status = $state['status'];
         $unitLocation = $unitData['location_id'] ?? $locationId;
 
         $unit = AssetUnit::create([
