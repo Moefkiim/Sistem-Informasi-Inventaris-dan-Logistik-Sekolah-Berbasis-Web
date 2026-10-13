@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class AssetUnit extends Model
@@ -189,53 +190,86 @@ class AssetUnit extends Model
      */
     public function changeStatus(string $newStatus, ?string $reason, User $actor): AssetUnitStatusHistory
     {
-        $from = $this->current_status;
-        $item = $this->item;
+        return DB::transaction(function () use ($newStatus, $reason, $actor) {
+            $locked = self::query()->lockForUpdate()->find($this->getKey());
 
-        if ($from === 'disposed') {
-            throw ValidationException::withMessages([
-                'to_status' => 'Unit yang sudah dihapuskan bersifat final dan tidak dapat diubah lagi.',
-            ]);
-        }
-
-        if ($from === 'dipinjam') {
-            throw ValidationException::withMessages([
-                'to_status' => 'Unit sedang dipinjam, selesaikan pengembalian terlebih dahulu.',
-            ]);
-        }
-
-        if ($newStatus === $from) {
-            throw ValidationException::withMessages([
-                'to_status' => 'Status unit sudah '.self::STATUS_LABELS[$from].'.',
-            ]);
-        }
-
-        if (! self::canTransit($from, $newStatus)) {
-            throw ValidationException::withMessages([
-                'to_status' => 'Transisi status tidak diizinkan: '.self::STATUS_LABELS[$from].' → '.self::STATUS_LABELS[$newStatus].'.',
-            ]);
-        }
-
-        if ($newStatus === 'disposed' && trim((string) $reason) === '') {
-            throw ValidationException::withMessages([
-                'reason' => 'Alasan penghapusan wajib diisi.',
-            ]);
-        }
-
-        $this->current_status = $newStatus;
-        $this->save();
-
-        if ($newStatus === 'disposed') {
-            $item = $this->item;
-            if ($item) {
-                $item->stock = max(0, (int) $item->stock - 1);
-                $item->save();
+            if (! $locked) {
+                throw ValidationException::withMessages([
+                    'to_status' => 'Unit aset tidak ditemukan.',
+                ]);
             }
+
+            $from = (string) $locked->current_status;
+
+            if ($from === 'disposed') {
+                throw ValidationException::withMessages([
+                    'to_status' => 'Unit yang sudah dihapuskan bersifat final dan tidak dapat diubah lagi.',
+                ]);
+            }
+
+            if ($from === 'dipinjam') {
+                throw ValidationException::withMessages([
+                    'to_status' => 'Unit sedang dipinjam, selesaikan pengembalian terlebih dahulu.',
+                ]);
+            }
+
+            if ($newStatus === $from) {
+                throw ValidationException::withMessages([
+                    'to_status' => 'Status unit sudah '.self::STATUS_LABELS[$from].'.',
+                ]);
+            }
+
+            if (! self::canTransit($from, $newStatus)) {
+                throw ValidationException::withMessages([
+                    'to_status' => 'Transisi status tidak diizinkan: '.self::STATUS_LABELS[$from].' → '.self::STATUS_LABELS[$newStatus].'.',
+                ]);
+            }
+
+            if ($newStatus === 'disposed' && trim((string) $reason) === '') {
+                throw ValidationException::withMessages([
+                    'reason' => 'Alasan penghapusan wajib diisi.',
+                ]);
+            }
+
+            $locked->current_status = $newStatus;
+            $locked->save();
+
+            if ($newStatus === 'disposed') {
+                $this->decrementStockForDisposal($locked);
+            }
+
+            $locked->syncItemAggregate();
+
+            $history = $locked->writeStatusHistory($from, $newStatus, $reason, $actor->id);
+
+            $this->setRawAttributes($locked->getAttributes(), true);
+
+            return $history;
+        });
+    }
+
+    /**
+     * Kurangi stok master saat satu unit dihapuskan. Baris item dikunci dan
+     * dibaca ulang agar dua penghapusan unit yang sama tidak mengurangi stok
+     * dua kali. Stok yang tidak konsisten (0) menolak transaksi, bukan
+     * disembunyikan dengan `max(0, …)`.
+     */
+    private function decrementStockForDisposal(AssetUnit $unit): void
+    {
+        $item = Item::withTrashed()->whereKey($unit->item_id)->lockForUpdate()->first();
+
+        if (! $item) {
+            return;
         }
 
-        $this->syncItemAggregate();
+        if ((int) $item->stock <= 0) {
+            throw ValidationException::withMessages([
+                'to_status' => "Stok {$item->name} (0) tidak konsisten dengan jumlah unit fisik; penghapusan unit dibatalkan.",
+            ]);
+        }
 
-        return $this->writeStatusHistory($from, $newStatus, $reason, $actor->id);
+        $item->stock = (int) $item->stock - 1;
+        $item->save();
     }
 
     /**
@@ -246,18 +280,32 @@ class AssetUnit extends Model
      */
     public function applyLoanStatus(string $newStatus, ?string $reason, User $actor): void
     {
-        $from = $this->current_status;
+        DB::transaction(function () use ($newStatus, $reason, $actor) {
+            $locked = self::query()->lockForUpdate()->find($this->getKey());
 
-        if ($from === $newStatus) {
-            return;
-        }
+            if (! $locked) {
+                throw ValidationException::withMessages([
+                    'to_status' => 'Unit aset tidak ditemukan.',
+                ]);
+            }
 
-        $this->current_status = $newStatus;
-        $this->save();
+            $from = (string) $locked->current_status;
 
-        $this->syncItemAggregate();
+            if ($from === $newStatus) {
+                $this->setRawAttributes($locked->getAttributes(), true);
 
-        $this->writeStatusHistory($from, $newStatus, $reason, $actor->id);
+                return;
+            }
+
+            $locked->current_status = $newStatus;
+            $locked->save();
+
+            $locked->syncItemAggregate();
+
+            $locked->writeStatusHistory($from, $newStatus, $reason, $actor->id);
+
+            $this->setRawAttributes($locked->getAttributes(), true);
+        });
     }
 
     /**
@@ -298,26 +346,38 @@ class AssetUnit extends Model
      */
     public function changeCondition(string $newCondition, ?string $notes, User $actor): ConditionHistory
     {
-        $oldCondition = $this->current_condition;
+        return DB::transaction(function () use ($newCondition, $notes, $actor) {
+            $locked = self::query()->lockForUpdate()->find($this->getKey());
 
-        $history = ConditionHistory::create([
-            'item_id' => $this->item_id,
-            'asset_unit_id' => $this->id,
-            'from_condition' => $oldCondition,
-            'to_condition' => $newCondition,
-            'user_id' => $actor->id,
-            'notes' => $notes,
-            'recorded_at' => now(),
-        ]);
+            if (! $locked) {
+                throw ValidationException::withMessages([
+                    'to_condition' => 'Unit aset tidak ditemukan.',
+                ]);
+            }
 
-        $this->current_condition = $newCondition;
-        $this->save();
+            $from = (string) $locked->current_condition;
 
-        $autoStatus = self::AUTO_STATUS_FOR_CONDITION[$newCondition] ?? null;
-        if ($autoStatus && ! $this->isBorrowed() && $autoStatus !== $this->current_status) {
-            $this->changeStatus($autoStatus, 'Kondisi: '.(AssetCondition::label($newCondition) ?? $newCondition), $actor);
-        }
+            $history = ConditionHistory::create([
+                'item_id' => $locked->item_id,
+                'asset_unit_id' => $locked->id,
+                'from_condition' => $from,
+                'to_condition' => $newCondition,
+                'user_id' => $actor->id,
+                'notes' => $notes,
+                'recorded_at' => now(),
+            ]);
 
-        return $history;
+            $locked->current_condition = $newCondition;
+            $locked->save();
+
+            $autoStatus = self::AUTO_STATUS_FOR_CONDITION[$newCondition] ?? null;
+            if ($autoStatus && ! $locked->isBorrowed() && $autoStatus !== $locked->current_status) {
+                $locked->changeStatus($autoStatus, 'Kondisi: '.(AssetCondition::label($newCondition) ?? $newCondition), $actor);
+            }
+
+            $this->setRawAttributes($locked->getAttributes(), true);
+
+            return $history;
+        });
     }
 }

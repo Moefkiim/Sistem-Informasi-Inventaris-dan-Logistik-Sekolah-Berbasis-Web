@@ -265,16 +265,19 @@ class InventoryController extends Controller
             return back()->withErrors(['confirmed' => 'Wajib mencentang konfirmasi penghapusan aset di halaman inventaris.']);
         }
 
-        $unit = $item->assetUnits()->find((int) $validated['asset_unit_id']);
+        DB::transaction(function () use ($item, $toStatus, $validated, $request) {
+            $unit = AssetUnit::where('item_id', $item->id)
+                ->whereKey((int) $validated['asset_unit_id'])
+                ->lockForUpdate()
+                ->first();
 
-        if (! $unit) {
-            throw ValidationException::withMessages([
-                'asset_unit_id' => 'Unit aset tidak valid untuk barang ini.',
-            ]);
-        }
+            if (! $unit) {
+                throw ValidationException::withMessages([
+                    'asset_unit_id' => 'Unit aset tidak valid untuk barang ini.',
+                ]);
+            }
 
-        DB::transaction(function () use ($unit, $item, $toStatus, $validated, $request) {
-            $from = $unit->current_status;
+            $from = (string) $unit->current_status;
 
             // Reaktivasi dari perbaikan mewajibkan pemilihan kondisi hasil
             // perbaikan (bawaan baik); dicatat sebagai riwayat kondisi.
@@ -325,20 +328,25 @@ class InventoryController extends Controller
             ]);
         }
 
-        $unit = $item->assetUnits()->find((int) $validated['asset_unit_id']);
+        DB::transaction(function () use ($item, $validated, $request) {
+            $unit = AssetUnit::where('item_id', $item->id)
+                ->whereKey((int) $validated['asset_unit_id'])
+                ->lockForUpdate()
+                ->first();
 
-        if (! $unit) {
-            throw ValidationException::withMessages([
-                'asset_unit_id' => 'Unit aset tidak valid untuk barang ini.',
-            ]);
-        }
+            if (! $unit) {
+                throw ValidationException::withMessages([
+                    'asset_unit_id' => 'Unit aset tidak valid untuk barang ini.',
+                ]);
+            }
 
-        if ($unit->current_condition === $validated['to_condition']) {
-            return back()->withErrors(['msg' => 'Kondisi unit aset sama dengan kondisi saat ini.']);
-        }
+            if ($unit->current_condition === $validated['to_condition']) {
+                throw ValidationException::withMessages([
+                    'msg' => 'Kondisi unit aset sama dengan kondisi saat ini.',
+                ]);
+            }
 
-        DB::transaction(function () use ($item, $unit, $validated, $request) {
-            $oldCondition = $unit->current_condition;
+            $oldCondition = (string) $unit->current_condition;
             $history = $unit->changeCondition(
                 $validated['to_condition'],
                 $validated['notes'] ?? 'Pembaruan kondisi fisik unit aset',
