@@ -41,6 +41,10 @@ Sistem Informasi Inventaris dan Logistik Sekolah (SIILS) adalah aplikasi manajem
 | **Log Barang Masuk & Barang Keluar** | Transaksi pencatatan barang masuk (pembelian/bantuan) yang menambah stok dan barang keluar (rusak/pemusnahan) yang mengurangi stok. |
 | **Distribusi & Penyaluran** | Alokasi fisik inventaris ke ruangan atau unit kejuruan penerima beserta Berita Acara Penyaluran. |
 | **Tracking Riwayat Lokasi & Kondisi** | Pencatatan otomatis setiap perpindahan lokasi (`location_histories`) dan perubahan kondisi fisik (`condition_histories`). |
+| **Siklus Hidup Unit Aset** | Barang individual dilacak per unit fisik (`asset_units`) dengan **5 kondisi** (Baik, Rusak Ringan, Rusak Berat, Tidak Layak Pakai, Hilang) dan **status unit** (Aktif, Dipinjam, Dalam Perbaikan, Tidak Aktif, Dihapuskan) beserta transisi terverifikasi dan riwayat status (*append-only*). |
+| **Peminjaman & Deteksi Terlambat** | Peminjaman barang per unit/habis pakai dengan status keterlambatan yang dihitung konsisten (`Loan::scopeOverdue`) tanpa menulis apa pun pada request GET. |
+| **Impor Inventaris Massal** | Unggah `.xlsx`/`.csv` dengan pratinjau dan validasi **semua-atau-tidak** untuk memasukkan data awal dari spreadsheet. |
+| **Cadangan & Pemulihan** | Perintah `php artisan siils:backup`/`siils:restore` (round-trip teruji di MySQL 8.0 & MariaDB 10.11), rotasi log harian, dan peringatan backup kedaluwarsa lewat `siils:check`. |
 | **Manajemen Dokumen & BAST** | Unggah, pengunduhan aman, dan penghapusan dokumen pendukung (Nota, BAST, Foto) terorganisir per kategori. |
 | **Laporan Rekapitulasi & Mode Cetak** | Filter laporan berdasarkan jenis transaksi, rentang tanggal, dan jurusan yang dilengkapi halaman khusus siap cetak (*print mode*). |
 | **Manajemen Pengguna & Toggle Status** | Pengelolaan data staf pengguna oleh Sarpras termasuk pengaktifan dan penonaktifan akun pengguna. |
@@ -112,6 +116,32 @@ graph TD
     E -->|DB Transaction| F[Stok Item Terkini - Qty]
 ```
 *Penjelasan:* Perubahan stok barang masuk dan keluar diproses dalam satu transaksi database atomik untuk menjamin konsistensi stok.
+
+### (d) Siklus Hidup Unit Aset (Kondisi & Status)
+
+Barang bertipe **individual** dilacak per unit fisik pada tabel `asset_units`. Kondisi dan status unit adalah dua dimensi terpisah.
+
+**Kondisi** (5 nilai, sumber kebenaran `App\Support\AssetCondition`): `baik`, `rusak_ringan`, `rusak_berat`, `tidak_layak_pakai`, `hilang`.
+
+**Status unit** (`AssetUnit::STATUS_LABELS`) beserta transisi yang diizinkan — **hanya Sarpras**; Kajur dan Kepala Sekolah hanya membaca:
+
+| Dari | Ke | Aturan |
+|---|---|---|
+| `aktif` | `dalam_perbaikan` | Alasan wajib |
+| `dalam_perbaikan` | `aktif` | Wajib memilih kondisi hasil perbaikan (bawaan `baik`) |
+| `aktif`, `dalam_perbaikan` | `tidak_aktif` | Alasan wajib |
+| `tidak_aktif` | `aktif` | Alasan wajib (reaktivasi eksplisit) |
+| `aktif`, `dalam_perbaikan`, `tidak_aktif` | `disposed` | Alasan wajib, konfirmasi, **final** |
+| `dipinjam` | apa pun | **Ditolak** — selesaikan pengembalian lebih dulu |
+
+- Kondisi `hilang`/`tidak_layak_pakai` otomatis menjadikan unit `tidak_aktif` (tercatat di riwayat dengan alasan "Kondisi: …"); **ditolak** bila unit sedang `dipinjam`. Mengubah kondisi kembali ke `baik` **tidak** mengaktifkan ulang unit.
+- Pengembalian peminjaman menerima `baik`, `rusak_ringan`, `rusak_berat` (→ `dalam_perbaikan`) dan `tidak_layak_pakai` (→ `tidak_aktif`). `hilang` hanya lewat aksi di inventaris.
+- **Stok barang individual = jumlah unit non-`disposed`.** Menghapuskan unit mengurangi `items.stock` sebanyak 1 (tidak di bawah 0) tetapi baris unit tetap ada. Daftar dan ekspor menyembunyikan unit `disposed` secara bawaan kecuali filter status `disposed` dipilih.
+- Setiap perubahan status menulis riwayat *append-only* di `asset_unit_status_histories` (unit, barang, dari, ke, alasan, pengguna, waktu) dan tercatat juga pada riwayat aktivitas; ditampilkan sebagai linimasa di detail barang.
+
+### (e) Status Terlambat Peminjaman
+
+Status **Terlambat** dihitung *efektif* (bukan disimpan ulang) lewat `Loan::scopeOverdue()`: baris berstatus `dipinjam` **atau** `terlambat` yang `due_date`-nya lebih awal dari hari ini (zona waktu `Asia/Jakarta`), tanpa fungsi SQL khusus driver. Daftar peminjaman, laporan (filter, kartu ringkasan, hari terlambat), badge sidebar (`TaskOverview`), dan dashboard memakai scope ini. **Request GET tidak pernah menulis ke tabel `loans`** — tidak ada lagi "status terlambat baru muncul setelah daftar dibuka".
 
 ---
 
@@ -433,7 +463,7 @@ Sumber tunggal daftar jurusan berada di `config/departments.php` (helper `app/Su
 
 ## 7. Menjalankan Test
 
-Proyek ini dilengkapi suite pengujian otomatis berbasis PHPUnit (**317 test**) untuk menguji alur autentikasi, pembatasan hak akses antar peran, alur bisnis, logistik, laporan (termasuk Laporan Peminjaman dan Riwayat Kondisi), seeder demo, instalasi, dan lokalisasi. Suite yang sama dijalankan terhadap **SQLite (in-memory)** dan **MySQL/MariaDB sungguhan** di CI.
+Proyek ini dilengkapi suite pengujian otomatis berbasis PHPUnit (**376 test, 1601 asersi**) untuk menguji alur autentikasi, siklus hidup unit aset, keterlambatan peminjaman, backup/restore, impor inventaris, penjaga N+1, serta alur pengajuan, logistik, dan pelaporan. Suite dijalankan pada **SQLite 8.3/8.4**, **MySQL 8.0 8.3/8.4**, dan **MariaDB 10.11** (CI), ditambah job `browser-smoke` (Playwright/axe-core) serta uji round-trip backup pada MySQL/MariaDB.
 
 ### Perintah Pengujian
 
@@ -463,6 +493,11 @@ php artisan test
 | `tests/Feature/SubmissionNotificationTest.php` | Notifikasi dalam aplikasi untuk tiap peristiwa (diajukan, ditinjau, disetujui, ditolak, direalisasi) dan URL tujuan per peran. |
 | `tests/Feature/EndToEndWorkflowTest.php` | Alur menyeluruh lintas role (Kajur → Sarpras → Kepala Sekolah → realisasi; jalur penolakan + ajukan ulang), berjalan di SQLite & MySQL. |
 | `tests/Feature/InventoryImportTest.php` | Impor inventaris `.xlsx`/`.csv`: pembuatan barang & unit, kode otomatis, kesalahan bernomor baris, sifat semua-atau-tidak, duplikat kode/seri, batas ukuran/tipe/jumlah baris, rumus tidak dievaluasi, dan pembatasan akses hanya Sarpras. |
+| `tests/Feature/AssetUnitStatusLifecycleTest.php` | Siklus hidup unit aset: matriks transisi status (diizinkan/ditolak), unit `dipinjam` & `disposed` terkunci, `disposed` mengurangi stok, kondisi `hilang`/`tidak_layak_pakai` → `tidak_aktif`, riwayat status *append-only*, dan 403 untuk role selain Sarpras. |
+| `tests/Feature/AssetUnitConditionTest.php` | Perubahan kondisi unit per unit beserta riwayatnya (termasuk 5 nilai kondisi), unit lain tidak terpengaruh, dan fallback barang legacy tanpa unit. |
+| `tests/Feature/LoanOverdueStatusTest.php` | Terlambat efektif via `scopeOverdue`, batas hari jatuh tempo (`Asia/Jakarta`), daftar/laporan/ringkasan konsisten, dan bukti GET daftar peminjaman **tidak** menulis ke tabel `loans`. |
+| `tests/Feature/BackupRestoreCommandTest.php` | `siils:backup`/`siils:restore`: arsip + `manifest.json`, retensi, kredensial tidak bocor ke argumen proses, berkas sementara dibersihkan, round-trip di SQLite, dan penolakan restore di production tanpa `--force`. |
+| `tests/Feature/QueryBudgetTest.php` | Penjaga N+1: jumlah query identik pada 5 vs 25 baris untuk dashboard tiap role, daftar inventaris, detail barang, daftar peminjaman, riwayat aktivitas, notifikasi, dan seluruh jenis laporan (memakai `DB::listen`). |
 | `tests/Feature/LocalizationTest.php` | Pesan validasi, nama bulan grafik, dan teks paginasi berbahasa Indonesia. |
 
 > Untuk daftar lengkap, lihat folder `tests/Feature/` dan `tests/Unit/`.
@@ -513,6 +548,8 @@ php artisan test
 | `Location` | `locations` | Master lokasi gedung/ruangan/laboratorium. *SoftDeletes*. |
 | `LocationHistory` | `location_histories` | Riwayat transaksi mutasi lokasi perpindahan fisik barang. |
 | `ConditionHistory` | `condition_histories` | Riwayat pencatatan perubahan kondisi fisik barang. |
+| `AssetUnit` | `asset_units` | Unit fisik barang individual: `unit_inventory_number`, `serial_number`, `current_condition` (5 nilai), `current_status` (5 nilai), `location_id`. *SoftDeletes*. |
+| `AssetUnitStatusHistory` | `asset_unit_status_histories` | Riwayat *append-only* perubahan status unit (unit, barang, dari, ke, alasan, pengguna, waktu). |
 | `Document` | `documents` | Data meta dan path berkas fisik (Nota, BAST, Foto). *SoftDeletes*. |
 
 ---
@@ -521,10 +558,10 @@ php artisan test
 
 **Tersedia.** Repositori ini dilengkapi workflow GitHub Actions (`.github/workflows/tests.yml`) yang berjalan pada setiap `push` dan `pull_request` ke branch `main`:
 
-- **Job `SQLite`** — matriks **PHP 8.3 & 8.4**. Menjalankan `composer install`, `composer check-platform-reqs`, migrasi SQLite, lalu seluruh suite (`php artisan test`).
-- **Job `MySQL/MariaDB`** — matriks **`mysql:8.0` (PHP 8.4), `mariadb:10.11` (PHP 8.4), dan `mysql:8.0` (PHP 8.3)** memakai `services` dengan healthcheck. Menjalankan `composer install`, `composer check-platform-reqs`, lalu `php artisan siils:install --force` yang **membuat database secara otomatis**, memigrasi, dan mengisi data demo pada database sungguhan; dilanjutkan `php artisan siils:check`, pemanggilan `siils:install` kedua (membuktikan idempotensi), dan seluruh suite terhadap MySQL/MariaDB.
+- **Job `SQLite`** — matriks **PHP 8.3 & 8.4**. Menjalankan `composer install`, `composer check-platform-reqs`, migrasi SQLite, lalu seluruh suite (`php artisan test`). **Penjaga N+1 aktif**: saat test, `Model::preventLazyLoading()` melempar exception bila ada relasi diakses tanpa eager loading (`app/Providers/AppServiceProvider.php`), sehingga regresi N+1 langsung menggagalkan suite.
+- **Job `MySQL/MariaDB`** — matriks **`mysql:8.0` (PHP 8.4), `mariadb:10.11` (PHP 8.4), dan `mysql:8.0` (PHP 8.3)** memakai `services` dengan healthcheck. Menjalankan `composer install`, `composer check-platform-reqs`, lalu `php artisan siils:install --force` yang **membuat database secara otomatis**, memigrasi, dan mengisi data demo pada database sungguhan; dilanjutkan `php artisan siils:check`, pemanggilan `siils:install` kedua (membuktikan idempotensi), seluruh suite, dan **uji round-trip backup** (`ci/backup-roundtrip.sh`): isi data → `siils:backup` → hapus & buat ulang database → `siils:restore` → jumlah baris semua tabel (19 tabel) dan checksum tabel kunci (`users`, `items`, `asset_units`, `submissions`, `loans`, `activity_logs`) harus sama — diuji untuk **kedua jalur** (dump `mysqldump` otomatis dan dump PHP murni `--tanpa-mysqldump`).
 - **Job `Composer setup`** — **clone bersih tanpa `.env`** terhadap `mysql:8.0` (PHP 8.4). Menjalankan `composer setup` **persis seperti README** (membuat `.env` dari `.env.example`, `APP_KEY`, database, migrasi, dan seeder), lalu `php artisan siils:check`, dan **uji asap per role** (`DemoReadinessTest`: login Kajur, Sarpras, Kepala Sekolah, dan akun nonaktif).
-- **Job `Browser smoke`** — **verifikasi browser nyata** dengan Playwright/Python (bukan feature aplikasi, hanya untuk CI): menjalankan `php artisan serve`, `pip install playwright` + Chromium, lalu `python3 tests/Browser/smoke.py`. Skrip menelusuri halaman utama ketiga role (Kajur, Sarpras, Kepala Sekolah) pada viewport 1366×768, 768×1024, dan 375×812, memeriksa status 200, bebas `console.error`/`pageerror`, tanpa overflow horizontal (`scrollWidth <= clientWidth`), tanpa teks error ("SQLSTATE"/"Whoops"/"Exception"), serta menjalankan skenario interaktif (alur pengajuan → review → persetujuan → realisasi dengan kategori kosong, toggling mode existing/new, inisialisasi **Select2** pada dropdown barang, lonceng notifikasi, halaman 404/403 khusus, dan throttle setelah 6× login salah). Seluruh screenshot + trace diunggah sebagai artifact CI **`browser-smoke-artifacts`** (retensi 14 hari) beserta berkas indeks (role, halaman, viewport).
+- **Job `Browser smoke`** — **verifikasi browser nyata** dengan Playwright/Python (bukan feature aplikasi, hanya untuk CI): menjalankan `php artisan serve`, `pip install playwright` + Chromium, lalu `python3 tests/Browser/smoke.py`. Skrip menelusuri halaman ketiga role (Kajur, Sarpras, Kepala Sekolah) plus **semua jenis laporan beserta ekspor PDF/Excel/Cetak** pada viewport 1366×768, 768×1024, dan 375×812, memeriksa status 200, bebas `console.error`/`pageerror`, tanpa overflow horizontal (`scrollWidth <= clientWidth`), tanpa teks error ("SQLSTATE"/"Whoops"/"Exception"), serta menjalankan skenario interaktif (alur pengajuan → review → persetujuan → realisasi, aksi status unit, peminjaman terlambat, alur impor, toggling mode existing/new, inisialisasi **Select2**, lonceng notifikasi, halaman 404/403 khusus, dan throttle setelah 6× login salah). **Aksesibilitas:** `axe-core` dijalankan pada tiap halaman × viewport; temuan dikelompokkan per aturan ke `a11y-report.json` per halaman, dan dengan `A11Y_ENFORCE=true` job **gagal** bila ada temuan `serious`/`critical` (pengecualian hanya lewat `tests/Browser/a11y-allowlist.json` dengan alasan tertulis) — `moderate` hanya peringatan. Seluruh screenshot + trace + `INDEX.md` diunggah sebagai artifact CI **`browser-smoke-artifacts`** (retensi 14 hari).
 
 Workflow memastikan regresi terdeteksi — termasuk perbedaan perilaku MySQL vs SQLite — sebelum perubahan digabung ke `main`.
 
@@ -598,7 +635,9 @@ Workflow memastikan regresi terdeteksi — termasuk perbedaan perilaku MySQL vs 
 
 | Aspek Teknis | Status | Keterangan |
 |---|:---:|---|
-| **CI/CD** | ✅ Terpasang | Workflow GitHub Actions (`tests.yml`) menjalankan `php artisan test` otomatis pada push/PR ke `main`. |
+| **CI/CD** | ✅ Terpasang | Workflow GitHub Actions (`tests.yml`) menjalankan `php artisan test` otomatis pada push/PR ke `main` (SQLite 8.3/8.4, MySQL 8.0, MariaDB 10.11), job `browser-smoke` (Playwright + axe-core), job setup dari clone bersih, dan uji round-trip backup. |
+| **Penjaga N+1** | ✅ Aktif di test | `Model::preventLazyLoading()` melempar exception saat test, mencatat peringatan di `local`, dan nonaktif di production. `QueryBudgetTest` memastikan jumlah query konstan (5 vs 25 baris) pada halaman utama. |
+| **Aksesibilitas (CI)** | ✅ Ditegakkan | axe-core per halaman × viewport; temuan `serious`/`critical` menggagalkan job `browser-smoke` (allowlist hanya dengan alasan tertulis). Temuan awal 83 `serious` → 0. |
 | **Konsistensi CSS** | ✅ Terkonsolidasi | UI konsisten dengan gaya Metronic/Bootstrap 5; halaman `documents/index.blade.php` telah diseragamkan dan bebas dari Tailwind utility di area view terpakai. |
 | **Indeks Database** | ✅ Tersedia | Migration `2026_10_02_070437_add_indexes_to_core_tables` menambah indeks pada tabel inti (termasuk `items`, `submissions`, `submission_items`, dan `documents`) untuk optimasi query. |
 | **Catatan Desain yang Disengaja** | ✅ Tercatat | Field sensitif (`status`, `role`, `is_active`, dll.) sengaja dikeluarkan dari `$fillable` — controller (dan test yang memerlukan transisi state) WAJIB mengubahnya melalui set properti eksplisit (`$model->field = $value; $model->save()`) sesuai alur transisi yang benar, bukan via mass-assignment. |

@@ -1010,3 +1010,119 @@ d264d80  feat: laporan riwayat kondisi                                          
 4d238e6  fix(laporan): reorder sebelum groupBy aggregat kond (only_full_group_by)  -> run 38223711449 HIJAU
 ```
 
+---
+
+## 16. Penyempurnaan Tahap Akhir TASK 1–7 (siklus hidup unit aset, keterlambatan peminjaman, aksesibilitas, impor massal, cadangan, penjaga N+1) — 13 Okt 2026
+
+Prompt: `prompt-penyempurnaan-tahap-akhir.md`. TASK 1–6 adalah pekerjaan kode; TASK 7 adalah
+pembaruan dokumentasi ini. Semua commit ter-push; **seluruh 7 job CI hijau** pada run terakhir
+(`38361749790`). Test akhir: **376 test, 1601 asersi** hijau pada SQLite lokal maupun CI
+(SQLite 8.3/8.4, MySQL 8.0 PHP 8.3/8.4, MariaDB 10.11), ditambah job `browser-smoke`
+(Playwright + axe-core) dan uji round-trip cadangan.
+
+### 16.1 Status S1–S6
+
+Prompt memetakan enam area perbaikan sebagai S1–S6. Ringkasan:
+
+| ID | Cakupan | Status | Commit | Bukti (test gagal → hijau, run CI) |
+|---|---|---|---|---|
+| **S1** | **Siklus hidup unit aset** — 5 kondisi + status unit + matriks transisi + riwayat *append-only* (TASK 1) | **Selesai** | `9477f5b`, `f974659`, `d6bf578` | `AssetUnitStatusLifecycleTest` (24 test: matriks transisi izin/tolak, unit `dipinjam` tak bisa diubah, `disposed` final & mengurangi stok, kondisi `hilang`/`tidak_layak_pakai` → `tidak_aktif`, riwayat tercatat, 403 role lain), `AssetUnitConditionTest` (7), `AssetUnitReportTest` (4), `AssetUnitAvailabilityTest` (19) — semua **gagal sebelum → hijau sesudah**. CI run `38249678726` & `38253349303` **hijau** |
+| **S2** | **Status terlambat peminjaman** efektif via `Loan::scopeOverdue()` tanpa tulis di GET (TASK 2) | **Selesai** | `e89e711` | `LoanOverdueStatusTest` (7): batas hari jatuh tempo zona `Asia/Jakarta`, `terlambat` lama tetap dihitung, daftar/laporan/ringkasan konsisten, dan `test_get_daftar_peminjaman_tidak_menulis_ke_tabel_loans` — **gagal sebelum, hijau sesudah**. CI run `38252220091` **hijau** |
+| **S3** | **Aksesibilitas & verifikasi browser** — axe-core ditegakkan di CI (TASK 5) | **Selesai** | `c3eba08`, `1cc6da5`, `a90eba0` | Temuan axe **272 → 189**, `serious` **83 → 0** (lihat §16.2). `A11Y_ENFORCE=true` + allowlist kosong (`tests/Browser/a11y-allowlist.json`). CI run `38325484587` **merah = bukti gagal dulu** (7 sisa `color-contrast`) → `38357080178` **hijau** |
+| **S4** | **Impor inventaris massal** `.xlsx`/`.csv` (TASK 4) | **Selesai** | `a16880a` | `InventoryImportTest` (9): pembuatan barang & unit, kode otomatis, pratinjau semua-atau-tidak, kesalahan bernomor baris, duplikat kode/seri, batas ukuran/tipe/jumlah, rumus tidak dievaluasi, akses hanya Sarpras — **hijau**. CI run `38262670673` **hijau** |
+| **S5** | **Cadangan/restore, rotasi log, panduan sekolah** (TASK 3) | **Selesai** | `28bdb02`, `5962b24`, `5f48d37`, `2c8775f` | `BackupRestoreCommandTest` (8) hijau; **uji round-trip nyata** di CI membandingkan 19 tabel + checksum tabel kunci pada MySQL 8.0 & MariaDB 10.11 untuk kedua jalur dump (lihat §16.3). CI run `38257017369` **merah = bukti gagal dulu** (deteksi `mysqldump`) → `38262333408` & `38361749790` **hijau** |
+| **S6** | **Penjaga N+1 & anggaran query** (TASK 6) | **Selesai** | `336aafb` | `QueryBudgetTest` (9 test, 60 asersi): jumlah query **identik** pada 5 vs 25 baris untuk dashboard tiap role, daftar inventaris, detail barang, daftar peminjaman, riwayat aktivitas, notifikasi, dan seluruh jenis laporan (lihat §16.4). CI run `38361749790` **hijau** |
+
+**HEAD kode akhir:** `336aafbe13016917c006270af59b204291238078` — `git rev-parse HEAD` identik dengan
+`git rev-parse origin/main` saat commit dokumentasi ini dibuat (commit dokumentasi berada di atasnya).
+`git status --short` bersih; hanya `prompt-penyempurnaan-tahap-akhir.md` (di luar repo) dan
+`tests/Browser/__pycache__/` yang memang tidak di-commit.
+
+### 16.2 Aksesibilitas & verifikasi browser (TASK 5) — bukti sebelum/sesudah
+
+| Tahap | Run / Commit | Total temuan | `serious`/`critical` | `moderate` | Artefak |
+|---|---|---:|---|---:|---|
+| Sebelum | `38273789037` / `c3eba08` | 272 | **83** (link-name 42, scrollable-region-focusable 26, color-contrast 15) | 189 (heading-order 63, landmark-one-main 63, region 63) | `opencode-ci-art0` |
+| Setelah fix tahap-1 | `38325484587` / `1cc6da5` | 196 | **7** (color-contrast) — job **gagal** | 189 | `opencode-ci-art` |
+| Setelah final | `38357080178` / `a90eba0` | 189 | **0** | 189 | `opencode-ci-art2` |
+
+Perbaikan: `aria-label="Akun Saya"` pada link profil (`resources/views/layouts/app.blade.php`),
+`tabindex="0" role="region" aria-label` pada `.table-responsive` (`resources/views/reports/index.blade.php`),
+CSS `.badge.badge-light { color: #4b5675 !important; }`, dan override warna `.menu-title` pada sidebar
+`.aside-dark` menjadi `#e4e6ef` untuk memenuhi rasio kontras. `moderate` yang tersisa sengaja **tidak**
+dikejar pada tahap ini (bukan penghalang, dan sebagian struktural); hanya temuan `serious`/`critical`
+yang men-gagalkan job.
+
+### 16.3 Cadangan/restore round-trip nyata (TASK 3)
+
+Pada run `38361749790`, job `MySQL/MariaDB (mysql:8.0, PHP 8.4)` (`115177331459`) dan
+`MySQL/MariaDB (mariadb:10.11, PHP 8.4)` (`115177331141`) menjalankan `ci/backup-roundtrip.sh`:
+isi data → `siils:backup` → hapus & buat ulang database → `siils:restore` → bandingkan jumlah
+baris semua tabel (19 tabel) dan checksum tabel kunci. Kedua job mencetak
+`[dump-otomatis] OK - 19 tabel cocok` dan `[dump-php-portabel] OK - 19 tabel cocok`
+("Semua uji round-trip cadangan lulus") untuk **kedua jalur** dump. Tabel kunci:
+`users`, `items`, `asset_units`, `submissions`, `loans`, `activity_logs`; tabel teknis dikecualikan:
+`sessions`, `cache`, `cache_locks`, `jobs`, `job_batches`, `failed_jobs`.
+
+### 16.4 Penjaga N+1 dan anggaran query (TASK 6)
+
+- **Guard:** `AppServiceProvider::bootLazyLoadingGuard()` — saat test (`runningUnitTests()`)
+  `Model::preventLazyLoading(true)` sehingga relasi tanpa eager loading melempar exception dan
+  menggagalkan suite; pada `local` hanya menulis peringatan ke log; produksi tidak terpengaruh.
+- **Eager loading** diperbaiki pada `Sarpras\LoanController` (`assetUnit`), serta `Kajur\SubmissionController`,
+  `Sarpras\SubmissionController`, dan `Principal\ApprovalController` (`items.item`). Tiga test yang
+  mengakses relasi langsung ikut diperbaiki (`DemoDataSeederTest`, `EndToEndWorkflowTest`,
+  `SubmissionRealizationTest`).
+- **Anggaran query** (jumlah query identik pada 5 vs 25 baris) terverifikasi lewat `DB::listen`:
+  Dashboard kajur/sarpras/kepsek **14**; daftar inventaris **7**; detail barang **15**; daftar
+  peminjaman **8**; riwayat aktivitas **7**; notifikasi **5**; laporan inventaris **12**,
+  incoming **10**, outgoing **10**, distribution **11**, submission **11**, loan **11**, condition **10**.
+
+### 16.5 Keputusan dan asumsi yang (semula) salah
+
+- **TASK 4 dikerjakan sebagai satu commit (`a16880a`), bukan tiga** (layanan; antarmuka; dokumentasi)
+  seperti pada contoh prompt baris 98. Isi pekerjaan lengkap dan teruji; hanya granularitas commit
+  yang berbeda. Dicatat sebagai deviasi sadar.
+- **TASK 3:** asumsi awal memanggil `mysqldump` lewat eksekusi shell gagal di runner (CI `38257017369`
+  merah, 3 job MySQL/MariaDB). Diperbaiki pada `2c8775f` dengan mendeteksi/menjalankan `mysqldump`
+  lewat Symfony Process dan menyediakan jalur dump PHP murni (`--tanpa-mysqldump`).
+- **TASK 5:** dugaan awal bahwa `color-contrast` bersumber dari item menu aktif ("Laporan & Rekap")
+  **keliru** — node yang disorot axe adalah item sidebar non-aktif ("Dokumen & Berkas"). Karena akar
+  penyebab pasti sulit dipastikan, dipakai solusi aman: menaikkan kontras **seluruh** `.menu-title`
+  sidebar pada `.aside-dark` menjadi `#e4e6ef`, sehingga temuan `serious` menjadi 0.
+
+### 16.6 Hal yang tidak bisa diverifikasi secara otomatis / keterbatasan
+
+- **Uji manual Laragon / MySQL Windows** tetap menjadi tanggung jawab pemilik; lingkungan ini WSL2
+  tanpa Laragon.
+- **Pemeriksaan visual "dengan mata"** atas screenshot tidak mungkin di sini; kebenaran visual
+  ditegakkan lewat asersi DOM + laporan axe di artefak CI (`browser-smoke-artifacts`).
+- **Playwright lokal** tidak dijalankan (Chromium/pip tidak tersedia); seluruh verifikasi browser
+  hanya lewat CI, sesuai izin prompt.
+- **`php artisan view:cache` gagal di lingkungan lokal** karena komponen `laravel-exceptions-renderer`
+  tidak ada di instalasi ini — quirk lingkungan, **tidak** memengaruhi CI (yang hijau).
+- **`BackupRestoreCommandTest::test_backup_menyertakan_berkas_dokumen_privat_dan_dapat_dilewati`**
+  sempat gagal flaky sekali (berkas sementara), namun lolos pada re-run dan pada run CI; bukan regresi
+  dari TASK 6.
+
+### 16.7 Ringkasan commit dan CI sesi ini
+
+```
+9477f5b  feat: siklus hidup unit aset (kondisi & status)                        -> run 38249678726 HIJAU
+f974659  fix: penyempurnaan siklus unit aset                                    -> (bagian 9477f5b..d6bf578)
+d6bf578  test: perluas cakupan status unit & laporan                            -> run 38253349303 HIJAU
+e89e711  fix: status terlambat peminjaman efektif (scopeOverdue)                -> run 38252220091 HIJAU
+28bdb02  feat: perintah cadangan (siils:backup)                                 -> (bagian TASK 3)
+5962b24  feat: perintah pemulihan (siils:restore) + rotasi log                  -> (bagian TASK 3)
+5f48d37  ci: uji round-trip cadangan                                            -> run 38257017369 MERAH (deteksi mysqldump)
+2c8775f  fix: deteksi & jalankan mysqldump via Symfony Process                  -> run 38262333408 HIJAU
+a16880a  feat: impor inventaris massal (xlsx/csv)                               -> run 38262670673 HIJAU
+c3eba08  feat(a11y): axe-core di browser-smoke + perbaikan label/region         -> run 38273789037 HIJAU (baseline 83 serious)
+1cc6da5  fix(a11y): kontras sidebar & badge-light + A11Y_ENFORCE                -> run 38325484587 MERAH (bukti gagal dulu, 7 serious)
+a90eba0  fix(a11y): kontras menu-title sidebar aside-dark                       -> run 38357080178 HIJAU (0 serious)
+336aafb  fix: guard N+1 + eager loading + QueryBudgetTest                       -> run 38361749790 HIJAU
+```
+
+**Run CI terakhir:** `38361749790` — 7/7 job **hijau** (SQLite 8.3, SQLite 8.4, MySQL 8.0 PHP 8.3,
+MySQL 8.0 PHP 8.4, MariaDB 10.11, Composer setup dari clone bersih, Browser smoke).
+
