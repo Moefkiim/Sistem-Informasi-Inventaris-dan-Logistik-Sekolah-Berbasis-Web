@@ -190,6 +190,37 @@ class BackupRestoreCommandTest extends TestCase
         $this->assertStringContainsString("'b'", $statements[1]);
     }
 
+    public function test_restore_melewati_entri_arsip_dengan_path_tidak_aman(): void
+    {
+        $safeRelative = 'documents/aman-'.bin2hex(random_bytes(4)).'.txt';
+        $safeAbsolute = storage_path('app/private/'.$safeRelative);
+        $evilAbsolute = storage_path('app/private/evil.txt');
+
+        $zipPath = $this->backupDirectory.'/manual.zip';
+        $zip = new ZipArchive;
+        $zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE);
+        $zip->addFromString('database.sqlite', (string) file_get_contents($this->databaseFile));
+        $zip->addFromString('files/'.$safeRelative, 'isi aman');
+        $zip->addFromString('files/../../evil.txt', 'isi jahat');
+        $zip->close();
+
+        @unlink($evilAbsolute);
+        @unlink($safeAbsolute);
+
+        try {
+            $this->artisan('siils:restore', ['file' => $zipPath, '--force' => true])
+                ->expectsOutputToContain('dilewati')
+                ->assertExitCode(0);
+
+            $this->assertFileDoesNotExist($evilAbsolute);
+            $this->assertFileExists($safeAbsolute);
+        } finally {
+            @unlink($zipPath);
+            @unlink($evilAbsolute);
+            @unlink($safeAbsolute);
+        }
+    }
+
     /**
      * @return array<int,string>
      */

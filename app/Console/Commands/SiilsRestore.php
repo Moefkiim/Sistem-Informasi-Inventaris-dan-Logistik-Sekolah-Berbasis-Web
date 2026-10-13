@@ -66,7 +66,11 @@ class SiilsRestore extends Command
 
         $this->components->info('Pemulihan selesai.');
         $this->line('  Database  : '.$snapshot->databaseName().' ('.$snapshot->driver().')');
-        $this->line('  Dokumen   : '.$files.' berkas dipulihkan');
+        $this->line('  Dokumen   : '.$files['restored'].' berkas dipulihkan');
+
+        if ($files['rejected'] > 0) {
+            $this->components->warn($files['rejected'].' entri arsip dilewati karena nama/berkas tidak aman ('.implode(', ', array_slice($files['names'], 0, 5)).(count($files['names']) > 5 ? ', …' : '').').');
+        }
 
         return self::SUCCESS;
     }
@@ -195,10 +199,15 @@ class SiilsRestore extends Command
         return true;
     }
 
-    private function restoreDocuments(ZipArchive $zip): int
+    /**
+     * @return array{restored:int,rejected:int,names:array<int,string>}
+     */
+    private function restoreDocuments(ZipArchive $zip): array
     {
         $root = storage_path('app/private');
         $restored = 0;
+        $rejected = 0;
+        $names = [];
 
         for ($i = 0; $i < $zip->numFiles; $i++) {
             $entry = (string) $zip->getNameIndex($i);
@@ -208,12 +217,23 @@ class SiilsRestore extends Command
             }
 
             $relative = substr($entry, strlen('files/'));
+            $safe = $this->safeRelativePath($relative);
 
-            if ($relative === '' || str_contains($relative, '..')) {
+            if ($safe === null) {
+                $rejected++;
+                $names[] = $entry;
+
                 continue;
             }
 
-            $target = $root.DIRECTORY_SEPARATOR.str_replace('/', DIRECTORY_SEPARATOR, $relative);
+            $target = $root.DIRECTORY_SEPARATOR.str_replace('/', DIRECTORY_SEPARATOR, $safe);
+
+            if (! $this->isWithinRoot($root, $target)) {
+                $rejected++;
+                $names[] = $entry;
+
+                continue;
+            }
 
             if (! File::isDirectory(dirname($target))) {
                 File::makeDirectory(dirname($target), 0755, true);
@@ -222,6 +242,9 @@ class SiilsRestore extends Command
             $contents = $zip->getFromIndex($i);
 
             if ($contents === false) {
+                $rejected++;
+                $names[] = $entry;
+
                 continue;
             }
 
@@ -231,6 +254,39 @@ class SiilsRestore extends Command
 
         DB::purge();
 
-        return $restored;
+        return ['restored' => $restored, 'rejected' => $rejected, 'names' => $names];
+    }
+
+    /**
+     * Validasi path per segmen: tolak segmen kosong, ".", "..", pemisah
+     * Windows, karakter NUL, dan huruf drive. Mengembalikan path relatif yang
+     * sudah dinormalisasi atau null bila tidak aman.
+     */
+    private function safeRelativePath(string $relative): ?string
+    {
+        if ($relative === '' || str_contains($relative, "\0") || str_contains($relative, '\\')) {
+            return null;
+        }
+
+        $segments = explode('/', $relative);
+
+        foreach ($segments as $segment) {
+            if ($segment === '' || $segment === '.' || $segment === '..') {
+                return null;
+            }
+
+            if (preg_match('/^[A-Za-z]:$/', $segment) === 1) {
+                return null;
+            }
+        }
+
+        return implode('/', $segments);
+    }
+
+    private function isWithinRoot(string $root, string $target): bool
+    {
+        $root = rtrim($root, DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR;
+
+        return str_starts_with($target, $root);
     }
 }
