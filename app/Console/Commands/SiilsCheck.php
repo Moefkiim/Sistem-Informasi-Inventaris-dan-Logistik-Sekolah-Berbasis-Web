@@ -269,6 +269,8 @@ class SiilsCheck extends Command
         }
 
         try {
+            // Diselesaikan di PHP (get + count) agar tidak memakai SELECT * di
+            // subkueri agregat — MySQL menolak kolom `id` ganda dari join.
             $mismatchedStock = DB::table('items')
                 ->leftJoin('asset_units', function ($join) {
                     $join->on('asset_units.item_id', '=', 'items.id')
@@ -279,17 +281,19 @@ class SiilsCheck extends Command
                 ->whereNull('items.deleted_at')
                 ->groupBy('items.id', 'items.stock')
                 ->havingRaw('items.stock <> count(asset_units.id)')
+                ->get(['items.id'])
                 ->count();
 
             $borrowedWithoutLoan = DB::table('asset_units')
-                ->leftJoin('loans', function ($join) {
-                    $join->on('loans.asset_unit_id', '=', 'asset_units.id')
+                ->whereNull('deleted_at')
+                ->where('current_status', 'dipinjam')
+                ->whereNotExists(function ($query) {
+                    $query->select(DB::raw(1))
+                        ->from('loans')
+                        ->whereColumn('loans.asset_unit_id', 'asset_units.id')
                         ->whereIn('loans.status', ['menunggu', 'disetujui', 'dipinjam', 'terlambat'])
                         ->whereNull('loans.deleted_at');
                 })
-                ->whereNull('asset_units.deleted_at')
-                ->where('asset_units.current_status', 'dipinjam')
-                ->whereNull('loans.id')
                 ->count();
 
             $activeButUnusable = DB::table('asset_units')

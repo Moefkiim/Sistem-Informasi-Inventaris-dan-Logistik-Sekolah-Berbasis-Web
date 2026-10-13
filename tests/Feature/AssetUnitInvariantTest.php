@@ -165,6 +165,10 @@ class AssetUnitInvariantTest extends TestCase
             'current_status' => 'aktif',
             'current_condition' => AssetCondition::HILANG,
         ]);
+        AssetUnit::factory()->for(Item::factory()->individual()->create())->create([
+            'current_status' => 'dipinjam',
+            'current_condition' => AssetCondition::BAIK,
+        ]);
 
         $this->artisan('siils:check')
             ->expectsOutputToContain('Invarian data perlu ditinjau')
