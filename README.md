@@ -463,7 +463,7 @@ Sumber tunggal daftar jurusan berada di `config/departments.php` (helper `app/Su
 
 ## 7. Menjalankan Test
 
-Proyek ini dilengkapi suite pengujian otomatis berbasis PHPUnit (**376 test, 1601 asersi**) untuk menguji alur autentikasi, siklus hidup unit aset, keterlambatan peminjaman, backup/restore, impor inventaris, penjaga N+1, serta alur pengajuan, logistik, dan pelaporan. Suite dijalankan pada **SQLite 8.3/8.4**, **MySQL 8.0 8.3/8.4**, dan **MariaDB 10.11** (CI), ditambah job `browser-smoke` (Playwright/axe-core) serta uji round-trip backup pada MySQL/MariaDB.
+Proyek ini dilengkapi suite pengujian otomatis berbasis PHPUnit (**392 test, 1651 asersi**) untuk menguji alur autentikasi, siklus hidup unit aset, keterlambatan peminjaman, backup/restore, impor inventaris, penjaga N+1, serta alur pengajuan, logistik, dan pelaporan. Suite dijalankan pada **SQLite 8.3/8.4**, **MySQL 8.0 8.3/8.4**, dan **MariaDB 10.11** (CI), ditambah job `browser-smoke` (Playwright/axe-core) serta uji round-trip backup pada MySQL/MariaDB.
 
 ### Perintah Pengujian
 
@@ -496,8 +496,12 @@ php artisan test
 | `tests/Feature/AssetUnitStatusLifecycleTest.php` | Siklus hidup unit aset: matriks transisi status (diizinkan/ditolak), unit `dipinjam` & `disposed` terkunci, `disposed` mengurangi stok, kondisi `hilang`/`tidak_layak_pakai` → `tidak_aktif`, riwayat status *append-only*, dan 403 untuk role selain Sarpras. |
 | `tests/Feature/AssetUnitConditionTest.php` | Perubahan kondisi unit per unit beserta riwayatnya (termasuk 5 nilai kondisi), unit lain tidak terpengaruh, dan fallback barang legacy tanpa unit. |
 | `tests/Feature/LoanOverdueStatusTest.php` | Terlambat efektif via `scopeOverdue`, batas hari jatuh tempo (`Asia/Jakarta`), daftar/laporan/ringkasan konsisten, dan bukti GET daftar peminjaman **tidak** menulis ke tabel `loans`. |
-| `tests/Feature/BackupRestoreCommandTest.php` | `siils:backup`/`siils:restore`: arsip + `manifest.json`, retensi, kredensial tidak bocor ke argumen proses, berkas sementara dibersihkan, round-trip di SQLite, dan penolakan restore di production tanpa `--force`. |
+| `tests/Feature/BackupRestoreCommandTest.php` | `siils:backup`/`siils:restore`: arsip + `manifest.json`, retensi, kredensial tidak bocor ke argumen proses, berkas sementara dibersihkan, round-trip di SQLite, penolakan restore di production tanpa `--force`, dan penolakan entri arsip dengan path tidak aman (`../`) dengan laporan jumlah dilewati. |
 | `tests/Feature/QueryBudgetTest.php` | Penjaga N+1: jumlah query identik pada 5 vs 25 baris untuk dashboard tiap role, daftar inventaris, detail barang, daftar peminjaman, riwayat aktivitas, notifikasi, dan seluruh jenis laporan (memakai `DB::listen`). |
+| `tests/Feature/QueryBudgetTest.php` | Penjaga N+1: jumlah query identik pada 5 vs 25 baris untuk dashboard tiap role, daftar inventaris, detail barang, daftar peminjaman, riwayat aktivitas, notifikasi, dan seluruh jenis laporan (memakai `DB::listen`). |
+| `tests/Feature/AssetUnitConcurrencyTest.php` | Konkurensi status unit: instansi model basi tidak mengurangi stok dua kali, tidak menimpa unit yang sudah dipinjam, dan selalu memakai status terbaru dari database (baris dikunci). |
+| `tests/Feature/AssetUnitInvariantTest.php` | Invarian kondisi–status: reaktivasi perbaikan menolak kondisi hasil tidak layak, unit hilang/tidak layak tidak dapat diaktifkan maupun dipinjam, impor menolak status `dipinjam`/`disposed` (kondisi `hilang` dipaksa `tidak_aktif` + peringatan), dan `siils:check` melaporkan pelanggaran invarian. |
+| `tests/Feature/ImportPreviewHygieneTest.php` | Higiene berkas pratinjau impor: berkas kedaluwarsa (>24 jam) dibersihkan otomatis, berkas terbaru dipertahankan, dan konfirmasi/unduh kesalahan hanya boleh oleh pengunggah (pengguna lain 404). |
 | `tests/Feature/LocalizationTest.php` | Pesan validasi, nama bulan grafik, dan teks paginasi berbahasa Indonesia. |
 
 > Untuk daftar lengkap, lihat folder `tests/Feature/` dan `tests/Unit/`.

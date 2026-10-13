@@ -1126,3 +1126,55 @@ a90eba0  fix(a11y): kontras menu-title sidebar aside-dark                       
 **Run CI terakhir:** `38361749790` — 7/7 job **hijau** (SQLite 8.3, SQLite 8.4, MySQL 8.0 PHP 8.3,
 MySQL 8.0 PHP 8.4, MariaDB 10.11, Composer setup dari clone bersih, Browser smoke).
 
+---
+
+## 17. Perbaikan Hasil Review Kode — N1–N5 (konkurensi, invarian kondisi–status, impor, restore) — 13 Okt 2026
+
+Prompt review menemukan tiga masalah nyata dan dua pengerasan: **N1** race condition yang dapat
+mengurangi stok dua kali, **N2** pelanggaran aturan kondisi–status (unit `hilang`/`tidak_layak_pakai`
+tetap `aktif` / dapat dipinjam), **N3** jalan buntu status terlarang lewat impor, **N4** pengerasan
+impor (pemuatan berkas besar, sisa pratinjau, kepemilikan berkas), dan **N5** validasi path saat
+restore. Semua dikerjakan *test-first* (bukti gagal → hijau). HEAD kode: `572b6f1`. Test akhir:
+**392 test, 1651 asersi** hijau pada SQLite lokal maupun CI.
+
+### 17.1 Status N1–N5
+
+| ID | Temuan | Perbaikan | Commit | Bukti (gagal → hijau) |
+|---|---|---|---|---|
+| **N1** | Perubahan status/kondisi unit memakai instansi model basi → stok bisa berkurang dua kali saat `disposed`, atau status menimpa perubahan lain | `changeStatus()`, `applyLoanStatus()`, `changeCondition()` dibungkus `DB::transaction` + `lockForUpdate()` dan selalu membaca status terbaru; `decrementStockForDisposal()` menolak stok tak konsisten (bukan `max(0, …)`); `InventoryController::updateStatus`/`updateUnitCondition` memindahkan pencarian unit ke dalam transaksi berkunci | `cb06f90` | `AssetUnitConcurrencyTest` (4 test): **3/4 gagal** pada kode pra-perbaikan (dispose ganda, instance basi menimpa unit `dipinjam`, status basi) → **hijau**. CI run `38377776477` **hijau** |
+| **N2** | Kondisi `hilang`/`tidak_layak_pakai` tidak memaksa status `tidak_aktif`; unit tak layak tetap bisa dipinjam/diaktifkan | `AssetUnit::normalizeInitialState()` dipakai terpusat pada registrasi/impor/realisasi; `changeStatus()` menerima `resultCondition` (whitelist hasil perbaikan) dan menolak `aktif` untuk kondisi tak layak; `scopeLoanable()`/`isAvailableForLoan()` juga mengecualikan kondisi tak layak; `siils:check` memeriksa invarian data | `33af222` | `AssetUnitInvariantTest` (7 test): **7/7 gagal** pra-perbaikan → **hijau** |
+| **N3** | Impor menerima status `dipinjam`/`disposed` (jalan buntu: unit terpinjam tanpa peminjaman) | `InventoryImportService::normalizeStatus()` hanya menerima `AssetUnit::IMPORTABLE_STATUSES` (`aktif`, `dalam_perbaikan`, `tidak_aktif`); kondisi tak layak dipaksa `tidak_aktif` dan dilaporkan sebagai **peringatan** di pratinjau (`warnings`) | `33af222` | Bagian dari `AssetUnitInvariantTest` (impor menolak 2 baris status terlarang; impor `Hilang`+`Aktif` → `tidak_aktif` + peringatan) |
+| **N4** | Impor memuat seluruh berkas ke memori; pratinjau kedaluwarsa menumpuk; berkas pratinjau dapat dikonfirmasi pengguna lain | `LimitedReadFilter` membatasi baris/kolom saat baca `.xlsx`/`.csv`; `InventoryImportController::purgeStalePreviews()` menghapus pratinjau >24 jam; sidecar `{token}.meta.json` menyimpan pemilik, `authorizePreview()` mewajibkan pengunggah yang sama | `90bae96` | `ImportPreviewHygieneTest` (4 test): **3/4 gagal** pra-perbaikan → **hijau** |
+| **N5** | Restore hanya menyaring `..` dan tidak melaporkan entri yang dilewati | `SiilsRestore::safeRelativePath()` memvalidasi **per segmen** (tolak kosong/`.`/`..`/backslash/`C:`), `isWithinRoot()` menahan target di dalam `storage/app/private`, dan command melaporkan jumlah + nama entri yang ditolak | `3986f26` | `BackupRestoreCommandTest::test_restore_melewati_entri_arsip_dengan_path_tidak_aman` (entri `files/../../evil.txt` dilewati, berkas aman tetap dipulihkan) |
+
+### 17.2 Catatan keputusan & asumsi
+
+- **N1 tanpa uji dua koneksi nyata:** suite berbagi satu koneksi database, sehingga uji paralel
+  sungguhan akan *flaky* (SQLite *in-memory* per koneksi). Yang diuji deterministik adalah perilaku
+  instansi basi (empat skenario); jalur terkunci yang sama tetap dieksekusi pada job CI
+  MySQL/MariaDB. Batasan ini didokumentasikan langsung di docblock test.
+- **`siils:check` tetap hanya-baca:** kelasnya berjanji "tidak mengubah apa pun". Karena itu
+  pembersihan pratinjau kedaluwarsa dilakukan pada alur unggah (`preview()`), **bukan** di
+  `siils:check`. `siils:check` hanya *melaporkan* pelanggaran invarian sebagai peringatan.
+- **Fix lanjutan MySQL (bukti penting):** run `38381640395` **MERAH** — tiga job MySQL/MariaDB gagal
+  karena pemeriksaan invarian memakai `count()` di atas subkueri `SELECT *` dari `LEFT JOIN`,
+  memicu `Duplicate column name 'id'`. Diperbaiki di `572b6f1` (agregasi diselesaikan di PHP dan
+  `whereNotExists` menggantikan join `loans`). Run `38382812441` **hijau**.
+- **Perubahan tak terkait tidak di-commit:** Pint sempat memformat beberapa file lama
+  (`DocumentController`, `AssetUnitAvailabilityTest`, dll.); perubahan itu dikembalikan agar commit
+  tetap fokus.
+
+### 17.3 Ringkasan commit dan CI sesi ini
+
+```
+cb06f90  fix: kunci baris unit pada perubahan status dan cegah pengurangan stok ganda  -> run 38377776477 HIJAU
+33af222  fix: tegakkan invarian kondisi-status dan cegah status terlarang lewat impor   -> (gabung, lihat 572b6f1)
+90bae96  fix: batasi pembacaan impor, bersihkan pratinjau kedaluwarsa, kunci kepemilikan -> (gabung)
+3986f26  fix: validasi path per segmen dan laporkan entri arsip yang ditolak saat restore -> run 38381640395 MERAH (MySQL: kolom id ganda)
+572b6f1  fix: hindari kolom id ganda pada pemeriksaan invarian di MySQL/MariaDB        -> run 38382812441 HIJAU (7/7)
+```
+
+**Run CI terakhir (kode):** `38382812441` — 7/7 job **hijau** (SQLite 8.3, SQLite 8.4, MySQL 8.0
+PHP 8.3, MySQL 8.0 PHP 8.4, MariaDB 10.11, Composer setup dari clone bersih, Browser smoke). HEAD
+kode: `572b6f101e763476e6d01e8b5e6d34c3a756386a`.
+
