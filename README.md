@@ -48,6 +48,10 @@ Sistem Informasi Inventaris dan Logistik Sekolah (SIILS) adalah aplikasi manajem
 | **Manajemen Dokumen & BAST** | Unggah, pengunduhan aman, dan penghapusan dokumen pendukung (Nota, BAST, Foto) terorganisir per kategori. |
 | **Laporan Rekapitulasi & Mode Cetak** | Filter laporan berdasarkan jenis transaksi, rentang tanggal, dan jurusan yang dilengkapi halaman khusus siap cetak (*print mode*). |
 | **Manajemen Pengguna & Toggle Status** | Pengelolaan data staf pengguna oleh Sarpras termasuk pengaktifan dan penonaktifan akun pengguna. |
+| **Header Keamanan HTTP** | Middleware `SecurityHeaders` otomatis menyertakan `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`, dan `Content-Security-Policy` pada setiap respons; halaman terautentikasi ditandai `Cache-Control: no-store` agar tidak tersimpan di cache browser. |
+| **Durasi Ingat-Saya Terbatas** | Fitur *Remember Me* dibatasi maksimal **7 hari** (bukan tak terbatas). Dikonfigurasi di `AppServiceProvider` dan diuji secara otomatis. |
+| **Panel Tindakan Operasional** | Dasbor menampilkan kartu ringkasan stok menipis, stok habis, peminjaman terlambat, dan unit dalam perbaikan — **tersegmentasi per peran** (Kajur hanya melihat jurusannya, Kepala Sekolah hanya baca). Setiap kartu tertaut ke daftar yang difilter secara tepat. |
+| **Matriks Otorisasi Rute** | Setiap rute terdaftar dipetakan ke ekspektasi middleware `auth` + `role` yang valid dalam `RouteAccessMatrix`. Test CI (`RouteAuthorizationMatrixTest`) gagal secara otomatis bila ada rute baru yang ditambahkan tanpa entri matriks. |
 
 **Jenis laporan yang tersedia:** Rekap Inventaris Barang, Log Barang Masuk, Log Barang Keluar, Log Distribusi/Penyaluran, Riwayat Pengajuan, **Laporan Peminjaman**, dan **Riwayat Kondisi Barang**. Semua laporan mendukung filter (periode, jurusan, status, dan filter spesifik tiap jenis), paginasi, mode cetak, serta ekspor PDF dan Excel.
 
@@ -463,7 +467,7 @@ Sumber tunggal daftar jurusan berada di `config/departments.php` (helper `app/Su
 
 ## 7. Menjalankan Test
 
-Proyek ini dilengkapi suite pengujian otomatis berbasis PHPUnit (**392 test, 1651 asersi**) untuk menguji alur autentikasi, siklus hidup unit aset, keterlambatan peminjaman, backup/restore, impor inventaris, penjaga N+1, serta alur pengajuan, logistik, dan pelaporan. Suite dijalankan pada **SQLite 8.3/8.4**, **MySQL 8.0 8.3/8.4**, dan **MariaDB 10.11** (CI), ditambah job `browser-smoke` (Playwright/axe-core) serta uji round-trip backup pada MySQL/MariaDB.
+Proyek ini dilengkapi suite pengujian otomatis berbasis PHPUnit (**422 test, 2143 asersi**) untuk menguji alur autentikasi, siklus hidup unit aset, keterlambatan peminjaman, backup/restore, impor inventaris, penjaga N+1, header keamanan HTTP, matriks otorisasi rute, panel tindakan dasbor, serta alur pengajuan, logistik, dan pelaporan. Suite dijalankan pada **SQLite 8.3/8.4**, **MySQL 8.0 8.3/8.4**, dan **MariaDB 10.11** (CI), ditambah job `browser-smoke` (Playwright/axe-core) serta uji round-trip backup pada MySQL/MariaDB.
 
 ### Perintah Pengujian
 
@@ -498,11 +502,13 @@ php artisan test
 | `tests/Feature/LoanOverdueStatusTest.php` | Terlambat efektif via `scopeOverdue`, batas hari jatuh tempo (`Asia/Jakarta`), daftar/laporan/ringkasan konsisten, dan bukti GET daftar peminjaman **tidak** menulis ke tabel `loans`. |
 | `tests/Feature/BackupRestoreCommandTest.php` | `siils:backup`/`siils:restore`: arsip + `manifest.json`, retensi, kredensial tidak bocor ke argumen proses, berkas sementara dibersihkan, round-trip di SQLite, penolakan restore di production tanpa `--force`, dan penolakan entri arsip dengan path tidak aman (`../`) dengan laporan jumlah dilewati. |
 | `tests/Feature/QueryBudgetTest.php` | Penjaga N+1: jumlah query identik pada 5 vs 25 baris untuk dashboard tiap role, daftar inventaris, detail barang, daftar peminjaman, riwayat aktivitas, notifikasi, dan seluruh jenis laporan (memakai `DB::listen`). |
-| `tests/Feature/QueryBudgetTest.php` | Penjaga N+1: jumlah query identik pada 5 vs 25 baris untuk dashboard tiap role, daftar inventaris, detail barang, daftar peminjaman, riwayat aktivitas, notifikasi, dan seluruh jenis laporan (memakai `DB::listen`). |
 | `tests/Feature/AssetUnitConcurrencyTest.php` | Konkurensi status unit: instansi model basi tidak mengurangi stok dua kali, tidak menimpa unit yang sudah dipinjam, dan selalu memakai status terbaru dari database (baris dikunci). |
 | `tests/Feature/AssetUnitInvariantTest.php` | Invarian kondisi–status: reaktivasi perbaikan menolak kondisi hasil tidak layak, unit hilang/tidak layak tidak dapat diaktifkan maupun dipinjam, impor menolak status `dipinjam`/`disposed` (kondisi `hilang` dipaksa `tidak_aktif` + peringatan), dan `siils:check` melaporkan pelanggaran invarian. |
 | `tests/Feature/ImportPreviewHygieneTest.php` | Higiene berkas pratinjau impor: berkas kedaluwarsa (>24 jam) dibersihkan otomatis, berkas terbaru dipertahankan, dan konfirmasi/unduh kesalahan hanya boleh oleh pengunggah (pengguna lain 404). |
 | `tests/Feature/LocalizationTest.php` | Pesan validasi, nama bulan grafik, dan teks paginasi berbahasa Indonesia. |
+| `tests/Feature/SecurityHeadersTest.php` | Header keamanan HTTP: `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`, `Content-Security-Policy` tersedia di setiap respons; halaman terautentikasi memiliki `Cache-Control: no-store`; perintah `siils:check` mendeteksi HTTPS dan `SESSION_SECURE_COOKIE` dengan benar. |
+| `tests/Feature/RouteAuthorizationMatrixTest.php` | Matriks otorisasi rute: setiap rute terdaftar di `RouteAccessMatrix` diuji terhadap tiga peran (Kajur, Sarpras, Kepala Sekolah) — rute guest, auth-saja, dan auth+role masing-masing menghasilkan respons yang tepat; rute tanpa entri matriks menggagalkan suite secara otomatis. |
+| `tests/Feature/ActionPanelTest.php` | Panel tindakan operasional: angka stok menipis/habis/terlambat/dalam-perbaikan benar per peran; scoping jurusan Kajur (Kajur A tidak melihat data Kajur B); filter daftar inventaris (`?stok=menipis|habis`) dan peminjaman (`?status=terlambat`) hanya menampilkan baris sesuai filter; `QueryBudgetTest` tidak bertambah query. |
 
 > Untuk daftar lengkap, lihat folder `tests/Feature/` dan `tests/Unit/`.
 
@@ -600,6 +606,10 @@ Workflow memastikan regresi terdeteksi — termasuk perbedaan perilaku MySQL vs 
 - **Driver Database:** Konfigurasi default menggunakan **MySQL/MariaDB** (driver `mysql`). SQLite tetap didukung sebagai alternatif cepat tanpa server database (`DB_CONNECTION=sqlite`). Pengujian otomatis berjalan pada SQLite in-memory (lokal) dan MySQL/MariaDB sungguhan (CI).
 - **Manajemen Storage File:** Berkas dokumen terlampir disimpan pada disk privat (`storage/app/private/documents`) dan diakses melalui rute terautentikasi `DocumentController@download`. Karena berkas tidak disajikan langsung dari `public/`, perintah `php artisan storage:link` **tidak diperlukan**.
 - **Zona Waktu & Lokalisasi:** `APP_TIMEZONE=Asia/Jakarta` dan `APP_LOCALE=id` secara default. Nama bulan pada grafik/laporan mengikuti locale Carbon, sehingga otomatis berbahasa Indonesia.
+- **Header Keamanan HTTP:** Middleware `App\Http\Middleware\SecurityHeaders` (didaftarkan global di `bootstrap/app.php`) menambahkan header `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy: geolocation=(), microphone=(), camera=()`, dan `Content-Security-Policy` dasar pada setiap respons. Halaman yang memerlukan autentikasi juga mendapatkan `Cache-Control: no-store` untuk mencegah penyimpanan cache di browser. Di lingkungan production dengan HTTPS, aktifkan `SESSION_SECURE_COOKIE=true` di `.env`.
+- **Durasi Ingat-Saya Terbatas:** Fitur *Remember Me* pada halaman login dikonfigurasi dengan masa hidup maksimal **7 hari** (`AppServiceProvider::boot()`). Cookie tidak akan berlaku selamanya meskipun pengguna mencentang "Ingat Saya".
+- **Panel Tindakan Operasional:** `App\Services\TaskOverview` mengagregasi empat metrik operasional (stok menipis, stok habis, peminjaman terlambat, unit dalam perbaikan) dalam satu pass query efisien per request `GET /home`. Setiap metrik di-scope berdasarkan peran: Kajur hanya melihat data jurusannya, Sarpras dan Kepala Sekolah melihat keseluruhan.
+- **Matriks Otorisasi Rute:** `App\Testing\RouteAccessMatrix` mendaftarkan setiap rute beserta ekspektasi middleware-nya. `RouteAuthorizationMatrixTest` memastikan tidak ada rute tanpa entri — menambah rute baru tanpa mendaftarkannya di matriks akan **menggagalkan CI** secara otomatis.
 
 ---
 
@@ -715,8 +725,18 @@ Bagian ini adalah ringkasan langkah operasional untuk menaikkan aplikasi dari mo
    php artisan optimize
    ```
    > **Catatan Penting:** Setelah melakukan perubahan apa pun pada file `.env`, jalankan `php artisan config:clear` atau `php artisan optimize` ulang agar perubahan konfigurasi terbaca oleh aplikasi.
-3. Pastikan `php artisan siils:check` tidak melaporkan galat (kode keluar `0`).
-4. Jangan membuka file `.env` untuk umum dan pastikan tidak ikut tercadangkan (perintah backup sudah mengecualikannya).
+3. Untuk deployment HTTPS, tambahkan juga di `.env`:
+   ```dotenv
+   SESSION_SECURE_COOKIE=true
+   SESSION_ENCRYPT=true
+   ```
+   Jalankan `php artisan optimize` kembali setelah perubahan `.env`.
+4. Pastikan `php artisan siils:check` tidak melaporkan galat (kode keluar `0`). Perintah ini memverifikasi:
+   - Koneksi database dan semua migrasi sudah dijalankan
+   - Konfigurasi keamanan cookie di lingkungan production
+   - Backup terakhir tidak lebih dari 7 hari yang lalu
+   - Tidak ada unit aset dengan invarian kondisi–status yang dilanggar
+5. Jangan membuka file `.env` untuk umum dan pastikan tidak ikut tercadangkan (perintah backup sudah mengecualikannya).
 
 ### B. Akses dari Komputer Lain di Jaringan Sekolah
 

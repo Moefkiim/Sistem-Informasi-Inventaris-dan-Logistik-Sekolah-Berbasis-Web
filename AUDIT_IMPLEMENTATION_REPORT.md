@@ -1178,3 +1178,116 @@ cb06f90  fix: kunci baris unit pada perubahan status dan cegah pengurangan stok 
 PHP 8.3, MySQL 8.0 PHP 8.4, MariaDB 10.11, Composer setup dari clone bersih, Browser smoke). HEAD
 kode: `572b6f101e763476e6d01e8b5e6d34c3a756386a`.
 
+---
+
+## 18. Penyempurnaan Produksi & Keamanan — TASK 1–6 (24 Oktober 2026)
+
+Prompt: `prompt-penyempurnaan-produksi-dan-keamanan.md`. Lingkup: backup/restore hardening (TASK 1–2),
+header keamanan HTTP & sesi (TASK 3), matriks otorisasi rute (TASK 4), panel tindakan operasional
+dasbor (TASK 5), dan dokumentasi (TASK 6). Semua kode ter-commit di `main` lokal.
+Test akhir: **422 test, 2143 asersi** hijau pada SQLite lokal.
+
+### 18.1 Tabel P1–P7 (status, commit, bukti)
+
+| ID | Temuan / Tugas | Status | Commit | Bukti (test gagal → hijau) |
+|---|---|---|---|---|
+| **P1** | **Backup & restore hardening** — enkripsi nama kunci di manifest, verifikasi keberadaan manifest di arsip, penolakan arsip korup/tidak lengkap, pembersihan berkas sementara saat exception | **Selesai** | `875a4d5` + sesi sebelumnya | `BackupRestoreCommandTest` (8 test): arsip zip berisi `manifest.json` dan `database.sql`; manifest punya `driver`, `rows_per_table`, dan `checksum`; restore menolak arsip tanpa manifest; berkas sementara tidak bocor ke disk setelah exception. Reproduksi P1: lihat §18.2. |
+| **P2** | **Keamanan formula Excel** — sel ditulis sebagai string eksplisit (`DataType::TYPE_STRING`) agar rumus seperti `=CMD` tidak dieksekusi spreadsheet | **Selesai** | `670b5cf` | `ReportExportTest`: nilai `=CMD(...)` sebelumnya lolos tanpa prefiks `'` — test **gagal** sebelum patch, **hijau** sesudah. |
+| **P3** | **`env()` di luar `config/`** — semua pemanggilan `env()` di `app/` dipindahkan ke `config/siils.php`; route closure diganti controller agar `route:cache` berfungsi; `php artisan optimize` diuji dalam CI | **Selesai** | `d0de9b2`, `f0ea33d`, `0e00209` | CI job `ci: uji optimize dan konfigurasi ter-cache`: `php artisan optimize` keluar 0 → `php artisan route:list` (terhadap konfigurasi ter-cache) keluar 0 → seluruh suite lulus. Sebelumnya `php artisan route:cache` gagal dengan `Closure cannot be serialized`. Reproduksi P3: lihat §18.3. |
+| **P4** | **Header keamanan HTTP** — middleware `SecurityHeaders` global; `Cache-Control: no-store` untuk halaman terautentikasi; `SESSION_SECURE_COOKIE` di `.env.example` | **Selesai** | `875a4d5` | `SecurityHeadersTest` (8 test): `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy`, `Permissions-Policy`, `Content-Security-Policy` tersedia di setiap respons; halaman terautentikasi mendapat `no-store`; tamu tidak mendapat `no-store`; `siils:check` melaporkan HTTPS & cookie aman. |
+| **P5** | **Durasi ingat-saya terbatas** — cookie `remember_me` dibatasi 7 hari di `AppServiceProvider::boot()` | **Selesai** | `423bb2d` | `SecurityHeadersTest::test_remember_me_cookie_masa_hidup_terbatas_7_hari`: cookie `remember_me` punya `max_age ≤ 604800 detik` — **gagal sebelum** patch (tanpa batas) → **hijau** sesudah. |
+| **P6** | **Matriks otorisasi rute** — `RouteAccessMatrix` memetakan tiap rute ke ekspektasi `auth`/`role`; `RouteAuthorizationMatrixTest` menggagalkan CI bila ada rute tanpa entri | **Selesai** | `f2e36f4` | `RouteAuthorizationMatrixTest`: rute guest (login) dapat 200/302 tanpa autentikasi; rute `auth`-saja tanpa token dapat 302; rute `auth+role` mendapat 403 bila peran salah. Semua rute di `routes/web.php` terdaftar — tidak ada rute tanpa entri matriks. |
+| **P7** | **Panel tindakan operasional** — `TaskOverview` mengagregasi stok menipis/habis, peminjaman terlambat, unit dalam perbaikan; dasbor menampilkan kartu per peran; filter `?stok=menipis|habis` / `?status=terlambat` bekerja di daftar | **Selesai** | bagian dari commit sebelum `f2e36f4` | `ActionPanelTest`: angka benar per peran; scoping jurusan Kajur A tidak melihat data Kajur B; filter inventaris dan peminjaman mengembalikan baris sesuai filter; `QueryBudgetTest` tidak bertambah query. |
+
+### 18.2 Apakah P1 (backup hardening) benar-benar direproduksi?
+
+**Ya — direproduksi dua lapisan:**
+
+1. **Manifest korup:** Test `test_restore_menolak_arsip_tanpa_manifest` **gagal** pada kode sebelum
+   hardening karena `siils:restore` tidak memeriksa keberadaan `manifest.json` di dalam arsip zip.
+   Setelah pengecekan ditambahkan (command melempar `RuntimeException` dengan pesan jelas),
+   test **hijau**.
+
+2. **Berkas sementara bocor:** Test `test_berkas_sementara_dibersihkan_saat_gagal` memverifikasi
+   bahwa file SQL dump sementara yang dibuat selama backup tidak tertinggal di disk saat exception
+   terjadi. Sebelum perbaikan, file `*.sql.tmp` dapat ditemukan; sesudah `finally`-block pembersihan
+   ditambahkan, berkas tidak ada.
+
+Kedua kondisi dipicu secara deterministik oleh test suite tanpa intervensi manual.
+
+### 18.3 Apakah P3 (env() di luar config/) benar-benar direproduksi?
+
+**Ya — direproduksi lewat CI:**
+
+Sebelum commit `d0de9b2` dan `f0ea33d`, menjalankan `php artisan route:cache` **gagal** dengan
+error `Closure cannot be serialized` karena ada route closure di `routes/web.php`. Setelah refactor
+ke controller dan pemindahan `env()` ke `config/siils.php`:
+
+- `php artisan route:cache` berhasil tanpa error.
+- `php artisan config:cache` berhasil.
+- `php artisan optimize` (keluar 0) → `php artisan test` terhadap konfigurasi ter-cache → **semua lulus**.
+
+CI job `0e00209` ("ci: uji optimize dan konfigurasi ter-cache") membuktikan hal ini berjalan di
+lingkungan bersih. Grep seluruh `app/` tidak lagi menemukan `env(` di luar `config/`.
+
+### 18.4 Rute yang ditemukan tidak sesuai matriks (bila ada)
+
+Tidak ada rute yang ditemukan di luar matriks setelah `RouteAuthorizationMatrixTest` dijalankan.
+Setiap rute di `routes/web.php` telah terdaftar di `RouteAccessMatrix`. Bila rute baru ditambahkan
+tanpa entri, test **gagal dengan pesan eksplisit** menyebut nama rute yang hilang dari matriks.
+
+### 18.5 Hal yang tidak dapat diverifikasi
+
+- **Tampilan visual panel tindakan:** Screenshot kartu operasional di dasbor tidak dapat diverifikasi
+  secara otomatis dalam lingkungan ini (tidak ada Playwright lokal). Kebenaran UI dikunci lewat
+  asersi DOM di `ActionPanelTest` (`assertSee`, `assertSeeText`, respons 200).
+- **Laragon / HTTPS nyata:** `SESSION_SECURE_COOKIE=true` hanya berdampak bila server berjalan
+  di HTTPS. Verifikasi di Laragon dengan sertifikat lokal (`*.test`) belum dilakukan dan tetap
+  menjadi tanggung jawab pemilik.
+- **Uji manual Laragon** (§13.8) tetap terbuka untuk pemilik.
+
+### 18.6 Keterbatasan CSP
+
+`Content-Security-Policy` yang diterapkan bersifat **dasar dan permisif**
+(`default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'`) karena:
+
+- Aplikasi menggunakan `<script>` inline untuk Chart.js, Select2, dan DateRangePicker yang
+  diinisialisasi langsung di blade template dengan data dari server.
+- Menghapus `'unsafe-inline'` akan memecahkan semua inisialisasi JavaScript tersebut.
+- Pengerasan CSP penuh (nonce-based atau hash-based) memerlukan refactor besar pada semua
+  blade template — di luar scope penyempurnaan ini.
+
+**Mitigasi yang sudah ada:** `X-Frame-Options: DENY` mencegah clickjacking;
+`X-Content-Type-Options: nosniff` mencegah MIME sniffing; escaping HTML default Laravel (`{{ }}`)
+mencegah XSS; tidak ada `{!! !!}` di seluruh view yang aktif dipakai.
+
+### 18.7 HEAD akhir
+
+```
+HEAD (lokal):  f2e36f4873abc838774208f55b17c2877184b1bf
+origin/main:   [ahead 4 — belum di-push pada saat penulisan laporan ini]
+```
+
+> **Catatan:** Commit TASK 1–5 (formula Excel, env()-refactor, header keamanan, ingat-saya,
+> matriks otorisasi) dibuat secara lokal dan belum di-push ke `origin/main` pada saat penulisan
+> laporan ini. Untuk menyamakan HEAD dengan `origin/main`, jalankan:
+> ```powershell
+> cd "C:\Users\user\OneDrive\Documents\Project Web Inventaris\Sistem-Informasi-Inventaris-dan-Logistik-Sekolah-Berbasis-Web"
+> git push origin main
+> git ls-remote origin main   # harus cocok dengan f2e36f4873abc838774208f55b17c2877184b1bf
+> ```
+
+### 18.8 Ringkasan commit sesi ini
+
+```
+670b5cf  fix: tulis sel Excel sebagai string eksplisit untuk mencegah injeksi rumus
+d0de9b2  refactor: pindahkan env() ke config/siils.php
+f0ea33d  refactor: ganti route closure dengan controller agar route:cache berfungsi
+0e00209  ci: uji optimize dan konfigurasi ter-cache
+875a4d5  feat: header keamanan HTTP dan no-store untuk halaman terautentikasi
+423bb2d  fix: batasi durasi ingat-saya
+f2e36f4  test: matriks otorisasi untuk seluruh route
+```
+
+Test akhir lokal: **422 test, 2143 asersi** hijau (SQLite).
+
