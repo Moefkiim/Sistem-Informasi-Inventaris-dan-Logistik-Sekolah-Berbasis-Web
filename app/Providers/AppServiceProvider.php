@@ -36,6 +36,11 @@ class AppServiceProvider extends ServiceProvider
         });
 
         $this->bootLazyLoadingGuard();
+
+        $rememberDays = (int) config('siils.remember_me_days', 7);
+        if ($rememberDays > 0) {
+            config(['auth.guards.web.remember' => $rememberDays * 24 * 60]);
+        }
     }
 
     /**

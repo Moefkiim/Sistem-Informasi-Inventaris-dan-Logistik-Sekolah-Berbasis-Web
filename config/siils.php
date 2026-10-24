@@ -49,4 +49,28 @@ return [
 
     'allow_demo_seed' => filter_var(env('SIILS_ALLOW_DEMO_SEED', false), FILTER_VALIDATE_BOOL),
 
+    /*
+    |--------------------------------------------------------------------------
+    | HTTP Strict Transport Security (HSTS)
+    |--------------------------------------------------------------------------
+    |
+    | Menentukan apakah header Strict-Transport-Security dikirimkan ketika
+    | request menggunakan HTTPS. Default false.
+    |
+    */
+
+    'hsts' => filter_var(env('SIILS_HSTS', false), FILTER_VALIDATE_BOOL),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Durasi Remember Me (Hari)
+    |--------------------------------------------------------------------------
+    |
+    | Batas masa berlaku cookie ingat-saya (remember-me) dalam satuan hari.
+    | Default 7 hari untuk membatasi risiko pada komputer bersama.
+    |
+    */
+
+    'remember_me_days' => (int) env('SIILS_REMEMBER_ME_DAYS', 7),
+
 ];

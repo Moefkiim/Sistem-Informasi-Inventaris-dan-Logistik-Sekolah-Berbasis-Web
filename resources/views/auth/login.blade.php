@@ -113,6 +113,7 @@
                                     <input class="form-check-input" type="checkbox" name="remember" value="1" />
                                     <span class="form-check-label fw-bold text-gray-700 fs-6">Ingat Saya</span>
                                 </label>
+                                <div class="form-text text-muted fs-7 mt-1">Jangan centang di komputer bersama</div>
                             </div>
 
                             <div class="text-center">
