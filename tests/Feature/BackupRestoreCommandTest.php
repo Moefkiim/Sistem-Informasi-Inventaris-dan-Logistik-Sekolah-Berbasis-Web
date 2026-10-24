@@ -92,13 +92,14 @@ class BackupRestoreCommandTest extends TestCase
             $zip->close();
 
             File::delete($absolute);
+            File::cleanDirectory($this->backupDirectory);
 
             $this->artisan('siils:backup', ['--path' => $this->backupDirectory, '--tanpa-berkas' => true])
                 ->assertSuccessful();
 
-            $withFiles = $this->archives();
+            $withoutFiles = $this->archives();
             $zip = new ZipArchive;
-            $zip->open($withFiles[0]);
+            $zip->open($withoutFiles[0]);
             $manifest = json_decode((string) $zip->getFromName('manifest.json'), true);
             $this->assertFalse($manifest['menyertakan_berkas']);
             $this->assertFalse($zip->getFromName('files/'.$relative));

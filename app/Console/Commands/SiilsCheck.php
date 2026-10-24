@@ -41,6 +41,7 @@ class SiilsCheck extends Command
         $this->checkWritablePaths();
         $this->checkBackups();
         $this->checkDebugInProduction();
+        $this->checkSecureSessionCookie();
 
         $this->newLine();
 
@@ -412,6 +413,26 @@ class SiilsCheck extends Command
                 'label' => 'APP_DEBUG aktif di lingkungan production',
                 'fix' => 'Set APP_DEBUG=false di .env sebelum digunakan secara resmi.',
             ];
+        }
+    }
+
+    private function checkSecureSessionCookie(): void
+    {
+        $appUrl = (string) config('app.url', '');
+        $secureSession = config('session.secure');
+
+        if (str_starts_with(strtolower($appUrl), 'https://') && ! $secureSession) {
+            $this->warnings[] = [
+                'ok' => false,
+                'label' => 'APP_URL menggunakan HTTPS tetapi SESSION_SECURE_COOKIE belum aktif',
+                'fix' => 'Tambahkan SESSION_SECURE_COOKIE=true di .env agar cookie sesi hanya dikirim via koneksi aman.',
+            ];
+
+            return;
+        }
+
+        if (str_starts_with(strtolower($appUrl), 'https://')) {
+            $this->line('  ✔ SESSION_SECURE_COOKIE aktif untuk HTTPS');
         }
     }
 }
