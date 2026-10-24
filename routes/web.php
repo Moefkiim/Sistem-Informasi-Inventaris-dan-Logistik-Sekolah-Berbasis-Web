@@ -8,8 +8,11 @@ use App\Http\Controllers\Kajur\SubmissionController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\Principal\ApprovalController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\RedirectToRouteController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\RootRedirectController;
 use App\Http\Controllers\Sarpras\ActivityLogController;
+use App\Http\Controllers\Sarpras\InventoryImportController;
 use App\Http\Controllers\Sarpras\LoanController;
 use App\Http\Controllers\Sarpras\LocationController;
 use App\Http\Controllers\Sarpras\LogisticsController;
@@ -17,9 +20,7 @@ use App\Http\Controllers\Sarpras\UserController;
 use Illuminate\Support\Facades\Route;
 
 // Redirect root ke halaman login jika guest, atau ke home jika sudah login
-Route::get('/', function () {
-    return auth()->check() ? redirect()->route('home') : redirect()->route('login');
-});
+Route::get('/', RootRedirectController::class);
 
 // Autentikasi Guest
 Route::middleware('guest')->group(function () {
@@ -74,9 +75,7 @@ Route::middleware(['auth', 'role', 'password.changed'])->group(function () {
         Route::get('/inventory/{item}', [InventoryController::class, 'show'])->name('inventory.show');
 
         // Alias area untuk backward compatibility
-        Route::get('/area', function () {
-            return redirect()->route('kajur.submissions.index');
-        })->name('area');
+        Route::get('/area', RedirectToRouteController::class)->defaults('to', 'kajur.submissions.index')->name('area');
     });
 
     // ==========================================
@@ -89,11 +88,11 @@ Route::middleware(['auth', 'role', 'password.changed'])->group(function () {
         Route::post('/inventory', [App\Http\Controllers\Sarpras\InventoryController::class, 'store'])->name('inventory.store');
 
         // Impor Inventaris Awal (Excel/CSV) — didaftarkan sebelum rute {item}
-        Route::get('/inventory/import', [App\Http\Controllers\Sarpras\InventoryImportController::class, 'create'])->name('inventory.import.create');
-        Route::get('/inventory/import/template', [App\Http\Controllers\Sarpras\InventoryImportController::class, 'template'])->name('inventory.import.template');
-        Route::post('/inventory/import/preview', [App\Http\Controllers\Sarpras\InventoryImportController::class, 'preview'])->name('inventory.import.preview');
-        Route::post('/inventory/import/confirm', [App\Http\Controllers\Sarpras\InventoryImportController::class, 'confirm'])->name('inventory.import.confirm');
-        Route::get('/inventory/import/errors/{token}', [App\Http\Controllers\Sarpras\InventoryImportController::class, 'errors'])->name('inventory.import.errors');
+        Route::get('/inventory/import', [InventoryImportController::class, 'create'])->name('inventory.import.create');
+        Route::get('/inventory/import/template', [InventoryImportController::class, 'template'])->name('inventory.import.template');
+        Route::post('/inventory/import/preview', [InventoryImportController::class, 'preview'])->name('inventory.import.preview');
+        Route::post('/inventory/import/confirm', [InventoryImportController::class, 'confirm'])->name('inventory.import.confirm');
+        Route::get('/inventory/import/errors/{token}', [InventoryImportController::class, 'errors'])->name('inventory.import.errors');
 
         Route::get('/inventory/{item}', [App\Http\Controllers\Sarpras\InventoryController::class, 'show'])->name('inventory.show');
         Route::post('/inventory/{item}/location', [App\Http\Controllers\Sarpras\InventoryController::class, 'updateLocation'])->name('inventory.updateLocation');
@@ -147,9 +146,7 @@ Route::middleware(['auth', 'role', 'password.changed'])->group(function () {
         Route::get('/activity-logs', [ActivityLogController::class, 'index'])->name('activity_logs.index');
 
         // Alias area untuk backward compatibility
-        Route::get('/area', function () {
-            return redirect()->route('sarpras.inventory.index');
-        })->name('area');
+        Route::get('/area', RedirectToRouteController::class)->defaults('to', 'sarpras.inventory.index')->name('area');
     });
 
     // ==========================================
@@ -161,8 +158,6 @@ Route::middleware(['auth', 'role', 'password.changed'])->group(function () {
         Route::post('/approval/{submission}/decide', [ApprovalController::class, 'decide'])->name('approval.decide');
 
         // Alias area untuk backward compatibility
-        Route::get('/area', function () {
-            return redirect()->route('kepala_sekolah.approval.index');
-        })->name('area');
+        Route::get('/area', RedirectToRouteController::class)->defaults('to', 'kepala_sekolah.approval.index')->name('area');
     });
 });
