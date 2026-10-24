@@ -11,6 +11,17 @@
         </div>
     </div>
     <div class="card-body pt-0">
+        @if(request('stok'))
+            <div class="d-flex align-items-center gap-2 mb-4">
+                <span class="text-muted fs-7">Filter aktif:</span>
+                <span class="badge badge-light-{{ request('stok') === 'habis' ? 'danger' : 'warning' }} d-inline-flex align-items-center">
+                    Stok: {{ ucfirst(request('stok')) }}
+                    <a href="{{ request()->fullUrlWithQuery(['stok' => null]) }}" class="ms-1 text-muted text-hover-dark text-decoration-none">×</a>
+                </span>
+                <a href="{{ route('kajur.inventory.index') }}" class="btn btn-link btn-color-muted btn-active-color-primary fs-7 p-0 ms-2">Reset Filter</a>
+            </div>
+        @endif
+
         <div class="table-responsive">
             <table class="table align-middle table-row-dashed fs-6 gy-5">
                 <thead>

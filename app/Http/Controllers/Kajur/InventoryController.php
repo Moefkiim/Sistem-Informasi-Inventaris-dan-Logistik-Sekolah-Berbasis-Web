@@ -21,10 +21,23 @@ class InventoryController extends Controller
 
         $department = $user->department;
 
-        $items = Item::where('department', $department)
-            ->with(['location', 'assetUnits.location'])
-            ->latest()
-            ->paginate(10);
+        $query = Item::where('department', $department)
+            ->with(['location', 'assetUnits.location']);
+
+        if ($request->filled('stok')) {
+            $stok = $request->stok;
+            if ($stok === 'menipis') {
+                $query->where('item_type', 'consumable')
+                    ->where('stock', '>', 0)
+                    ->where('minimum_stock', '>', 0)
+                    ->whereColumn('stock', '<=', 'minimum_stock');
+            } elseif ($stok === 'habis') {
+                $query->where('item_type', 'consumable')
+                    ->where('stock', '<=', 0);
+            }
+        }
+
+        $items = $query->latest()->paginate(10)->withQueryString();
 
         return view('kajur.inventory.index', compact('items', 'department'));
     }

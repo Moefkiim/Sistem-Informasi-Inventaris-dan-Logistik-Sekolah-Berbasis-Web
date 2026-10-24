@@ -62,8 +62,9 @@ class HomeController extends Controller
         $charts = $this->chartData($department);
 
         $tasks = $this->taskOverview->tasks($user);
+        $actionCounts = $this->taskOverview->actionCounts($user);
 
-        return view('home', compact('user', 'totalItems', 'totalLocations', 'pendingSubmissions', 'charts', 'tasks'));
+        return view('home', compact('user', 'totalItems', 'totalLocations', 'pendingSubmissions', 'charts', 'tasks', 'actionCounts'));
     }
 
     /**

@@ -40,7 +40,28 @@ class InventoryController extends Controller
             $query->where('department', $request->department);
         }
 
-        $items = $query->latest()->paginate(15);
+        if ($request->filled('stok')) {
+            $stok = $request->stok;
+            if ($stok === 'menipis') {
+                $query->where('item_type', 'consumable')
+                    ->where('stock', '>', 0)
+                    ->where('minimum_stock', '>', 0)
+                    ->whereColumn('stock', '<=', 'minimum_stock');
+            } elseif ($stok === 'habis') {
+                $query->where('item_type', 'consumable')
+                    ->where('stock', '<=', 0);
+            }
+        }
+
+        if ($request->filled('status')) {
+            $status = $request->status;
+            $query->where(function ($q) use ($status) {
+                $q->where('current_status', $status)
+                    ->orWhereHas('assetUnits', fn ($u) => $u->where('current_status', $status));
+            });
+        }
+
+        $items = $query->latest()->paginate(15)->withQueryString();
         $locations = Location::all();
 
         return view('sarpras.inventory.index', compact('items', 'locations'));

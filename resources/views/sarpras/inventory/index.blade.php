@@ -29,6 +29,31 @@
             </div>
         @endif
 
+        @if(request('stok') || request('status') || request('department'))
+            <div class="d-flex align-items-center gap-2 mb-4">
+                <span class="text-muted fs-7">Filter aktif:</span>
+                @if(request('stok'))
+                    <span class="badge badge-light-{{ request('stok') === 'habis' ? 'danger' : 'warning' }} d-inline-flex align-items-center">
+                        Stok: {{ ucfirst(request('stok')) }}
+                        <a href="{{ request()->fullUrlWithQuery(['stok' => null]) }}" class="ms-1 text-muted text-hover-dark text-decoration-none">×</a>
+                    </span>
+                @endif
+                @if(request('status'))
+                    <span class="badge badge-light-info d-inline-flex align-items-center">
+                        Status: {{ str_replace('_', ' ', ucfirst(request('status'))) }}
+                        <a href="{{ request()->fullUrlWithQuery(['status' => null]) }}" class="ms-1 text-muted text-hover-dark text-decoration-none">×</a>
+                    </span>
+                @endif
+                @if(request('department'))
+                    <span class="badge badge-light-primary d-inline-flex align-items-center">
+                        Jurusan: {{ request('department') }}
+                        <a href="{{ request()->fullUrlWithQuery(['department' => null]) }}" class="ms-1 text-muted text-hover-dark text-decoration-none">×</a>
+                    </span>
+                @endif
+                <a href="{{ route('sarpras.inventory.index') }}" class="btn btn-link btn-color-muted btn-active-color-primary fs-7 p-0 ms-2">Reset Filter</a>
+            </div>
+        @endif
+
         <div class="table-responsive">
             <table class="table align-middle table-row-dashed fs-6 gy-5">
                 <thead>

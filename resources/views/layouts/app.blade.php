@@ -134,6 +134,9 @@
                                     <a class="menu-link {{ request()->routeIs('kajur.inventory.*') ? 'active' : '' }}" href="{{ route('kajur.inventory.index') }}">
                                         <span class="menu-icon"><i class="bi bi-boxes fs-3"></i></span>
                                         <span class="menu-title">Inventaris Jurusan</span>
+                                        @if((($sidebarBadges['low_stock'] ?? 0) + ($sidebarBadges['out_of_stock'] ?? 0)) > 0)
+                                            <span class="badge badge-light-warning fw-bold ms-2">{{ ($sidebarBadges['low_stock'] ?? 0) + ($sidebarBadges['out_of_stock'] ?? 0) }}</span>
+                                        @endif
                                     </a>
                                 </div>
 
@@ -171,6 +174,9 @@
                                             <a class="menu-link {{ request()->routeIs('sarpras.inventory.index') ? 'active' : '' }}" href="{{ route('sarpras.inventory.index') }}">
                                                 <span class="menu-icon"><i class="bi bi-list-ul fs-5"></i></span>
                                                 <span class="menu-title">Master Barang</span>
+                                                @if((($sidebarBadges['low_stock'] ?? 0) + ($sidebarBadges['out_of_stock'] ?? 0)) > 0)
+                                                    <span class="badge badge-light-warning fw-bold ms-2">{{ ($sidebarBadges['low_stock'] ?? 0) + ($sidebarBadges['out_of_stock'] ?? 0) }}</span>
+                                                @endif
                                             </a>
                                         </div>
                                         <div class="menu-item">
@@ -226,6 +232,9 @@
                                     <a class="menu-link {{ request()->routeIs('sarpras.loans.*') ? 'active' : '' }}" href="{{ route('sarpras.loans.index') }}">
                                         <span class="menu-icon"><i class="bi bi-arrow-left-right fs-3"></i></span>
                                         <span class="menu-title">Peminjaman Barang</span>
+                                        @if(($sidebarBadges['overdue_loans'] ?? 0) > 0)
+                                            <span class="badge badge-light-danger fw-bold ms-2">{{ $sidebarBadges['overdue_loans'] }}</span>
+                                        @endif
                                     </a>
                                 </div>
 

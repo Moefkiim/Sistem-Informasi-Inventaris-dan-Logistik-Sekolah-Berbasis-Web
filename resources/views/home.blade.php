@@ -48,6 +48,154 @@
     </div>
 </div>
 
+{{-- Panel Tindakan: Stok, Keterlambatan, dan Perbaikan --}}
+<div class="row g-5 mb-6">
+    <div class="col-12">
+        <div class="d-flex align-items-center justify-content-between mb-2">
+            <h3 class="fw-bolder text-dark mb-0">
+                <i class="bi bi-exclamation-triangle-fill text-warning me-2"></i>Tindakan & Perhatian Operasional
+            </h3>
+            <span class="text-muted fs-7">
+                @if(auth()->user()->isKajur())
+                    Khusus Jurusan {{ auth()->user()->department }}
+                @else
+                    Seluruh Sekolah
+                @endif
+            </span>
+        </div>
+    </div>
+
+    {{-- Stok Menipis --}}
+    <div class="col-sm-6 {{ auth()->user()->isKajur() ? 'col-xl-4' : 'col-xl-3' }}">
+        <div class="card border-0 shadow-sm h-100 {{ ($actionCounts['low_stock'] ?? 0) > 0 ? 'border-start border-4 border-warning' : '' }}">
+            <div class="card-body d-flex flex-column p-6">
+                <div class="d-flex align-items-center justify-content-between mb-4">
+                    <div class="symbol symbol-50px">
+                        <span class="symbol-label bg-light-warning">
+                            <i class="bi bi-battery-half fs-2 text-warning"></i>
+                        </span>
+                    </div>
+                    <span class="badge badge-light-warning fw-bolder">Habis Pakai</span>
+                </div>
+                <div class="fs-2 fw-bolder text-dark mb-1">{{ $actionCounts['low_stock'] ?? 0 }}</div>
+                <div class="fs-7 text-muted">Barang Stok Menipis</div>
+                <div class="mt-4">
+                    @if(auth()->user()->isKajur())
+                        <a href="{{ route('kajur.inventory.index', ['stok' => 'menipis']) }}" class="btn btn-sm btn-light-warning w-100">
+                            Lihat Daftar Menipis
+                        </a>
+                    @elseif(auth()->user()->isSarpras())
+                        <a href="{{ route('sarpras.inventory.index', ['stok' => 'menipis']) }}" class="btn btn-sm btn-light-warning w-100">
+                            Lihat & Restok
+                        </a>
+                    @else
+                        <a href="{{ route('reports.index', ['type' => 'inventory']) }}" class="btn btn-sm btn-light w-100">
+                            Monitoring
+                        </a>
+                    @endif
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- Stok Habis --}}
+    <div class="col-sm-6 {{ auth()->user()->isKajur() ? 'col-xl-4' : 'col-xl-3' }}">
+        <div class="card border-0 shadow-sm h-100 {{ ($actionCounts['out_of_stock'] ?? 0) > 0 ? 'border-start border-4 border-danger' : '' }}">
+            <div class="card-body d-flex flex-column p-6">
+                <div class="d-flex align-items-center justify-content-between mb-4">
+                    <div class="symbol symbol-50px">
+                        <span class="symbol-label bg-light-danger">
+                            <i class="bi bi-x-octagon fs-2 text-danger"></i>
+                        </span>
+                    </div>
+                    <span class="badge badge-light-danger fw-bolder">Kritis</span>
+                </div>
+                <div class="fs-2 fw-bolder text-dark mb-1">{{ $actionCounts['out_of_stock'] ?? 0 }}</div>
+                <div class="fs-7 text-muted">Barang Stok Habis</div>
+                <div class="mt-4">
+                    @if(auth()->user()->isKajur())
+                        <a href="{{ route('kajur.inventory.index', ['stok' => 'habis']) }}" class="btn btn-sm btn-light-danger w-100">
+                            Lihat Daftar Habis
+                        </a>
+                    @elseif(auth()->user()->isSarpras())
+                        <a href="{{ route('sarpras.inventory.index', ['stok' => 'habis']) }}" class="btn btn-sm btn-light-danger w-100">
+                            Pengadaan Ulang
+                        </a>
+                    @else
+                        <a href="{{ route('reports.index', ['type' => 'inventory']) }}" class="btn btn-sm btn-light w-100">
+                            Monitoring
+                        </a>
+                    @endif
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- Peminjaman Terlambat --}}
+    <div class="col-sm-6 {{ auth()->user()->isKajur() ? 'col-xl-4' : 'col-xl-3' }}">
+        <div class="card border-0 shadow-sm h-100 {{ ($actionCounts['overdue_loans'] ?? 0) > 0 ? 'border-start border-4 border-danger' : '' }}">
+            <div class="card-body d-flex flex-column p-6">
+                <div class="d-flex align-items-center justify-content-between mb-4">
+                    <div class="symbol symbol-50px">
+                        <span class="symbol-label bg-light-danger">
+                            <i class="bi bi-alarm fs-2 text-danger"></i>
+                        </span>
+                    </div>
+                    <span class="badge badge-light-danger fw-bolder">Lewat Tenggat</span>
+                </div>
+                <div class="fs-2 fw-bolder text-dark mb-1">{{ $actionCounts['overdue_loans'] ?? 0 }}</div>
+                <div class="fs-7 text-muted">Peminjaman Terlambat</div>
+                <div class="mt-4">
+                    @if(auth()->user()->isSarpras())
+                        <a href="{{ route('sarpras.loans.index', ['status' => 'terlambat']) }}" class="btn btn-sm btn-light-danger w-100">
+                            Tagih Pengembalian
+                        </a>
+                    @elseif(auth()->user()->isKajur())
+                        <a href="{{ route('kajur.inventory.index') }}" class="btn btn-sm btn-light w-100">
+                            Lihat Inventaris
+                        </a>
+                    @else
+                        <a href="{{ route('reports.index', ['type' => 'loan']) }}" class="btn btn-sm btn-light w-100">
+                            Monitoring
+                        </a>
+                    @endif
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- Unit Dalam Perbaikan (Sarpras & Kepala Sekolah) --}}
+    @if(!auth()->user()->isKajur())
+        <div class="col-sm-6 col-xl-3">
+            <div class="card border-0 shadow-sm h-100 {{ ($actionCounts['in_repair'] ?? 0) > 0 ? 'border-start border-4 border-info' : '' }}">
+                <div class="card-body d-flex flex-column p-6">
+                    <div class="d-flex align-items-center justify-content-between mb-4">
+                        <div class="symbol symbol-50px">
+                            <span class="symbol-label bg-light-info">
+                                <i class="bi bi-tools fs-2 text-info"></i>
+                            </span>
+                        </div>
+                        <span class="badge badge-light-info fw-bolder">Servis</span>
+                    </div>
+                    <div class="fs-2 fw-bolder text-dark mb-1">{{ $actionCounts['in_repair'] ?? 0 }}</div>
+                    <div class="fs-7 text-muted">Unit Dalam Perbaikan</div>
+                    <div class="mt-4">
+                        @if(auth()->user()->isSarpras())
+                            <a href="{{ route('sarpras.inventory.index', ['status' => 'dalam_perbaikan']) }}" class="btn btn-sm btn-light-info w-100">
+                                Pantau Unit
+                            </a>
+                        @else
+                            <a href="{{ route('reports.index', ['type' => 'condition']) }}" class="btn btn-sm btn-light w-100">
+                                Monitoring
+                            </a>
+                        @endif
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
+</div>
+
 {{-- Statistik Ringkas --}}
 <div class="row g-5 mb-6">
     @if(auth()->user()->isKajur())
