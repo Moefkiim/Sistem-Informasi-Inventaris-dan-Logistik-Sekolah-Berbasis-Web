@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
+use Illuminate\Foundation\Bootstrap\LoadConfiguration;
 use Illuminate\Foundation\Bootstrap\LoadEnvironmentVariables;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Artisan;
@@ -86,7 +87,14 @@ class SiilsInstall extends Command
         $this->line('  • APP_KEY kosong, membuat kunci baru...');
         $this->callSilently('key:generate');
         $this->reloadEnvironment();
-        config(['app.key' => env('APP_KEY')]);
+        (new LoadConfiguration)->bootstrap(App::getInstance());
+
+        if (empty(config('app.key'))) {
+            $envKey = $_ENV['APP_KEY'] ?? getenv('APP_KEY');
+            if (! empty($envKey)) {
+                config(['app.key' => $envKey]);
+            }
+        }
 
         if (empty(config('app.key'))) {
             $this->line('  ✘ Gagal membuat APP_KEY.');

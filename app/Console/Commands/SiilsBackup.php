@@ -222,7 +222,7 @@ class SiilsBackup extends Command
     {
         $candidates = [];
 
-        $envPath = (string) env('MYSQLDUMP_PATH', '');
+        $envPath = (string) config('siils.mysqldump_path', '');
 
         if ($envPath !== '') {
             $candidates[] = $envPath;

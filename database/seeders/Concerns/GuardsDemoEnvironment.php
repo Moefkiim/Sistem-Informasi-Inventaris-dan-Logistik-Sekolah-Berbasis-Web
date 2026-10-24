@@ -19,7 +19,7 @@ trait GuardsDemoEnvironment
             return true;
         }
 
-        return filter_var(env('SIILS_ALLOW_DEMO_SEED', false), FILTER_VALIDATE_BOOL);
+        return (bool) config('siils.allow_demo_seed', false);
     }
 
     /**

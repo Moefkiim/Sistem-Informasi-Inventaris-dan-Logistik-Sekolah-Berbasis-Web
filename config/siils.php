@@ -26,4 +26,27 @@ return [
 
     'backup_max_age_days' => (int) env('SIILS_BACKUP_MAX_AGE_DAYS', 7),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Jalur Binary mysqldump
+    |--------------------------------------------------------------------------
+    |
+    | Path kustom ke executable mysqldump bila tidak ada di PATH standar.
+    |
+    */
+
+    'mysqldump_path' => env('MYSQLDUMP_PATH', ''),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Izin Seeder Data Demo di Produksi
+    |--------------------------------------------------------------------------
+    |
+    | Menentukan apakah DatabaseSeeder diizinkan menanam data demo saat
+    | APP_ENV=production. Default false.
+    |
+    */
+
+    'allow_demo_seed' => filter_var(env('SIILS_ALLOW_DEMO_SEED', false), FILTER_VALIDATE_BOOL),
+
 ];

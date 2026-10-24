@@ -176,6 +176,7 @@ class DemoDataSeederTest extends TestCase
         putenv('SIILS_ALLOW_DEMO_SEED=true');
         $_ENV['SIILS_ALLOW_DEMO_SEED'] = 'true';
         $_SERVER['SIILS_ALLOW_DEMO_SEED'] = 'true';
+        config(['siils.allow_demo_seed' => true]);
 
         $this->app->make(DatabaseSeeder::class)->run();
 
@@ -183,6 +184,7 @@ class DemoDataSeederTest extends TestCase
 
         putenv('SIILS_ALLOW_DEMO_SEED');
         unset($_ENV['SIILS_ALLOW_DEMO_SEED'], $_SERVER['SIILS_ALLOW_DEMO_SEED']);
+        config(['siils.allow_demo_seed' => false]);
         $this->app['env'] = 'testing';
     }
 

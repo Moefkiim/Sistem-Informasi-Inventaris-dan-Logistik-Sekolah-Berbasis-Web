@@ -17,7 +17,7 @@ class DatabaseSeeder extends Seeder
     {
         $this->call(BaseUserSeeder::class);
 
-        if (App::environment('production') && ! filter_var(env('SIILS_ALLOW_DEMO_SEED', false), FILTER_VALIDATE_BOOL)) {
+        if (App::environment('production') && ! (bool) config('siils.allow_demo_seed', false)) {
             $this->command?->warn('Data demo dilewati: APP_ENV=production. Set SIILS_ALLOW_DEMO_SEED=true bila memang ingin data demo.');
 
             return;
