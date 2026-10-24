@@ -24,6 +24,7 @@ use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use App\Support\ExcelSanitizer;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -138,7 +139,7 @@ class ReportController extends Controller
         $lastColumn = Coordinate::stringFromColumnIndex(count($columns));
 
         foreach ($columns as $index => $label) {
-            $sheet->setCellValue(Coordinate::stringFromColumnIndex($index + 1).'1', $label);
+            ExcelSanitizer::setCellSafe($sheet, Coordinate::stringFromColumnIndex($index + 1).'1', $label);
         }
 
         $headerStyle = $sheet->getStyle('A1:'.$lastColumn.'1');
@@ -149,7 +150,7 @@ class ReportController extends Controller
         foreach ($rows as $rowIndex => $row) {
             $excelRow = $rowIndex + 2;
             foreach ($row as $colIndex => $value) {
-                $sheet->setCellValue(Coordinate::stringFromColumnIndex($colIndex + 1).$excelRow, $value);
+                ExcelSanitizer::setCellSafe($sheet, Coordinate::stringFromColumnIndex($colIndex + 1).$excelRow, $value);
             }
         }
 

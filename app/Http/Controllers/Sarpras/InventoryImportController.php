@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AssetUnit;
 use App\Services\InventoryImportService;
 use App\Support\AssetCondition;
+use App\Support\ExcelSanitizer;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -49,7 +50,7 @@ class InventoryImportController extends Controller
         ];
 
         foreach ($headers as $index => $label) {
-            $data->setCellValue([$index + 1, 1], $label);
+            ExcelSanitizer::setCellSafeByArray($data, [$index + 1, 1], $label);
         }
 
         $data->fromArray([
