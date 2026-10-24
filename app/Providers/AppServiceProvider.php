@@ -29,6 +29,12 @@ class AppServiceProvider extends ServiceProvider
 
         View::composer('layouts.app', NavigationComposer::class);
 
+        $this->app->booted(function ($app) {
+            if ($app->runningInConsole()) {
+                $app->make('view')->replaceNamespace('laravel-exceptions-renderer', []);
+            }
+        });
+
         $this->bootLazyLoadingGuard();
     }
 

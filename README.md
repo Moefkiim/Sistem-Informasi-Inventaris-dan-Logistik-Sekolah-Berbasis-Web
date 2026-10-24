@@ -708,11 +708,13 @@ Bagian ini adalah ringkasan langkah operasional untuk menaikkan aplikasi dari mo
    LOG_STACK=daily
    LOG_LEVEL=warning
    ```
-2. Bersihkan dan bangun ulang cache:
+2. Jalankan prosedur rilis produksi secara berurutan:
    ```bash
-   php artisan optimize:clear
+   composer install --no-dev --optimize-autoloader
+   php artisan migrate --force
    php artisan optimize
    ```
+   > **Catatan Penting:** Setelah melakukan perubahan apa pun pada file `.env`, jalankan `php artisan config:clear` atau `php artisan optimize` ulang agar perubahan konfigurasi terbaca oleh aplikasi.
 3. Pastikan `php artisan siils:check` tidak melaporkan galat (kode keluar `0`).
 4. Jangan membuka file `.env` untuk umum dan pastikan tidak ikut tercadangkan (perintah backup sudah mengecualikannya).
 
@@ -762,6 +764,7 @@ php artisan migrate --force
 php artisan optimize:clear
 php artisan optimize
 ```
+> **Catatan:** Setelah mengubah `.env`, pastikan menjalankan `php artisan config:clear` atau `php artisan optimize` ulang.
 Jalankan `php artisan siils:check` setelah pembaruan.
 
 ### E1. Rotasi Log

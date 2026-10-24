@@ -144,6 +144,13 @@ jobs:
       - name: Run tests on MySQL/MariaDB
         run: php artisan test
 
+      - name: Uji prosedur optimize (konfigurasi, route, dan view ter-cache)
+        run: |
+          php artisan optimize
+          php artisan test --filter=DemoReadinessTest
+          php artisan test
+          php artisan optimize:clear
+
       - name: Pastikan klien MySQL tersedia
         run: |
           if ! command -v mysql >/dev/null 2>&1; then
@@ -152,6 +159,21 @@ jobs:
 
       - name: Uji round-trip backup (MySQL/MariaDB)
         run: bash ci/backup-roundtrip.sh
+
+      - name: Uji siils:backup dengan MYSQLDUMP_PATH dan config:cache aktif
+        run: |
+          MYSQLDUMP_BIN=$(which mysqldump)
+          echo "MYSQLDUMP_PATH=$MYSQLDUMP_BIN" >> .env
+          php artisan config:cache
+          php artisan siils:backup --path=storage/app/backups --keep=1
+          php artisan config:clear
+
+      - name: Uji SIILS_ALLOW_DEMO_SEED di produksi dengan config:cache aktif
+        run: |
+          echo "SIILS_ALLOW_DEMO_SEED=true" >> .env
+          APP_ENV=production php artisan config:cache
+          APP_ENV=production php artisan db:seed --class="Database\\Seeders\\DatabaseSeeder" --force
+          php artisan config:clear
 
   composer-setup:
     name: Composer setup dari clone bersih + smoke per role (PHP 8.4, MySQL 8.0)
