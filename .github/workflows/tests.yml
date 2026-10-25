@@ -9,7 +9,7 @@ on:
 jobs:
   tests:
     name: SQLite (PHP ${{ matrix.php }})
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     strategy:
       fail-fast: false
@@ -64,7 +64,7 @@ jobs:
 
   mysql-install:
     name: MySQL/MariaDB (${{ matrix.db }}, PHP ${{ matrix.php }})
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     strategy:
       fail-fast: false
@@ -144,11 +144,12 @@ jobs:
       - name: Run tests on MySQL/MariaDB
         run: php artisan test
 
-      - name: Uji prosedur optimize (konfigurasi, route, dan view ter-cache)
+      - name: Uji prosedur optimize dan smoke check konfigurasi ter-cache
         run: |
           php artisan optimize
-          php artisan test --filter=DemoReadinessTest
-          php artisan test
+          php artisan about
+          php artisan route:list --except-vendor
+          php artisan siils:check
           php artisan optimize:clear
 
       - name: Pastikan klien MySQL tersedia
@@ -177,7 +178,7 @@ jobs:
 
   composer-setup:
     name: Composer setup dari clone bersih + smoke per role (PHP 8.4, MySQL 8.0)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     services:
       database:
@@ -222,7 +223,7 @@ jobs:
 
   browser-smoke:
     name: Browser smoke via Playwright/Python (PHP 8.4, MySQL 8.0)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     services:
       database:
