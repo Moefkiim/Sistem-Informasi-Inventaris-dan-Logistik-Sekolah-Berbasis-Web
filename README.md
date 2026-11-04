@@ -68,7 +68,7 @@ Sistem Informasi Inventaris dan Logistik Sekolah (SIILS) adalah aplikasi manajem
 | **Kepala Sekolah** | `/login` | `/home` | Meninjau pengajuan berstatus `reviewed_sarpras`, memberikan keputusan approval/reject, memantau seluruh laporan rekapitulasi sekolah. |
 
 ### Aturan Akses & Batasan Konteks Jurusan
-- **Penyimpanan Role & Guard:** Peran pengguna disimpan pada kolom `role` di tabel `users` (`kajur`, `sarpras`, `kepala_sekolah`). Pemeriksaan otorisasi dilakukan melalui custom middleware `App\Http\Middleware\RoleMiddleware`.
+- **Penyimpanan Role & Guard:** Peran pengguna disimpan pada kolom `role` di tabel `users` (`kajur`, `sarpras`, `kepala_sekolah`). Pemeriksaan otorisasi dilakukan melalui custom middleware `App\Http\Middleware\EnsureUserRole`.
 - **Pengalihan Akses Ditolak:** Jika pengguna mencoba mengakses URL milik peran lain (misal Kajur mengakses `/sarpras/inventory`), sistem menghentikan eksekusi dengan response **403 Forbidden**.
 - **Pencegahan Login Non-Aktif:** Pengguna dengan `is_active = false` tidak dapat login meskipun kata sandi benar.
 - **Konteks Jurusan (Department Scoping):** Kajur hanya dapat melihat dan mengelola data yang terikat dengan nama jurusannya (`user->department`). Sarpras dan Kepala Sekolah memiliki wewenang global seluruh sekolah.
@@ -286,6 +286,7 @@ Catatan penting:
 - **Asset JS:** File statis `public/js/siils.js` (tanpa Node/Vite)
 - **Database (Development/Local):** MySQL v8.0 / MariaDB 10.4+ (default), SQLite sebagai alternatif
 - **Database (Testing):** SQLite In-Memory
+- **Paket Utama:** \`barryvdh/laravel-dompdf\` ^3.1 (ekspor PDF), \`phpoffice/phpspreadsheet\` ^5.10 (impor .xlsx/.csv)
 - **Framework Pengujian:** PHPUnit v12.x / Laravel Testing Toolkit
 
 ---
@@ -302,7 +303,7 @@ Panduan ini diuji pada Windows (Laragon) dan Linux/macOS. **Node.js tidak diperl
 | **Ekstensi PHP** | `ctype`, `curl`, `dom`, `fileinfo`, `filter`, `gd`, `iconv`, `mbstring`, `openssl`, `simplexml`, `xmlreader`, `xmlwriter`, `zip`, `zlib`, dan `pdo_mysql` (atau `pdo_sqlite` bila memakai SQLite) |
 | **Composer** | 2.x |
 | **Database** | MySQL 8.0+ atau MariaDB 10.4+ (diuji otomatis di CI: `mysql:8.0` dan `mariadb:10.11`) |
-| **Node.js / npm** | Tidak diperlukan — aset JS dimuat sebagai file statis `public/js/siils.js` |
+| **Node.js / npm** | **Tidak diperlukan** — proyek tidak menggunakan Vite/bundler (`package.json` tidak ada); aset JS dimuat sebagai file statis `public/js/siils.js` |
 | **Web server** | Laragon/XAMPP (Windows) atau bawaan `php artisan serve` |
 
 ### B. Mulai Cepat di Laragon (Windows)
@@ -318,6 +319,14 @@ Panduan ini diuji pada Windows (Laragon) dan Linux/macOS. **Node.js tidak diperl
    composer setup
    ```
 8. Buka `http://siils.test` (atau `http://localhost/siils`) di peramban, lalu login memakai [akun demo](#akun-demo-default-dari-seeder).
+
+> **Setup cepat — salin dan jalankan semuanya sekaligus di Terminal Laragon:**
+> ```bash
+> git clone https://github.com/Moefkiim/Sistem-Informasi-Inventaris-dan-Logistik-Sekolah-Berbasis-Web.git siils
+> cd siils
+> composer setup
+> ```
+> Selesai. Buka `http://siils.test` atau `http://localhost/siils`.
 
 `composer setup` menjalankan `composer install` lalu `php artisan siils:install`. Perintah `siils:install` bersifat **idempoten** (aman dijalankan berulang) dan melakukan:
 
@@ -390,6 +399,10 @@ DB_DATABASE=/path/absolut/ke/database.sqlite
 | `DB_DATABASE` | Nama DB MySQL (path berkas bila SQLite) | `siils` |
 | `DB_USERNAME` | User database (default Laragon) | `root` |
 | `DB_PASSWORD` | Kata sandi database (default Laragon kosong) | *(kosong)* |
+| `SESSION_ENCRYPT` | Enkripsi payload sesi (default `true` di `.env.example`; setelah diaktifkan, seluruh sesi lama tidak valid) | `true` |
+| `SIILS_BACKUP_PATH` | Direktori simpan arsip cadangan (kosong = `storage/app/backups`) | *(kosong)* |
+| `SIILS_BACKUP_MAX_AGE_DAYS` | Batas usia backup terakhir yang masih dianggap segar oleh `siils:check` | `7` |
+| `MYSQLDUMP_PATH` | Path eksplisit `mysqldump` bila tidak terdeteksi otomatis (mis. Laragon) | *(kosong)* |
 
 > **Zona waktu.** `APP_TIMEZONE` hanya memengaruhi cara aplikasi **menafsirkan** jam saat menyimpan/menampilkan data. Instalasi baru berisi data demo, sehingga tidak ada konversi data historis yang diperlukan. Bila Anda mengubah `APP_TIMEZONE` setelah menyimpan data nyata, waktu pada data lama tidak digeser otomatis.
 
@@ -471,6 +484,8 @@ Proyek ini dilengkapi suite pengujian otomatis berbasis PHPUnit (**422 test, 214
 
 ### Perintah Pengujian
 
+> **Catatan:** Suite dikonfigurasi di `phpunit.xml` dengan `DB_CONNECTION=sqlite` dan `DB_DATABASE=:memory:`, sehingga berjalan sepenuhnya di memori tanpa menyentuh database lokal Anda. `BCRYPT_ROUNDS=4` dipakai saat test agar hashing lebih cepat.
+
 ```bash
 # Jalankan seluruh unit & feature test (SQLite in-memory, cepat)
 php artisan test
@@ -481,6 +496,12 @@ php artisan test --filter=AuthenticationAndRoleAccessTest
 # Menjalankan seluruh suite terhadap MySQL lokal
 # (set DB_CONNECTION=mysql dan DB_DATABASE pada lingkungan sebelum perintah)
 php artisan test
+
+# Alias composer (membersihkan config cache lalu test — cocok untuk pengembangan lokal)
+composer test
+
+# Memeriksa prasyarat dan kesehatan aplikasi (koneksi DB, migrasi, invariant aset)
+php artisan siils:check
 ```
 
 ### Cakupan Test (contoh file penting)
@@ -528,7 +549,9 @@ php artisan test
 │   │   │   ├── DocumentController.php       # Manajemen upload/download berkas
 │   │   │   └── ReportController.php         # Rekapitulasi laporan & print export
 │   │   └── Middleware/
-│   │       └── RoleMiddleware.php           # Guard hak akses berbasis role
+│   │       ├── EnsureUserRole.php          # Guard hak akses berbasis role
+│   │       ├── EnsurePasswordChanged.php    # Paksa ganti sandi setelah reset
+│   │       └── SecurityHeaders.php          # Header keamanan HTTP global
 │   └── Models/                              # Model Eloquent aplikasi
 ├── database/
 │   ├── migrations/                          # Skema tabel database (10 tabel utama)
@@ -693,6 +716,9 @@ php artisan siils:install --fresh
 | `'php' is not recognized` | PHP tidak ada di PATH (cmd biasa) | Gunakan **Terminal Laragon**, atau tambahkan folder PHP ke PATH Windows. |
 | Gagal menulis `storage/` atau `bootstrap/cache` | Izin folder | Beri izin tulis (Windows: properti folder → keamanan; Linux: `chmod -R 775 storage bootstrap/cache`). |
 | `SQLSTATE[HY000]: General error: 1 no such table` | Database belum dimigrasi | Jalankan `php artisan siils:install` atau `php artisan migrate --force`. |
+| Perubahan `.env` tidak terbaca | Cache konfigurasi lama | Jalankan `php artisan config:clear` atau `php artisan optimize` setelah mengubah `.env`. |
+| Error 500 / blank page di browser | Exception aplikasi | Pastikan `APP_DEBUG=true` (lokal) lalu lihat detail di `storage/logs/laravel.log`. Di produksi aktifkan sementara, tangkap error, lalu kembalikan `APP_DEBUG=false`. |
+| CSS/JS tidak tampil (Vite manifest?) | Proyek tidak menggunakan Vite | Tidak perlu `npm run build`. Aset dimuat dari `public/js/siils.js` secara statis — tidak ada `manifest.json`. |
 
 ### FAQ
 
@@ -802,11 +828,176 @@ Jalankan `php artisan siils:check` setelah pembaruan.
 6. Ajarkan alur kerja inti kepada operator: pengajuan (Kajur) → proses (Sarpras) → persetujuan (Kepala Sekolah) → laporan.
 7. Serahkan dokumen alamat akses, akun admin, dan lokasi arsip cadangan kepada pengelola baru.
 
+### F. Deploy ke Server Linux (Nginx + MySQL)
+
+Panduan ini ditujukan untuk server Ubuntu/Debian dengan Nginx dan MySQL 8.0.
+
+#### F1. Prasyarat Server
+
+```bash
+# PHP 8.3+ beserta ekstensi yang diperlukan
+sudo apt install -y php8.3-fpm php8.3-mysql php8.3-gd php8.3-mbstring \
+    php8.3-curl php8.3-xml php8.3-zip php8.3-intl
+
+# Composer
+curl -sS https://getcomposer.org/installer | php
+sudo mv composer.phar /usr/local/bin/composer
+
+# MySQL 8.0
+sudo apt install -y mysql-server
+```
+
+#### F2. Buat Database dan User MySQL Khusus
+
+```sql
+-- Jangan gunakan user root di produksi
+CREATE DATABASE siils CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER 'siils_user'@'localhost' IDENTIFIED BY 'kata-sandi-kuat-di-sini';
+GRANT ALL PRIVILEGES ON siils.* TO 'siils_user'@'localhost';
+FLUSH PRIVILEGES;
+```
+
+#### F3. Instalasi Aplikasi
+
+```bash
+# Clone atau upload proyek ke /var/www/siils
+cd /var/www/siils
+
+# Pasang dependensi produksi (tanpa paket dev)
+composer install --no-dev --optimize-autoloader
+
+# Salin dan sesuaikan .env
+cp .env.example .env
+php artisan key:generate
+```
+
+Isi `.env` untuk produksi:
+
+```dotenv
+APP_ENV=production
+APP_DEBUG=false
+APP_URL=https://nama-domain-anda.sch.id
+
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=siils
+DB_USERNAME=siils_user
+DB_PASSWORD=kata-sandi-kuat-di-sini
+
+SESSION_DRIVER=database
+SESSION_ENCRYPT=true
+SESSION_SECURE_COOKIE=true
+
+LOG_STACK=daily
+LOG_DAILY_DAYS=14
+LOG_LEVEL=warning
+```
+
+```bash
+# Migrasi dan optimasi
+php artisan migrate --force
+php artisan optimize
+
+# Izin folder storage
+sudo chown -R www-data:www-data storage bootstrap/cache
+sudo chmod -R 775 storage bootstrap/cache
+```
+
+> **Penting:** Perintah `php artisan storage:link` **tidak diperlukan** — berkas dokumen disimpan di disk privat dan diakses via rute terautentikasi.
+
+#### F4. Konfigurasi Nginx
+
+```nginx
+server {
+    listen 80;
+    server_name nama-domain-anda.sch.id;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name nama-domain-anda.sch.id;
+
+    # Sertifikat Let's Encrypt (certbot --nginx akan mengisi bagian ini)
+    ssl_certificate     /etc/letsencrypt/live/nama-domain-anda.sch.id/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/nama-domain-anda.sch.id/privkey.pem;
+
+    root /var/www/siils/public;
+    index index.php;
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location ~ \.php$ {
+        fastcgi_pass unix:/run/php/php8.3-fpm.sock;
+        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+        include fastcgi_params;
+    }
+
+    location ~ /\.ht {
+        deny all;
+    }
+}
+```
+
+```bash
+# Aktifkan HTTPS dengan Let's Encrypt
+sudo apt install -y certbot python3-certbot-nginx
+sudo certbot --nginx -d nama-domain-anda.sch.id
+```
+
+#### F5. Queue Worker dan Scheduler
+
+Aplikasi ini menggunakan `QUEUE_CONNECTION=database` untuk notifikasi. Jalankan worker agar antrean diproses:
+
+```bash
+# Jalankan worker (gunakan supervisor untuk produksi)
+php artisan queue:work --sleep=3 --tries=3 --max-time=3600
+```
+
+Contoh konfigurasi **Supervisor** (`/etc/supervisor/conf.d/siils-worker.conf`):
+
+```ini
+[program:siils-worker]
+command=php /var/www/siils/artisan queue:work --sleep=3 --tries=3 --max-time=3600
+directory=/var/www/siils
+user=www-data
+autostart=true
+autorestart=true
+stopasgroup=true
+killasgroup=true
+redirect_stderr=true
+stdout_logfile=/var/log/siils-worker.log
+```
+
+```bash
+sudo supervisorctl reread && sudo supervisorctl update && sudo supervisorctl start siils-worker
+```
+
+Tambahkan ke crontab (`sudo crontab -e -u www-data`) agar scheduler berjalan:
+
+```
+* * * * * cd /var/www/siils && php artisan schedule:run >> /dev/null 2>&1
+```
+
+> **Catatan:** Aplikasi saat ini tidak memiliki scheduled task terdaftar di `app/Console/Kernel.php`, sehingga baris cron di atas aman ditambahkan dan tidak melakukan apa pun jika belum ada jadwal.
+
+#### F6. Verifikasi Pasca-Deploy
+
+```bash
+php artisan siils:check
+```
+
+Pastikan keluar dengan kode `0` (semua hijau) sebelum menyerahkan ke operator.
+
+
 ---
 
 ## 16. Cara Berkontribusi
 
-1. Tinjau dan pahami seluruh aturan bisnis serta matriks akses pada [AGENTS.md](file:///c:/Ibang/KULIAH/Semester%205/Sistem-Informasi-Inventaris-dan-Logistik-Sekolah-Berbasis-Web/AGENTS.md) dan [rancangan-web.md](file:///c:/Ibang/KULIAH/Semester%205/Sistem-Informasi-Inventaris-dan-Logistik-Sekolah-Berbasis-Web/rancangan-web.md).
+1. Tinjau dan pahami seluruh aturan bisnis serta matriks akses pada [AGENTS.md](AGENTS.md) dan [rancangan-web.md](rancangan-web.md).
 2. Buat branch fitur baru dari `main` dengan format penamaan: `docs/fitur-nama` atau `fix/deskripsi-bug`.
 3. Lakukan pengujian otomatis menggunakan `php artisan test` sebelum mengajukan Pull Request (PR).
 4. Kirimkan PR dan sertakan ringkasan perubahan serta langkah verifikasi uji yang telah dilakukan.
