@@ -11,14 +11,74 @@
         </div>
     </div>
     <div class="card-body pt-0">
+        {{-- Toolbar Pencarian & Filter --}}
+        <form action="{{ route('kajur.inventory.index') }}" method="GET" class="card bg-light p-5 border-0 mb-6">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label fs-7 fw-bold text-gray-700">Pencarian</label>
+                    <div class="position-relative">
+                        <i class="bi bi-search position-absolute top-50 translate-middle-y ms-3 text-gray-500"></i>
+                        <input type="text" name="search" class="form-control form-control-solid ps-10 form-control-sm" placeholder="Nama, kode, no seri..." value="{{ $search }}">
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fs-7 fw-bold text-gray-700">Kategori</label>
+                    <select name="category" class="form-select form-select-solid form-select-sm">
+                        <option value="">Semua Kategori</option>
+                        @foreach($categories as $cat)
+                            <option value="{{ $cat }}" {{ $category === $cat ? 'selected' : '' }}>{{ $cat }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fs-7 fw-bold text-gray-700">Kondisi Fisik</label>
+                    <select name="condition" class="form-select form-select-solid form-select-sm">
+                        <option value="">Semua Kondisi</option>
+                        <option value="baik" {{ $condition === 'baik' ? 'selected' : '' }}>Baik</option>
+                        <option value="rusak_ringan" {{ $condition === 'rusak_ringan' ? 'selected' : '' }}>Rusak Ringan</option>
+                        <option value="rusak_berat" {{ $condition === 'rusak_berat' ? 'selected' : '' }}>Rusak Berat</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fs-7 fw-bold text-gray-700">Status Aset</label>
+                    <select name="status" class="form-select form-select-solid form-select-sm">
+                        <option value="">Semua Status</option>
+                        <option value="aktif" {{ $status === 'aktif' ? 'selected' : '' }}>Aktif</option>
+                        <option value="dipinjam" {{ $status === 'dipinjam' ? 'selected' : '' }}>Dipinjam</option>
+                        <option value="dalam_perbaikan" {{ $status === 'dalam_perbaikan' ? 'selected' : '' }}>Dalam Perbaikan</option>
+                        <option value="tidak_aktif" {{ $status === 'tidak_aktif' ? 'selected' : '' }}>Tidak Aktif</option>
+                        <option value="disposed" {{ $status === 'disposed' ? 'selected' : '' }}>Dihapuskan</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fs-7 fw-bold text-gray-700">Rentang Tanggal Registrasi</label>
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text bg-white border-0"><i class="bi bi-calendar-range text-gray-500"></i></span>
+                        <input type="text" class="form-control form-control-solid js-daterangepicker" placeholder="Semua tanggal" value="{{ $startDate && $endDate ? date('d/m/Y', strtotime($startDate)) . ' - ' . date('d/m/Y', strtotime($endDate)) : '' }}" readonly>
+                        <input type="hidden" name="start_date" value="{{ $startDate }}">
+                        <input type="hidden" name="end_date" value="{{ $endDate }}">
+                    </div>
+                </div>
+                <div class="col-12 d-flex justify-content-end gap-2 mt-2">
+                    @if($search || $category || $condition || $status || $stok || $startDate || $endDate)
+                        <a href="{{ route('kajur.inventory.index') }}" class="btn btn-sm btn-light">
+                            <i class="bi bi-arrow-counterclockwise me-1"></i> Reset Filter
+                        </a>
+                    @endif
+                    <button type="submit" class="btn btn-sm btn-primary">
+                        <i class="bi bi-filter me-1"></i> Terapkan Filter
+                    </button>
+                </div>
+            </div>
+        </form>
+
         @if(request('stok'))
             <div class="d-flex align-items-center gap-2 mb-4">
-                <span class="text-muted fs-7">Filter aktif:</span>
+                <span class="text-muted fs-7">Filter stok aktif:</span>
                 <span class="badge badge-light-{{ request('stok') === 'habis' ? 'danger' : 'warning' }} d-inline-flex align-items-center">
                     Stok: {{ ucfirst(request('stok')) }}
                     <a href="{{ request()->fullUrlWithQuery(['stok' => null]) }}" class="ms-1 text-muted text-hover-dark text-decoration-none">×</a>
                 </span>
-                <a href="{{ route('kajur.inventory.index') }}" class="btn btn-link btn-color-muted btn-active-color-primary fs-7 p-0 ms-2">Reset Filter</a>
             </div>
         @endif
 
@@ -26,6 +86,7 @@
             <table class="table align-middle table-row-dashed fs-6 gy-5">
                 <thead>
                     <tr class="text-start text-muted fw-bolder fs-7 text-uppercase gs-0">
+                        <th class="w-50px text-center">No</th>
                         <th>Kode Barang</th>
                         <th>No. Unit</th>
                         <th>No. Seri</th>
@@ -63,6 +124,9 @@
                                 $locationName = $unit?->location?->name ?: ($item->location?->name ?: 'Belum Ditempatkan');
                             @endphp
                             <tr>
+                                @if($unitIdx === 0)
+                                    <td rowspan="{{ $rowCount }}" class="text-center text-gray-700 fw-bold" style="vertical-align: middle;">{{ $items->firstItem() + $loop->parent->index }}</td>
+                                @endif
                                 <td><span class="badge badge-light-dark font-monospace">{{ $item->code }}</span></td>
                                 <td>
                                     @if($unit)
@@ -95,7 +159,7 @@
                         @endforeach
                     @empty
                         <tr>
-                            <td colspan="10">
+                            <td colspan="11">
                                 <x-empty-state
                                     icon="bi-box-seam"
                                     title="Belum ada barang inventaris di jurusan {{ $department }}"

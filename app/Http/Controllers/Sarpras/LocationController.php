@@ -12,11 +12,39 @@ use Illuminate\View\View;
 
 class LocationController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
-        $locations = Location::withCount(['items', 'assetUnits'])->latest()->paginate(15);
+        $search = $request->query('search');
+        $department = $request->query('department');
+        $startDate = $request->query('start_date');
+        $endDate = $request->query('end_date');
 
-        return view('sarpras.locations.index', compact('locations'));
+        $query = Location::withCount(['items', 'assetUnits'])->latest('created_at');
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('code', 'like', "%{$search}%")
+                    ->orWhere('building', 'like', "%{$search}%")
+                    ->orWhere('description', 'like', "%{$search}%");
+            });
+        }
+
+        if ($department) {
+            $query->where('department', $department);
+        }
+
+        if ($startDate) {
+            $query->whereDate('created_at', '>=', $startDate);
+        }
+
+        if ($endDate) {
+            $query->whereDate('created_at', '<=', $endDate);
+        }
+
+        $locations = $query->paginate(15)->withQueryString();
+
+        return view('sarpras.locations.index', compact('locations', 'search', 'department', 'startDate', 'endDate'));
     }
 
     public function store(Request $request): RedirectResponse

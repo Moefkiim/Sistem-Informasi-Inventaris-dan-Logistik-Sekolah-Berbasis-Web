@@ -21,11 +21,47 @@ class InventoryController extends Controller
 
         $department = $user->department;
 
+        $search = $request->query('search');
+        $category = $request->query('category');
+        $condition = $request->query('condition');
+        $status = $request->query('status');
+        $stok = $request->query('stok');
+        $startDate = $request->query('start_date');
+        $endDate = $request->query('end_date');
+
         $query = Item::where('department', $department)
             ->with(['location', 'assetUnits.location']);
 
-        if ($request->filled('stok')) {
-            $stok = $request->stok;
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('code', 'like', "%{$search}%")
+                    ->orWhere('category', 'like', "%{$search}%")
+                    ->orWhere('inventory_number', 'like', "%{$search}%")
+                    ->orWhere('serial_number', 'like', "%{$search}%")
+                    ->orWhereHas('assetUnits', fn ($u) => $u->where('unit_inventory_number', 'like', "%{$search}%")->orWhere('serial_number', 'like', "%{$search}%"));
+            });
+        }
+
+        if ($category) {
+            $query->where('category', $category);
+        }
+
+        if ($condition) {
+            $query->where(function ($q) use ($condition) {
+                $q->where('current_condition', $condition)
+                    ->orWhereHas('assetUnits', fn ($u) => $u->where('current_condition', $condition));
+            });
+        }
+
+        if ($status) {
+            $query->where(function ($q) use ($status) {
+                $q->where('current_status', $status)
+                    ->orWhereHas('assetUnits', fn ($u) => $u->where('current_status', $status));
+            });
+        }
+
+        if ($stok) {
             if ($stok === 'menipis') {
                 $query->where('item_type', 'consumable')
                     ->where('stock', '>', 0)
@@ -37,9 +73,18 @@ class InventoryController extends Controller
             }
         }
 
-        $items = $query->latest()->paginate(10)->withQueryString();
+        if ($startDate) {
+            $query->whereDate('created_at', '>=', $startDate);
+        }
 
-        return view('kajur.inventory.index', compact('items', 'department'));
+        if ($endDate) {
+            $query->whereDate('created_at', '<=', $endDate);
+        }
+
+        $items = $query->latest('created_at')->paginate(10)->withQueryString();
+        $categories = Item::where('department', $department)->whereNotNull('category')->distinct()->pluck('category');
+
+        return view('kajur.inventory.index', compact('items', 'department', 'search', 'category', 'condition', 'status', 'stok', 'startDate', 'endDate', 'categories'));
     }
 
     /**

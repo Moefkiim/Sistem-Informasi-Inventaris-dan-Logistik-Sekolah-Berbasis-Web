@@ -36,6 +36,7 @@
                         <th>Kajur Pengaju</th>
                         <th>Jurusan</th>
                         <th>Judul Kebutuhan</th>
+                        <th>Tgl. Pengajuan</th>
                         <th>Status</th>
                         <th>Diverifikasi Sarpras</th>
                         <th class="text-end">Aksi</th>
@@ -48,6 +49,7 @@
                             <td>{{ $sub->user->name }}</td>
                             <td><span class="badge badge-light-primary">{{ $sub->department }}</span></td>
                             <td>{{ $sub->title }}</td>
+                            <td><span class="text-gray-800">{{ $sub->created_at->format('d/m/Y H:i') }}</span></td>
                             <td>
                                 <x-submission-status-badge :status="$sub->status" />
                             </td>
@@ -60,7 +62,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="text-center text-muted py-8">Tidak ada permohonan inventaris pada status ini.</td>
+                            <td colspan="8" class="text-center text-muted py-8">Tidak ada permohonan inventaris pada status ini.</td>
                         </tr>
                     @endforelse
                 </tbody>

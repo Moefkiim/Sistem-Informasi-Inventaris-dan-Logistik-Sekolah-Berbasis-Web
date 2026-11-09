@@ -7,10 +7,7 @@
 <div class="card border-0 shadow-sm">
     <div class="card-header border-0 pt-6">
         <div class="card-title">
-            <form action="{{ route('sarpras.inventory.index') }}" method="GET" class="d-flex align-items-center gap-2">
-                <input type="text" name="search" class="form-control form-control-solid w-250px" placeholder="Cari nama/kode barang..." value="{{ request('search') }}">
-                <button type="submit" class="btn btn-light-primary">Cari</button>
-            </form>
+            <h3 class="fw-bolder">Master Data Inventaris Barang</h3>
         </div>
         <div class="card-toolbar">
             <a href="{{ route('sarpras.inventory.import.create') }}" class="btn btn-light-primary me-2">
@@ -28,6 +25,85 @@
                 <div>{{ session('success') }}</div>
             </div>
         @endif
+
+        {{-- Toolbar Pencarian & Filter --}}
+        <form action="{{ route('sarpras.inventory.index') }}" method="GET" class="card bg-light p-5 border-0 mb-6">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label fs-7 fw-bold text-gray-700">Pencarian</label>
+                    <div class="position-relative">
+                        <i class="bi bi-search position-absolute top-50 translate-middle-y ms-3 text-gray-500"></i>
+                        <input type="text" name="search" class="form-control form-control-solid ps-10 form-control-sm" placeholder="Nama, kode, no seri..." value="{{ $search }}">
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fs-7 fw-bold text-gray-700">Jurusan</label>
+                    <select name="department" class="form-select form-select-solid form-select-sm">
+                        <option value="">Semua Jurusan</option>
+                        @foreach(config('departments') as $code => $name)
+                            <option value="{{ $code }}" {{ $department === $code ? 'selected' : '' }}>{{ $code }} - {{ $name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fs-7 fw-bold text-gray-700">Kategori</label>
+                    <select name="category" class="form-select form-select-solid form-select-sm">
+                        <option value="">Semua Kategori</option>
+                        @foreach($categories as $cat)
+                            <option value="{{ $cat }}" {{ $category === $cat ? 'selected' : '' }}>{{ $cat }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fs-7 fw-bold text-gray-700">Status Aset</label>
+                    <select name="status" class="form-select form-select-solid form-select-sm">
+                        <option value="">Semua Status</option>
+                        <option value="aktif" {{ $status === 'aktif' ? 'selected' : '' }}>Aktif</option>
+                        <option value="dipinjam" {{ $status === 'dipinjam' ? 'selected' : '' }}>Dipinjam</option>
+                        <option value="dalam_perbaikan" {{ $status === 'dalam_perbaikan' ? 'selected' : '' }}>Dalam Perbaikan</option>
+                        <option value="tidak_aktif" {{ $status === 'tidak_aktif' ? 'selected' : '' }}>Tidak Aktif</option>
+                        <option value="disposed" {{ $status === 'disposed' ? 'selected' : '' }}>Dihapuskan</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fs-7 fw-bold text-gray-700">Rentang Tanggal Registrasi</label>
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text bg-white border-0"><i class="bi bi-calendar-range text-gray-500"></i></span>
+                        <input type="text" class="form-control form-control-solid js-daterangepicker" placeholder="Semua tanggal" value="{{ $startDate && $endDate ? date('d/m/Y', strtotime($startDate)) . ' - ' . date('d/m/Y', strtotime($endDate)) : '' }}" readonly>
+                        <input type="hidden" name="start_date" value="{{ $startDate }}">
+                        <input type="hidden" name="end_date" value="{{ $endDate }}">
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fs-7 fw-bold text-gray-700">Lokasi Penempatan</label>
+                    <select name="location_id" class="form-select form-select-solid form-select-sm">
+                        <option value="">Semua Lokasi</option>
+                        @foreach($locations as $loc)
+                            <option value="{{ $loc->id }}" {{ (string)$locationId === (string)$loc->id ? 'selected' : '' }}>{{ $loc->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fs-7 fw-bold text-gray-700">Kondisi</label>
+                    <select name="condition" class="form-select form-select-solid form-select-sm">
+                        <option value="">Semua Kondisi</option>
+                        <option value="baik" {{ $condition === 'baik' ? 'selected' : '' }}>Baik</option>
+                        <option value="rusak_ringan" {{ $condition === 'rusak_ringan' ? 'selected' : '' }}>Rusak Ringan</option>
+                        <option value="rusak_berat" {{ $condition === 'rusak_berat' ? 'selected' : '' }}>Rusak Berat</option>
+                    </select>
+                </div>
+                <div class="col-md-7 d-flex justify-content-end gap-2">
+                    @if($search || $department || $category || $condition || $status || $locationId || $stok || $startDate || $endDate)
+                        <a href="{{ route('sarpras.inventory.index') }}" class="btn btn-sm btn-light">
+                            <i class="bi bi-arrow-counterclockwise me-1"></i> Reset Filter
+                        </a>
+                    @endif
+                    <button type="submit" class="btn btn-sm btn-primary">
+                        <i class="bi bi-filter me-1"></i> Terapkan Filter
+                    </button>
+                </div>
+            </div>
+        </form>
 
         @if(request('stok') || request('status') || request('department'))
             <div class="d-flex align-items-center gap-2 mb-4">
@@ -58,6 +134,7 @@
             <table class="table align-middle table-row-dashed fs-6 gy-5">
                 <thead>
                     <tr class="text-start text-muted fw-bolder fs-7 text-uppercase gs-0">
+                        <th class="w-50px text-center">No</th>
                         <th>Kode</th>
                         <th>Nama Barang</th>
                         <th>Kategori</th>
@@ -71,6 +148,7 @@
                 <tbody class="text-gray-600 fw-bold">
                     @forelse($items as $item)
                         <tr>
+                            <td class="text-center text-gray-700 fw-bold">{{ $items->firstItem() + $loop->index }}</td>
                             <td><span class="badge badge-light-dark font-monospace">{{ $item->code }}</span></td>
                             <td class="text-dark fw-bolder">{{ $item->name }}</td>
                             <td><span class="badge badge-light-secondary">{{ $item->category }}</span></td>
@@ -97,7 +175,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8">
+                            <td colspan="9">
                                 <x-empty-state
                                     icon="bi-box-seam"
                                     title="Belum ada master barang inventaris"

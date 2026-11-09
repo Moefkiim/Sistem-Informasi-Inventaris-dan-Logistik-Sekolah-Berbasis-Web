@@ -81,10 +81,10 @@
                         @enderror
                     </div>
                     <div class="d-flex justify-content-end gap-3">
-                        <button type="submit" name="action" value="reject" class="btn btn-danger js-submit-action" data-action="reject" onclick="return confirm('Tolak permohonan pengajuan ini? Pastikan alasan penolakan sudah diisi.')">
+                        <button type="submit" name="action" value="reject" class="btn btn-danger js-submit-action" data-action="reject" data-confirm-delete="Apakah Anda yakin ingin menolak permohonan pengajuan ini? Pastikan catatan telaah penolakan telah diisi.">
                             <i class="bi bi-x-circle me-1"></i> Tolak Pengajuan
                         </button>
-                        <button type="submit" name="action" value="review" class="btn btn-primary js-submit-action" data-action="review" onclick="return confirm('Teruskan pengajuan ke Kepala Sekolah?')">
+                        <button type="submit" name="action" value="review" class="btn btn-primary js-submit-action" data-action="review" data-confirm="Apakah Anda yakin ingin meneruskan telaah pengajuan ini ke Kepala Sekolah untuk persetujuan?">
                             <i class="bi bi-check2-circle me-1"></i> Teruskan ke Kepala Sekolah
                         </button>
                     </div>

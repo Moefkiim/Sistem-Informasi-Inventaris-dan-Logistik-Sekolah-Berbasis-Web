@@ -24,12 +24,40 @@ class LogisticsController extends Controller
     /**
      * Log Barang Masuk
      */
-    public function incomingIndex(): View
+    public function incomingIndex(Request $request): View
     {
-        $incomingLogs = IncomingItem::with(['item', 'user'])->latest('entry_date')->paginate(15);
+        $search = $request->query('search');
+        $source = $request->query('source');
+        $startDate = $request->query('start_date');
+        $endDate = $request->query('end_date');
+
+        $query = IncomingItem::with(['item', 'user'])->latest('entry_date');
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('transaction_number', 'like', "%{$search}%")
+                    ->orWhere('source_origin', 'like', "%{$search}%")
+                    ->orWhere('notes', 'like', "%{$search}%")
+                    ->orWhereHas('item', fn ($iq) => $iq->where('name', 'like', "%{$search}%")->orWhere('code', 'like', "%{$search}%"));
+            });
+        }
+
+        if ($source) {
+            $query->where('source', $source);
+        }
+
+        if ($startDate) {
+            $query->whereDate('entry_date', '>=', $startDate);
+        }
+
+        if ($endDate) {
+            $query->whereDate('entry_date', '<=', $endDate);
+        }
+
+        $incomingLogs = $query->paginate(15)->withQueryString();
         $items = Item::query()->orderBy('name')->get(['id', 'name', 'stock', 'unit']);
 
-        return view('sarpras.logistics.incoming', compact('incomingLogs', 'items'));
+        return view('sarpras.logistics.incoming', compact('incomingLogs', 'items', 'search', 'source', 'startDate', 'endDate'));
     }
 
     public function storeIncoming(Request $request): RedirectResponse
@@ -61,12 +89,40 @@ class LogisticsController extends Controller
     /**
      * Log Barang Keluar
      */
-    public function outgoingIndex(): View
+    public function outgoingIndex(Request $request): View
     {
-        $outgoingLogs = OutgoingItem::with(['item', 'user'])->latest('exit_date')->paginate(15);
+        $search = $request->query('search');
+        $reason = $request->query('reason');
+        $startDate = $request->query('start_date');
+        $endDate = $request->query('end_date');
+
+        $query = OutgoingItem::with(['item', 'user'])->latest('exit_date');
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('transaction_number', 'like', "%{$search}%")
+                    ->orWhere('reason', 'like', "%{$search}%")
+                    ->orWhere('notes', 'like', "%{$search}%")
+                    ->orWhereHas('item', fn ($iq) => $iq->where('name', 'like', "%{$search}%")->orWhere('code', 'like', "%{$search}%"));
+            });
+        }
+
+        if ($reason) {
+            $query->where('reason', $reason);
+        }
+
+        if ($startDate) {
+            $query->whereDate('exit_date', '>=', $startDate);
+        }
+
+        if ($endDate) {
+            $query->whereDate('exit_date', '<=', $endDate);
+        }
+
+        $outgoingLogs = $query->paginate(15)->withQueryString();
         $items = Item::query()->where('stock', '>', 0)->orderBy('name')->get(['id', 'name', 'stock', 'unit']);
 
-        return view('sarpras.logistics.outgoing', compact('outgoingLogs', 'items'));
+        return view('sarpras.logistics.outgoing', compact('outgoingLogs', 'items', 'search', 'reason', 'startDate', 'endDate'));
     }
 
     public function storeOutgoing(Request $request): RedirectResponse
@@ -119,13 +175,47 @@ class LogisticsController extends Controller
     /**
      * Log Distribusi
      */
-    public function distributionIndex(): View
+    public function distributionIndex(Request $request): View
     {
-        $distributions = Distribution::with(['item', 'toLocation', 'user'])->latest('distribution_date')->paginate(15);
+        $search = $request->query('search');
+        $toLocationId = $request->query('to_location_id');
+        $recipientDepartment = $request->query('recipient_department');
+        $startDate = $request->query('start_date');
+        $endDate = $request->query('end_date');
+
+        $query = Distribution::with(['item', 'toLocation', 'user'])->latest('distribution_date');
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('distribution_number', 'like', "%{$search}%")
+                    ->orWhere('recipient_name', 'like', "%{$search}%")
+                    ->orWhere('recipient_department', 'like', "%{$search}%")
+                    ->orWhere('notes', 'like', "%{$search}%")
+                    ->orWhereHas('item', fn ($iq) => $iq->where('name', 'like', "%{$search}%")->orWhere('code', 'like', "%{$search}%"));
+            });
+        }
+
+        if ($toLocationId) {
+            $query->where('to_location_id', $toLocationId);
+        }
+
+        if ($recipientDepartment) {
+            $query->where('recipient_department', $recipientDepartment);
+        }
+
+        if ($startDate) {
+            $query->whereDate('distribution_date', '>=', $startDate);
+        }
+
+        if ($endDate) {
+            $query->whereDate('distribution_date', '<=', $endDate);
+        }
+
+        $distributions = $query->paginate(15)->withQueryString();
         $items = Item::query()->orderBy('name')->get(['id', 'name', 'stock', 'unit']);
         $locations = Location::query()->orderBy('name')->get(['id', 'name', 'code']);
 
-        return view('sarpras.logistics.distributions', compact('distributions', 'items', 'locations'));
+        return view('sarpras.logistics.distributions', compact('distributions', 'items', 'locations', 'search', 'toLocationId', 'recipientDepartment', 'startDate', 'endDate'));
     }
 
     public function storeDistribution(Request $request): RedirectResponse

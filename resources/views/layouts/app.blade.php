@@ -11,6 +11,7 @@
     <!-- Metronic Global Stylesheets -->
     <link href="{{ asset('assets/plugins/global/plugins.bundle.css') }}" rel="stylesheet" type="text/css" />
     <link href="{{ asset('assets/css/style.bundle.css') }}" rel="stylesheet" type="text/css" />
+    <link href="{{ asset('plugins/daterangepicker/daterangepicker.css') }}" rel="stylesheet" type="text/css" />
     <style>
         /* Sidebar: rasio kontras teks terhadap latar #1e1e2d (aside-dark). */
         .aside-dark .menu-section-label { color: #8a93b2 !important; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08rem; padding: 0.5rem 1.4rem; text-transform: uppercase; display: block; }
@@ -526,8 +527,67 @@
     <script src="{{ asset('plugins/daterangepicker/moment.min.js') }}"></script>
     <script src="{{ asset('plugins/daterangepicker/daterangepicker.js') }}"></script>
 
-    <!-- App Script (Dynamic rows, submit guard) -->
-    <script src="{{ asset('js/siils.js') }}?v={{ filemtime(public_path('js/siils.js')) }}" defer></script>
+    <!-- App Script (Dynamic rows, submit guard, daterangepicker, sweetalert) -->
+    <script src="{{ asset('js/siils.js') }}?v={{ filemtime(public_path('js/siils.js')) }}"></script>
+
+    {{-- SweetAlert Flash Messages --}}
+    @if(session('success'))
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Berhasil!',
+                        text: {!! json_encode(session('success')) !!},
+                        timer: 3500,
+                        showConfirmButton: true,
+                        confirmButtonText: 'OK',
+                        customClass: {
+                            confirmButton: 'btn btn-primary px-5'
+                        },
+                        buttonsStyling: false
+                    });
+                }
+            });
+        </script>
+    @endif
+    @if(session('error'))
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Perhatian / Terjadi Kesalahan',
+                        text: {!! json_encode(session('error')) !!},
+                        confirmButtonText: 'Tutup',
+                        customClass: {
+                            confirmButton: 'btn btn-danger px-5'
+                        },
+                        buttonsStyling: false
+                    });
+                }
+            });
+        </script>
+    @endif
+    @if(session('warning'))
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Peringatan',
+                        text: {!! json_encode(session('warning')) !!},
+                        confirmButtonText: 'Mengerti',
+                        customClass: {
+                            confirmButton: 'btn btn-warning px-5'
+                        },
+                        buttonsStyling: false
+                    });
+                }
+            });
+        </script>
+    @endif
+
     @stack('scripts')
 </body>
 </html>

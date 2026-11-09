@@ -49,6 +49,18 @@ class LoanController extends Controller
             });
         }
 
+        if ($request->filled('department')) {
+            $query->where('borrower_department', $request->query('department'));
+        }
+
+        if ($request->filled('start_date')) {
+            $query->whereDate('loan_date', '>=', $request->query('start_date'));
+        }
+
+        if ($request->filled('end_date')) {
+            $query->whereDate('loan_date', '<=', $request->query('end_date'));
+        }
+
         match ($request->string('due')->toString()) {
             'overdue' => $query->overdue(),
             'today' => $query->whereIn('status', Loan::STATUS_BORROWED)
@@ -75,7 +87,11 @@ class LoanController extends Controller
         $statusCounts['dipinjam'] = max(0, (int) ($statusCounts['dipinjam'] ?? 0) - $overdueDipinjam);
         $statusCounts['terlambat'] = (int) ($statusCounts['terlambat'] ?? 0) + $overdueDipinjam;
 
-        return view('sarpras.loans.index', compact('loans', 'statusCounts'));
+        $startDate = $request->query('start_date');
+        $endDate = $request->query('end_date');
+        $department = $request->query('department');
+
+        return view('sarpras.loans.index', compact('loans', 'statusCounts', 'startDate', 'endDate', 'department'));
     }
 
     /**

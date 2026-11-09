@@ -25,23 +25,56 @@ class InventoryController extends Controller
 
     public function index(Request $request): View
     {
-        $query = Item::with(['location']);
+        $search = $request->query('search');
+        $department = $request->query('department');
+        $category = $request->query('category');
+        $condition = $request->query('condition');
+        $status = $request->query('status');
+        $locationId = $request->query('location_id');
+        $stok = $request->query('stok');
+        $startDate = $request->query('start_date');
+        $endDate = $request->query('end_date');
 
-        if ($request->filled('search')) {
-            $search = $request->search;
+        $query = Item::with(['location', 'assetUnits.location']);
+
+        if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
                     ->orWhere('code', 'like', "%{$search}%")
-                    ->orWhere('category', 'like', "%{$search}%");
+                    ->orWhere('category', 'like', "%{$search}%")
+                    ->orWhere('inventory_number', 'like', "%{$search}%")
+                    ->orWhere('serial_number', 'like', "%{$search}%")
+                    ->orWhereHas('assetUnits', fn ($u) => $u->where('unit_inventory_number', 'like', "%{$search}%")->orWhere('serial_number', 'like', "%{$search}%"));
             });
         }
 
-        if ($request->filled('department')) {
-            $query->where('department', $request->department);
+        if ($department) {
+            $query->where('department', $department);
         }
 
-        if ($request->filled('stok')) {
-            $stok = $request->stok;
+        if ($category) {
+            $query->where('category', $category);
+        }
+
+        if ($condition) {
+            $query->where(function ($q) use ($condition) {
+                $q->where('current_condition', $condition)
+                    ->orWhereHas('assetUnits', fn ($u) => $u->where('current_condition', $condition));
+            });
+        }
+
+        if ($status) {
+            $query->where(function ($q) use ($status) {
+                $q->where('current_status', $status)
+                    ->orWhereHas('assetUnits', fn ($u) => $u->where('current_status', $status));
+            });
+        }
+
+        if ($locationId) {
+            $query->where('location_id', $locationId);
+        }
+
+        if ($stok) {
             if ($stok === 'menipis') {
                 $query->where('item_type', 'consumable')
                     ->where('stock', '>', 0)
@@ -53,31 +86,35 @@ class InventoryController extends Controller
             }
         }
 
-        if ($request->filled('status')) {
-            $status = $request->status;
-            $query->where(function ($q) use ($status) {
-                $q->where('current_status', $status)
-                    ->orWhereHas('assetUnits', fn ($u) => $u->where('current_status', $status));
-            });
+        if ($startDate) {
+            $query->whereDate('created_at', '>=', $startDate);
         }
 
-        $items = $query->latest()->paginate(15)->withQueryString();
-        $locations = Location::all();
+        if ($endDate) {
+            $query->whereDate('created_at', '<=', $endDate);
+        }
 
-        return view('sarpras.inventory.index', compact('items', 'locations'));
+        $items = $query->latest('created_at')->paginate(15)->withQueryString();
+        $locations = Location::orderBy('name')->get();
+        $categories = Item::whereNotNull('category')->distinct()->pluck('category');
+
+        return view('sarpras.inventory.index', compact(
+            'items', 'locations', 'categories', 'search', 'department', 'category', 'condition', 'status', 'locationId', 'stok', 'startDate', 'endDate'
+        ));
     }
 
     public function create(): View
     {
         $locations = Location::all();
+        $suggestedCode = $this->registration->generateItemCode(null);
 
-        return view('sarpras.inventory.create', compact('locations'));
+        return view('sarpras.inventory.create', compact('locations', 'suggestedCode'));
     }
 
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'code' => ['required', 'string', 'max:50', 'unique:items,code'],
+            'code' => ['nullable', 'string', 'max:50', 'unique:items,code'],
             'inventory_number' => ['nullable', 'string', 'max:100', 'unique:items,inventory_number'],
             'serial_number' => ['nullable', 'string', 'max:100'],
             'brand' => ['nullable', 'string', 'max:100'],

@@ -180,13 +180,13 @@
                 </a>
                 <form action="{{ route('kajur.submissions.cancel', $submission) }}" method="POST" data-disable-on-submit>
                     @csrf
-                    <button type="submit" class="btn btn-light-danger" onclick="return confirm('Yakin ingin membatalkan draf pengajuan?')">
+                    <button type="submit" class="btn btn-light-danger" data-confirm-delete="Apakah Anda yakin ingin membatalkan draf pengajuan ini? Tindakan ini tidak dapat diurungkan.">
                         Batalkan Draft
                     </button>
                 </form>
                 <form action="{{ route('kajur.submissions.submitDraft', $submission) }}" method="POST" data-disable-on-submit>
                     @csrf
-                    <button type="submit" class="btn btn-primary" onclick="return confirm('Kirim pengajuan ke Sarpras?')">
+                    <button type="submit" class="btn btn-primary" data-confirm="Apakah Anda yakin ingin mengirimkan pengajuan ini ke pihak Sarpras? Pengajuan tidak dapat diubah lagi setelah dikirim.">
                         <i class="bi bi-send me-1"></i> Kirim ke Sarpras
                     </button>
                 </form>
@@ -194,7 +194,7 @@
         @elseif($submission->isRejected())
             <form action="{{ route('kajur.submissions.revise', $submission) }}" method="POST" data-disable-on-submit>
                 @csrf
-                <button type="submit" class="btn btn-primary" onclick="return confirm('Buat draf revisi dari pengajuan yang ditolak ini? Baris barang akan disalin ke draf baru.')">
+                <button type="submit" class="btn btn-primary" data-confirm="Buat draf revisi dari pengajuan yang ditolak ini? Baris barang akan disalin otomatis ke formulir pengajuan baru.">
                     <i class="bi bi-arrow-repeat me-1"></i> Ajukan Ulang
                 </button>
             </form>

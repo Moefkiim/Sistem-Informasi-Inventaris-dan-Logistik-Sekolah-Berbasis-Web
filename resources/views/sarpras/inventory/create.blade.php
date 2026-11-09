@@ -16,9 +16,10 @@
             <h5 class="fw-bold text-primary mb-4 border-bottom pb-2">1. Identitas Barang</h5>
             <div class="row g-5 mb-7">
                 <div class="col-md-3">
-                    <label class="form-label fw-bold required">Kode Barang (Unik)</label>
-                    <input type="text" name="code" class="form-control form-control-solid font-monospace @error('code') is-invalid @enderror"
-                           placeholder="INV-2026-001" value="{{ old('code') }}" required>
+                    <label class="form-label fw-bold">Kode Barang (Unik)</label>
+                    <input type="text" name="code" id="item_code" class="form-control form-control-solid font-monospace @error('code') is-invalid @enderror"
+                           placeholder="{{ $suggestedCode ?? 'INV-2026-001' }}" value="{{ old('code', $suggestedCode ?? '') }}">
+                    <div class="form-text fs-8 text-muted">Otomatis terisi nomor urut berikutnya atau sesuaikan manual jika ada format khusus.</div>
                     @error('code')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
                 <div class="col-md-3">

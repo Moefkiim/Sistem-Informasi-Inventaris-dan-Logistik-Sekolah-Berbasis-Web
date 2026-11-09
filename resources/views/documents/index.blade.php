@@ -74,10 +74,10 @@
                                     <i class="bi bi-download me-1"></i> Unduh
                                 </a>
                                 @if(auth()->user()->isSarpras())
-                                    <form action="{{ route('documents.destroy', $doc) }}" method="POST" class="d-inline" onsubmit="return confirm('Apakah Anda yakin ingin menghapus dokumen ini?')">
+                                    <form action="{{ route('documents.destroy', $doc) }}" method="POST" class="d-inline">
                                         @csrf
                                         @method('DELETE')
-                                        <button type="submit" class="btn btn-sm btn-light-danger">
+                                        <button type="submit" class="btn btn-sm btn-light-danger" data-confirm-delete="Apakah Anda yakin ingin menghapus dokumen '{{ $doc->title }}'? File fisik dokumen akan dihapus secara permanen.">
                                             <i class="bi bi-trash me-1"></i> Hapus
                                         </button>
                                     </form>

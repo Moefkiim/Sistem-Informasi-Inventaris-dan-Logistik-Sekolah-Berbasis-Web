@@ -21,12 +21,38 @@ class SubmissionController extends Controller
     public function index(Request $request): View
     {
         $user = $request->user();
-        $submissions = Submission::where('user_id', $user->id)
-            ->with(['items'])
-            ->latest()
-            ->paginate(10);
+        $search = $request->query('search');
+        $status = $request->query('status');
+        $startDate = $request->query('start_date');
+        $endDate = $request->query('end_date');
 
-        return view('kajur.submissions.index', compact('submissions'));
+        $query = Submission::where('user_id', $user->id)
+            ->with(['items'])
+            ->latest('created_at');
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('submission_number', 'like', "%{$search}%")
+                    ->orWhere('title', 'like', "%{$search}%")
+                    ->orWhere('purpose', 'like', "%{$search}%");
+            });
+        }
+
+        if ($status && $status !== 'all') {
+            $query->where('status', $status);
+        }
+
+        if ($startDate) {
+            $query->whereDate('created_at', '>=', $startDate);
+        }
+
+        if ($endDate) {
+            $query->whereDate('created_at', '<=', $endDate);
+        }
+
+        $submissions = $query->paginate(10)->withQueryString();
+
+        return view('kajur.submissions.index', compact('submissions', 'search', 'status', 'startDate', 'endDate'));
     }
 
     /**

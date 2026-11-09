@@ -40,23 +40,23 @@
         </div>
 
         {{-- Pencarian & filter --}}
-        <form method="GET" action="{{ route('sarpras.loans.index') }}" class="mb-6">
+        <form method="GET" action="{{ route('sarpras.loans.index') }}" class="card bg-light p-4 border-0 mb-6">
             <div class="row g-3 align-items-end">
-                <div class="col-lg-5">
+                <div class="col-lg-3">
                     <label class="form-label text-muted fs-7 fw-bold" for="loan-search">Pencarian</label>
-                    <div class="input-group">
+                    <div class="input-group input-group-sm">
                         <span class="input-group-text bg-white border-end-0">
                             <i class="fas fa-search text-muted"></i>
                         </span>
                         <input type="text" name="search" id="loan-search"
                                class="form-control form-control-solid ps-0"
-                               placeholder="Nomor peminjaman, peminjam, atau nama/kode barang"
+                               placeholder="Nomor pinjam, peminjam, barang..."
                                value="{{ request('search') }}">
                     </div>
                 </div>
-                <div class="col-lg-3">
+                <div class="col-lg-2">
                     <label class="form-label text-muted fs-7 fw-bold" for="loan-status">Status</label>
-                    <select name="status" id="loan-status" class="form-select form-select-solid">
+                    <select name="status" id="loan-status" class="form-select form-select-solid form-select-sm">
                         <option value="">Semua Status</option>
                         @foreach(\App\Models\Loan::STATUS_META as $key => $meta)
                             <option value="{{ $key }}" {{ request('status') === $key ? 'selected' : '' }}>
@@ -66,25 +66,41 @@
                     </select>
                 </div>
                 <div class="col-lg-2">
+                    <label class="form-label text-muted fs-7 fw-bold">Jurusan</label>
+                    <select name="department" class="form-select form-select-solid form-select-sm">
+                        <option value="">Semua Jurusan</option>
+                        @foreach(config('departments') as $code => $name)
+                            <option value="{{ $code }}" {{ request('department') === $code ? 'selected' : '' }}>{{ $code }} - {{ $name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-lg-2">
                     <label class="form-label text-muted fs-7 fw-bold" for="loan-due">Rencana Kembali</label>
-                    <select name="due" id="loan-due" class="form-select form-select-solid">
+                    <select name="due" id="loan-due" class="form-select form-select-solid form-select-sm">
                         <option value="">Semua</option>
                         <option value="overdue" {{ request('due') === 'overdue' ? 'selected' : '' }}>Terlambat</option>
                         <option value="today" {{ request('due') === 'today' ? 'selected' : '' }}>Jatuh tempo hari ini</option>
                         <option value="week" {{ request('due') === 'week' ? 'selected' : '' }}>7 hari ke depan</option>
                     </select>
                 </div>
-                <div class="col-lg-2">
-                    <div class="d-flex gap-2">
-                        <button type="submit" class="btn btn-primary flex-grow-1">
-                            <i class="fas fa-filter me-2"></i>Filter
-                        </button>
-                        @if(request()->hasAny(['search', 'status', 'due']))
-                            <a href="{{ route('sarpras.loans.index') }}" class="btn btn-light" title="Reset filter">
-                                <i class="fas fa-rotate-left"></i>
-                            </a>
-                        @endif
+                <div class="col-lg-3">
+                    <label class="form-label text-muted fs-7 fw-bold">Rentang Tanggal Pinjam</label>
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text bg-white border-0"><i class="bi bi-calendar-range text-gray-500"></i></span>
+                        <input type="text" class="form-control form-control-solid js-daterangepicker" placeholder="Semua tanggal" value="{{ request('start_date') && request('end_date') ? date('d/m/Y', strtotime(request('start_date'))) . ' - ' . date('d/m/Y', strtotime(request('end_date'))) : '' }}" readonly>
+                        <input type="hidden" name="start_date" value="{{ request('start_date') }}">
+                        <input type="hidden" name="end_date" value="{{ request('end_date') }}">
                     </div>
+                </div>
+                <div class="col-12 d-flex justify-content-end gap-2 mt-2">
+                    @if(request()->hasAny(['search', 'status', 'due', 'department', 'start_date', 'end_date']))
+                        <a href="{{ route('sarpras.loans.index') }}" class="btn btn-sm btn-light">
+                            <i class="bi bi-arrow-counterclockwise me-1"></i> Reset
+                        </a>
+                    @endif
+                    <button type="submit" class="btn btn-sm btn-primary">
+                        <i class="bi bi-filter me-1"></i> Terapkan Filter
+                    </button>
                 </div>
             </div>
         </form>

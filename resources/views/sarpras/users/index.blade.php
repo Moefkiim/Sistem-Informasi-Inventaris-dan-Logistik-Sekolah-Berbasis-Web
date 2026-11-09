@@ -118,13 +118,13 @@
                                                     data-user-department="{{ $u->department }}">
                                                 Edit
                                             </button>
-                                            <form action="{{ route('sarpras.users.reset_password', $u) }}" method="POST" class="d-inline" onsubmit="return confirm('Reset kata sandi akun {{ $u->name }}? Kata sandi sementara akan ditampilkan satu kali dan wajib diganti saat login.')">
+                                            <form action="{{ route('sarpras.users.reset_password', $u) }}" method="POST" class="d-inline">
                                                 @csrf
-                                                <button type="submit" class="btn btn-sm btn-light-info mb-1">Reset Sandi</button>
+                                                <button type="submit" class="btn btn-sm btn-light-info mb-1" data-confirm="Reset kata sandi akun '{{ $u->name }}'? Kata sandi sementara akan dibuat otomatis dan wajib diperbarui saat login berikutnya.">Reset Sandi</button>
                                             </form>
-                                            <form action="{{ route('sarpras.users.toggle', $u) }}" method="POST" class="d-inline" onsubmit="return confirm('Ubah status aktif pengguna ini?')">
+                                            <form action="{{ route('sarpras.users.toggle', $u) }}" method="POST" class="d-inline">
                                                 @csrf
-                                                <button type="submit" class="btn btn-sm btn-light-{{ $u->is_active ? 'warning' : 'success' }} mb-1">
+                                                <button type="submit" class="btn btn-sm btn-light-{{ $u->is_active ? 'warning' : 'success' }} mb-1" data-confirm="Apakah Anda yakin ingin {{ $u->is_active ? 'menonaktifkan' : 'mengaktifkan kembali' }} akun pengguna '{{ $u->name }}'?">
                                                     {{ $u->is_active ? 'Nonaktifkan' : 'Aktifkan' }}
                                                 </button>
                                             </form>

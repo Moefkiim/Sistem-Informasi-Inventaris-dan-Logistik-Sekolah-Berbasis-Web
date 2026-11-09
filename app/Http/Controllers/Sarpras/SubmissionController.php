@@ -28,16 +28,41 @@ class SubmissionController extends Controller
      */
     public function index(Request $request): View
     {
-        $status = $request->get('status');
-        $query = Submission::with(['user', 'items'])->latest();
+        $status = $request->query('status');
+        $department = $request->query('department');
+        $startDate = $request->query('start_date');
+        $endDate = $request->query('end_date');
+        $search = $request->query('search');
 
-        if ($status) {
+        $query = Submission::with(['user', 'items'])->latest('created_at');
+
+        if ($status && $status !== 'all') {
             $query->where('status', $status);
         }
 
-        $submissions = $query->paginate(15);
+        if ($department) {
+            $query->where('department', $department);
+        }
 
-        return view('sarpras.submissions.index', compact('submissions', 'status'));
+        if ($startDate) {
+            $query->whereDate('created_at', '>=', $startDate);
+        }
+
+        if ($endDate) {
+            $query->whereDate('created_at', '<=', $endDate);
+        }
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('submission_number', 'like', "%{$search}%")
+                    ->orWhere('title', 'like', "%{$search}%")
+                    ->orWhereHas('user', fn ($uq) => $uq->where('name', 'like', "%{$search}%"));
+            });
+        }
+
+        $submissions = $query->paginate(15)->withQueryString();
+
+        return view('sarpras.submissions.index', compact('submissions', 'status', 'department', 'startDate', 'endDate', 'search'));
     }
 
     /**
@@ -111,15 +136,41 @@ class SubmissionController extends Controller
     /**
      * Antrean realisasi: daftar pengajuan yang telah disetujui Kepala Sekolah.
      */
-    public function ready(): View
+    public function ready(Request $request): View
     {
-        $submissions = Submission::with(['user', 'items'])
+        $search = $request->query('search');
+        $department = $request->query('department');
+        $startDate = $request->query('start_date');
+        $endDate = $request->query('end_date');
+
+        $query = Submission::with(['user', 'items'])
             ->withCount('items')
             ->where('status', 'approved')
-            ->latest()
-            ->get();
+            ->latest('decided_at');
 
-        return view('sarpras.realizations.index', compact('submissions'));
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('submission_number', 'like', "%{$search}%")
+                    ->orWhere('title', 'like', "%{$search}%")
+                    ->orWhereHas('user', fn ($uq) => $uq->where('name', 'like', "%{$search}%"));
+            });
+        }
+
+        if ($department) {
+            $query->where('department', $department);
+        }
+
+        if ($startDate) {
+            $query->whereDate('decided_at', '>=', $startDate);
+        }
+
+        if ($endDate) {
+            $query->whereDate('decided_at', '<=', $endDate);
+        }
+
+        $submissions = $query->paginate(15)->withQueryString();
+
+        return view('sarpras.realizations.index', compact('submissions', 'search', 'department', 'startDate', 'endDate'));
     }
 
     /**

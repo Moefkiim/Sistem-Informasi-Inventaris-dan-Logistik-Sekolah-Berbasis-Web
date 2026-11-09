@@ -245,7 +245,7 @@ class TaskOverview
                     ->limit($limit)
                     ->get(),
                 fn (Submission $s) => [
-                    'meta' => $s->submission_number.' · '.($s->department ?: 'Umum'),
+                    'meta' => $s->submission_number.' · '.($s->department ?: 'Umum').' · Diajukan: '.$s->created_at->format('d/m/Y'),
                     'color' => 'info',
                     'url' => route('kepala_sekolah.approval.show', $s),
                 ]

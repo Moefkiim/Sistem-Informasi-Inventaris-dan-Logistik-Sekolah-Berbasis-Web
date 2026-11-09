@@ -33,9 +33,46 @@ class UserController extends Controller
             fn ($key) => $key !== 'temporary_password',
         )));
 
-        $users = User::latest()->paginate(15);
+        $search = $request->query('search');
+        $role = $request->query('role');
+        $status = $request->query('status');
+        $department = $request->query('department');
+        $startDate = $request->query('start_date');
+        $endDate = $request->query('end_date');
 
-        return view('sarpras.users.index', compact('users', 'temporaryPassword'));
+        $query = User::latest('created_at');
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('username', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%");
+            });
+        }
+
+        if ($role) {
+            $query->where('role', $role);
+        }
+
+        if ($status !== null && $status !== '') {
+            $query->where('is_active', $status === 'active' || $status === '1');
+        }
+
+        if ($department) {
+            $query->where('department', $department);
+        }
+
+        if ($startDate) {
+            $query->whereDate('created_at', '>=', $startDate);
+        }
+
+        if ($endDate) {
+            $query->whereDate('created_at', '<=', $endDate);
+        }
+
+        $users = $query->paginate(15)->withQueryString();
+
+        return view('sarpras.users.index', compact('users', 'temporaryPassword', 'search', 'role', 'status', 'department', 'startDate', 'endDate'));
     }
 
     public function store(Request $request): RedirectResponse

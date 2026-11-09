@@ -17,6 +17,47 @@
 
 <div class="card border-0 shadow-sm">
     <div class="card-body pt-6">
+        {{-- Toolbar Pencarian & Filter --}}
+        <form action="{{ route('sarpras.realizations.index') }}" method="GET" class="card bg-light p-5 border-0 mb-6">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label fs-7 fw-bold text-gray-700">Pencarian</label>
+                    <div class="position-relative">
+                        <i class="bi bi-search position-absolute top-50 translate-middle-y ms-3 text-gray-500"></i>
+                        <input type="text" name="search" class="form-control form-control-solid ps-10 form-control-sm" placeholder="No. Permohonan, judul, nama..." value="{{ $search }}">
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fs-7 fw-bold text-gray-700">Jurusan</label>
+                    <select name="department" class="form-select form-select-solid form-select-sm">
+                        <option value="">Semua Jurusan</option>
+                        @foreach(config('departments') as $code => $name)
+                            <option value="{{ $code }}" {{ $department === $code ? 'selected' : '' }}>{{ $code }} - {{ $name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fs-7 fw-bold text-gray-700">Rentang Tanggal Disetujui</label>
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text bg-white border-0"><i class="bi bi-calendar-range text-gray-500"></i></span>
+                        <input type="text" class="form-control form-control-solid js-daterangepicker" placeholder="Semua tanggal" value="{{ $startDate && $endDate ? date('d/m/Y', strtotime($startDate)) . ' - ' . date('d/m/Y', strtotime($endDate)) : '' }}" readonly>
+                        <input type="hidden" name="start_date" value="{{ $startDate }}">
+                        <input type="hidden" name="end_date" value="{{ $endDate }}">
+                    </div>
+                </div>
+                <div class="col-12 d-flex justify-content-end gap-2 mt-2">
+                    @if($search || $department || $startDate || $endDate)
+                        <a href="{{ route('sarpras.realizations.index') }}" class="btn btn-sm btn-light">
+                            <i class="bi bi-arrow-counterclockwise me-1"></i> Reset Filter
+                        </a>
+                    @endif
+                    <button type="submit" class="btn btn-sm btn-primary">
+                        <i class="bi bi-filter me-1"></i> Terapkan Filter
+                    </button>
+                </div>
+            </div>
+        </form>
+
         <div class="table-responsive">
             <table class="table align-middle table-row-dashed fs-6 gy-5">
                 <thead>
@@ -58,6 +99,9 @@
                     @endforelse
                 </tbody>
             </table>
+        </div>
+        <div class="mt-4">
+            {{ $submissions->withQueryString()->links() }}
         </div>
     </div>
 </div>

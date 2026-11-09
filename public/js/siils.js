@@ -50,7 +50,17 @@ function initDynamicItemRows() {
                 if (container.querySelectorAll('.item-row').length > 1) {
                     row.remove();
                 } else {
-                    alert('Minimal harus ada 1 item barang yang diajukan.');
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'Peringatan',
+                            text: 'Minimal harus ada 1 item barang yang diajukan.',
+                            confirmButtonText: 'Mengerti',
+                            customClass: { confirmButton: 'btn btn-primary' }
+                        });
+                    } else {
+                        alert('Minimal harus ada 1 item barang yang diajukan.');
+                    }
                 }
             }
         }
@@ -92,10 +102,157 @@ function initDisableOnSubmit() {
     });
 }
 
+/**
+ * Inisialisasi DateRangePicker untuk filter tanggal
+ */
+function initDateRangePickers() {
+    if (typeof $ === 'undefined' || typeof $.fn.daterangepicker === 'undefined') return;
+
+    $('.js-daterangepicker').each(function () {
+        const $picker = $(this);
+        const $form = $picker.closest('form');
+        const $startInput = $form.find('input[name="start_date"]');
+        const $endInput = $form.find('input[name="end_date"]');
+
+        const hasInitialValue = Boolean($startInput.val() && $endInput.val());
+        let start = $startInput.val() ? moment($startInput.val()) : moment().subtract(29, 'days');
+        let end = $endInput.val() ? moment($endInput.val()) : moment();
+
+        $picker.daterangepicker({
+            autoUpdateInput: false,
+            startDate: start,
+            endDate: end,
+            locale: {
+                format: 'DD/MM/YYYY',
+                separator: ' - ',
+                applyLabel: 'Pilih',
+                cancelLabel: 'Hapus',
+                fromLabel: 'Dari',
+                toLabel: 'Sampai',
+                customRangeLabel: 'Pilih Tanggal Sendiri',
+                daysOfWeek: ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'],
+                monthNames: ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'],
+                firstDay: 1
+            },
+            ranges: {
+                'Hari Ini': [moment(), moment()],
+                'Kemarin': [moment().subtract(1, 'days'), moment().subtract(1, 'days')],
+                '7 Hari Terakhir': [moment().subtract(6, 'days'), moment()],
+                '30 Hari Terakhir': [moment().subtract(29, 'days'), moment()],
+                'Bulan Ini': [moment().startOf('month'), moment().endOf('month')],
+                'Bulan Lalu': [moment().subtract(1, 'month').startOf('month'), moment().subtract(1, 'month').endOf('month')]
+            }
+        }, function (chosenStart, chosenEnd) {
+            $picker.val(chosenStart.format('DD/MM/YYYY') + ' - ' + chosenEnd.format('DD/MM/YYYY'));
+            $startInput.val(chosenStart.format('YYYY-MM-DD'));
+            $endInput.val(chosenEnd.format('YYYY-MM-DD'));
+        });
+
+        if (hasInitialValue) {
+            $picker.val(moment($startInput.val()).format('DD/MM/YYYY') + ' - ' + moment($endInput.val()).format('DD/MM/YYYY'));
+        }
+
+        $picker.on('cancel.daterangepicker', function () {
+            $picker.val('');
+            $startInput.val('');
+            $endInput.val('');
+        });
+    });
+}
+
+/**
+ * Konfirmasi Aksi Menggunakan SweetAlert2
+ * Menangani elemen dengan data-confirm atau data-confirm-delete
+ */
+function initSweetAlertConfirmations() {
+    document.addEventListener('click', function (e) {
+        const trigger = e.target.closest('[data-confirm], [data-confirm-delete]');
+        if (!trigger) return;
+
+        const message = trigger.getAttribute('data-confirm') || 
+                        trigger.getAttribute('data-confirm-delete') || 
+                        'Apakah Anda yakin ingin melanjutkan tindakan ini?';
+        const isDelete = trigger.hasAttribute('data-confirm-delete') || 
+                         trigger.classList.contains('btn-danger') || 
+                         trigger.classList.contains('btn-light-danger');
+
+        const form = trigger.closest('form');
+
+        // Jika form HTML5 validation gagal, biarkan browser menampilkan tooltip error
+        if (form && !form.checkValidity()) {
+            form.reportValidity();
+            return;
+        }
+
+        e.preventDefault();
+        e.stopPropagation();
+
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                title: isDelete ? 'Konfirmasi Hapus / Tindakan' : 'Konfirmasi Tindakan',
+                text: message,
+                icon: isDelete ? 'warning' : 'question',
+                showCancelButton: true,
+                confirmButtonText: isDelete ? 'Ya, Lanjutkan' : 'Ya, Lanjutkan',
+                cancelButtonText: 'Batal',
+                customClass: {
+                    confirmButton: isDelete ? 'btn btn-danger px-5' : 'btn btn-primary px-5',
+                    cancelButton: 'btn btn-light px-5'
+                },
+                buttonsStyling: false,
+                reverseButtons: true
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    if (trigger.tagName === 'A') {
+                        window.location.href = trigger.href;
+                    } else if (form) {
+                        // Tambahkan submitter value
+                        if (trigger.name && trigger.value) {
+                            let hidden = form.querySelector(`input[type="hidden"][name="${trigger.name}"]`);
+                            if (!hidden) {
+                                hidden = document.createElement('input');
+                                hidden.type = 'hidden';
+                                hidden.name = trigger.name;
+                                form.appendChild(hidden);
+                            }
+                            hidden.value = trigger.value;
+                        }
+
+                        // Nonaktifkan trigger data-confirm sementara agar tidak loop
+                        const backupConfirm = trigger.getAttribute('data-confirm');
+                        const backupDelete = trigger.getAttribute('data-confirm-delete');
+                        trigger.removeAttribute('data-confirm');
+                        trigger.removeAttribute('data-confirm-delete');
+
+                        if (typeof form.requestSubmit === 'function') {
+                            form.requestSubmit(trigger);
+                        } else {
+                            form.submit();
+                        }
+
+                        if (backupConfirm) trigger.setAttribute('data-confirm', backupConfirm);
+                        if (backupDelete) trigger.setAttribute('data-confirm-delete', backupDelete);
+                    }
+                }
+            });
+        } else {
+            if (confirm(message)) {
+                if (trigger.tagName === 'A') {
+                    window.location.href = trigger.href;
+                } else if (form) {
+                    form.submit();
+                }
+            }
+        }
+    }, true);
+}
+
 // Inisialisasi otomatis saat DOM siap
 if (typeof document !== 'undefined') {
     document.addEventListener('DOMContentLoaded', () => {
         initDynamicItemRows();
         initDisableOnSubmit();
+        initDateRangePickers();
+        initSweetAlertConfirmations();
     });
 }
