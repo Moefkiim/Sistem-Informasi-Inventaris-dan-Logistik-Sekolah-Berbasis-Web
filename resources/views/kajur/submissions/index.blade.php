@@ -71,6 +71,7 @@
             <table class="table align-middle table-row-dashed fs-6 gy-5">
                 <thead>
                     <tr class="text-start text-muted fw-bolder fs-7 text-uppercase gs-0">
+                        <th style="width: 50px;" class="text-center">No</th>
                         <th>No. Pengajuan</th>
                         <th>Judul Permohonan</th>
                         <th>Jumlah Item</th>
@@ -82,6 +83,7 @@
                 <tbody class="text-gray-600 fw-bold">
                     @forelse($submissions as $sub)
                         <tr>
+                            <td class="text-center text-muted fw-bold">{{ $submissions->firstItem() + $loop->index }}</td>
                             <td>
                                 <a href="{{ route('kajur.submissions.show', $sub) }}" class="text-dark fw-bolder text-hover-primary">
                                     {{ $sub->submission_number }}
@@ -122,7 +124,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6">
+                            <td colspan="7">
                                 <x-empty-state
                                     icon="bi-clipboard-plus"
                                     title="Belum ada pengajuan inventaris"

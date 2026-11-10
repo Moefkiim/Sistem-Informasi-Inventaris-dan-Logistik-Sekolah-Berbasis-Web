@@ -77,6 +77,7 @@
                     <table class="table align-middle table-row-dashed fs-7 gy-4">
                         <thead>
                             <tr class="text-start text-muted fw-bolder fs-7 text-uppercase gs-0">
+                                <th style="width: 50px;" class="text-center">No</th>
                                 <th>Nama</th>
                                 <th>Username / Email</th>
                                 <th>Role</th>
@@ -89,6 +90,7 @@
                             @foreach($users as $u)
                                 @php($protected = in_array($u->role, ['kepala_sekolah', 'sarpras'], true))
                                 <tr>
+                                    <td class="text-center text-muted fw-bold">{{ $users->firstItem() + $loop->index }}</td>
                                     <td>
                                         <span class="text-dark fw-bolder">{{ $u->name }}</span>
                                         @if($u->must_change_password)

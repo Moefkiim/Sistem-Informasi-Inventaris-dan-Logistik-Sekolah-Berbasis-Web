@@ -41,6 +41,7 @@
             <table class="table align-middle table-row-dashed fs-7 gy-4">
                 <thead>
                     <tr class="text-start text-muted fw-bolder fs-7 text-uppercase gs-0">
+                        <th style="width: 50px;" class="text-center">No</th>
                         <th>Judul Dokumen</th>
                         <th>Kategori</th>
                         <th>Jurusan</th>
@@ -52,6 +53,7 @@
                 <tbody class="text-gray-600 fw-bold">
                     @forelse($documents as $doc)
                         <tr>
+                            <td class="text-center text-muted fw-bold">{{ $documents->firstItem() + $loop->index }}</td>
                             <td>
                                 <div class="d-flex align-items-center">
                                     <div class="symbol symbol-40px me-3">
@@ -86,7 +88,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="text-center text-muted py-8">Belum ada dokumen yang diunggah.</td>
+                            <td colspan="7" class="text-center text-muted py-8">Belum ada dokumen yang diunggah.</td>
                         </tr>
                     @endforelse
                 </tbody>

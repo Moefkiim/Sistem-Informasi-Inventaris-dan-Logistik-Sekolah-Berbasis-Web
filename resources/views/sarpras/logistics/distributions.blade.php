@@ -139,6 +139,7 @@
                     <table class="table align-middle table-row-dashed fs-7 gy-4">
                         <thead>
                             <tr class="text-start text-muted fw-bolder fs-7 text-uppercase gs-0">
+                                <th style="width: 50px;" class="text-center">No</th>
                                 <th>No. Distribusi</th>
                                 <th>Barang</th>
                                 <th>Kuantitas</th>
@@ -150,6 +151,7 @@
                         <tbody class="text-gray-600 fw-bold">
                             @forelse($distributions as $dist)
                                 <tr>
+                                    <td class="text-center text-muted fw-bold">{{ $distributions->firstItem() + $loop->index }}</td>
                                     <td><span class="text-dark fw-bolder">{{ $dist->distribution_number }}</span></td>
                                     <td>{{ $dist->item?->name ?? 'Barang Telah Dihapus' }}</td>
                                     <td><span class="badge badge-light-primary">{{ $dist->quantity }} {{ $dist->item?->unit ?? 'Unit' }}</span></td>
@@ -158,7 +160,7 @@
                                     <td>{{ $dist->distribution_date->format('d/m/Y') }}</td>
                                 </tr>
                             @empty
-                                <tr><td colspan="6" class="text-center text-muted py-6">Belum ada catatan distribusi.</td></tr>
+                                <tr><td colspan="7" class="text-center text-muted py-6">Belum ada catatan distribusi.</td></tr>
                             @endforelse
                         </tbody>
                     </table>

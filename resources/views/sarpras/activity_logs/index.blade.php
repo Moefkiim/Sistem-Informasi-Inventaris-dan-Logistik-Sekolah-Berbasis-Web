@@ -147,6 +147,7 @@
                 <table class="table table-hover table-row-dashed align-middle log-table fs-7 gy-3">
                     <thead class="fw-bold text-muted text-uppercase">
                         <tr>
+                            <th style="width: 50px;" class="text-center">No</th>
                             <th style="min-width: 150px;">Waktu</th>
                             <th style="min-width: 160px;">Jenis</th>
                             <th style="min-width: 150px;">Pengguna</th>
@@ -159,6 +160,7 @@
                         @foreach($logs as $log)
                             @php $relatedUrl = $log->relatedUrl(); @endphp
                             <tr>
+                                <td class="text-center text-muted fw-bold">{{ $logs->firstItem() + $loop->index }}</td>
                                 <td class="text-gray-600">
                                     <span title="{{ $log->logged_at?->diffForHumans() }}">{{ $formatTime($log->logged_at) }}</span>
                                 </td>

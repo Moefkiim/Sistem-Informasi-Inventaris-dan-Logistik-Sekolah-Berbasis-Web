@@ -109,6 +109,7 @@
             <table class="table align-middle table-row-dashed fs-6 gy-5">
                 <thead>
                     <tr class="text-start text-muted fw-bolder fs-7 text-uppercase gs-0">
+                        <th style="width: 50px;" class="text-center">No</th>
                         <th>No. Peminjaman</th>
                         <th>Barang</th>
                         <th>Peminjam</th>
@@ -122,6 +123,7 @@
                 <tbody class="text-gray-600 fw-bold">
                     @forelse($loans as $loan)
                         <tr>
+                            <td class="text-center text-muted fw-bold">{{ $loans->firstItem() + $loop->index }}</td>
                             <td>
                                 <span class="text-dark fw-bolder font-monospace">{{ $loan->loan_number }}</span>
                             </td>
@@ -155,7 +157,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8" class="text-center py-10">
+                            <td colspan="9" class="text-center py-10">
                                 <i class="fas fa-box-open fs-2x d-block mb-3 opacity-25"></i>
                                 @if(request()->hasAny(['search', 'status', 'due']))
                                     <p class="text-muted mb-3">Tidak ada peminjaman yang cocok dengan filter.</p>

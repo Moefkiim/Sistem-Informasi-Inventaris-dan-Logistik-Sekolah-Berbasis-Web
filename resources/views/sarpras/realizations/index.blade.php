@@ -62,6 +62,7 @@
             <table class="table align-middle table-row-dashed fs-6 gy-5">
                 <thead>
                     <tr class="text-start text-muted fw-bolder fs-7 text-uppercase gs-0">
+                        <th style="width: 50px;" class="text-center">No</th>
                         <th>No. Permohonan</th>
                         <th>Pengaju (Kajur)</th>
                         <th>Jurusan</th>
@@ -74,6 +75,7 @@
                 <tbody class="text-gray-600 fw-bold">
                     @forelse($submissions as $sub)
                         <tr>
+                            <td class="text-center text-muted fw-bold">{{ $submissions->firstItem() + $loop->index }}</td>
                             <td><span class="text-dark fw-bolder">{{ $sub->submission_number }}</span></td>
                             <td>{{ $sub->user->name }}</td>
                             <td><span class="badge badge-light-primary">{{ $sub->department }}</span></td>
@@ -89,7 +91,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7">
+                            <td colspan="8">
                                 <x-empty-state
                                     icon="bi-inbox"
                                     title="Tidak ada pengajuan siap direalisasi"

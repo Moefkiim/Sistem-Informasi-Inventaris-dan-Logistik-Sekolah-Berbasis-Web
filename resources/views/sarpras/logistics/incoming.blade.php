@@ -117,6 +117,7 @@
                     <table class="table align-middle table-row-dashed fs-7 gy-4">
                         <thead>
                             <tr class="text-start text-muted fw-bolder fs-7 text-uppercase gs-0">
+                                <th style="width: 50px;" class="text-center">No</th>
                                 <th>No. Transaksi</th>
                                 <th>Barang</th>
                                 <th>Kuantitas</th>
@@ -128,6 +129,7 @@
                         <tbody class="text-gray-600 fw-bold">
                             @forelse($incomingLogs as $log)
                                 <tr>
+                                    <td class="text-center text-muted fw-bold">{{ $incomingLogs->firstItem() + $loop->index }}</td>
                                     <td><span class="text-dark fw-bolder">{{ $log->transaction_number }}</span></td>
                                     <td>{{ $log->item?->name ?? 'Barang Telah Dihapus' }}</td>
                                     <td><span class="badge badge-light-success">+{{ $log->quantity }} {{ $log->item?->unit ?? 'Unit' }}</span></td>
@@ -136,7 +138,7 @@
                                     <td>{{ $log->user?->name ?? 'Sistem' }}</td>
                                 </tr>
                             @empty
-                                <tr><td colspan="6" class="text-center text-muted py-6">Belum ada catatan barang masuk.</td></tr>
+                                <tr><td colspan="7" class="text-center text-muted py-6">Belum ada catatan barang masuk.</td></tr>
                             @endforelse
                         </tbody>
                     </table>

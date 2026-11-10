@@ -23,6 +23,7 @@
             <table class="table align-middle table-row-dashed fs-6 gy-5">
                 <thead>
                     <tr class="text-start text-muted fw-bolder fs-7 text-uppercase gs-0">
+                        <th style="width: 50px;" class="text-center">No</th>
                         <th>Pemberitahuan</th>
                         <th>Waktu</th>
                         <th class="text-end">Aksi</th>
@@ -31,6 +32,7 @@
                 <tbody class="text-gray-600 fw-bold">
                     @forelse($notifications as $notification)
                         <tr class="{{ $notification->read_at === null ? 'bg-light-primary' : '' }}">
+                            <td class="text-center text-muted fw-bold">{{ $notifications->firstItem() + $loop->index }}</td>
                             <td>
                                 <div class="d-flex align-items-start gap-3">
                                     @if($notification->read_at === null)
@@ -53,7 +55,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="3">
+                            <td colspan="4">
                                 <x-empty-state icon="bi-bell-slash" title="Belum ada notifikasi" description="Pemberitahuan pengajuan akan muncul di sini." />
                             </td>
                         </tr>

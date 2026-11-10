@@ -107,6 +107,7 @@
                     <table class="table align-middle table-row-dashed fs-7 gy-4">
                         <thead>
                             <tr class="text-start text-muted fw-bolder fs-7 text-uppercase gs-0">
+                                <th style="width: 50px;" class="text-center">No</th>
                                 <th>Kode</th>
                                 <th>Nama Lokasi</th>
                                 <th>Gedung</th>
@@ -118,6 +119,7 @@
                         <tbody class="text-gray-600 fw-bold">
                             @forelse($locations as $loc)
                                 <tr>
+                                    <td class="text-center text-muted fw-bold">{{ $locations->firstItem() + $loop->index }}</td>
                                     <td><span class="badge badge-light-dark font-monospace">{{ $loc->code }}</span></td>
                                     <td class="text-dark fw-bolder">{{ $loc->name }}</td>
                                     <td>{{ $loc->building ?: '-' }}</td>
@@ -143,7 +145,7 @@
                                     </td>
                                 </tr>
                             @empty
-                                <tr><td colspan="6" class="text-center text-muted py-6">Belum ada data master lokasi.</td></tr>
+                                <tr><td colspan="7" class="text-center text-muted py-6">Belum ada data master lokasi.</td></tr>
                             @endforelse
                         </tbody>
                     </table>
