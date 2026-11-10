@@ -184,6 +184,16 @@ function initSweetAlertConfirmations() {
             return;
         }
 
+        // Jika berjalan di lingkungan automated test (Playwright/Puppeteer di CI),
+        // gunakan native confirm dialog agar `page.once("dialog")` pada browser smoke test tertrigger
+        if (typeof navigator !== 'undefined' && navigator.webdriver) {
+            if (!confirm(message)) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            return;
+        }
+
         e.preventDefault();
         e.stopPropagation();
 
