@@ -118,12 +118,6 @@
                                         </button>
                                     </form>
                                 @endif
-                                        @csrf
-                                        <button type="submit" class="btn btn-sm btn-light-primary" onclick="return confirm('Buat draf revisi dari pengajuan yang ditolak ini?')">
-                                            Ajukan Ulang
-                                        </button>
-                                    </form>
-                                @endif
                             </td>
                         </tr>
                     @empty
