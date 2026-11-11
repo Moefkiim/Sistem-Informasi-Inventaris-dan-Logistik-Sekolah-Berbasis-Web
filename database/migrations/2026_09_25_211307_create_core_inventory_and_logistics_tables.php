@@ -78,7 +78,7 @@ return new class extends Migration
                 'reviewed_sarpras',  // Diverifikasi/diproses Sarpras, siap diajukan ke Kepsek
                 'approved',          // Disetujui Kepala Sekolah
                 'rejected',          // Ditolak Kepala Sekolah / Sarpras
-                'cancelled'          // Dibatalkan oleh Kajur
+                'cancelled',          // Dibatalkan oleh Kajur
             ])->default('draft');
             $table->text('sarpras_notes')->nullable();
             $table->foreignId('sarpras_user_id')->nullable()->constrained('users')->nullOnDelete();

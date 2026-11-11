@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\AssetUnit;
 use App\Models\Item;
 use App\Models\Location;
 use App\Models\LocationHistory;
@@ -47,7 +48,7 @@ class LocationManagementTest extends TestCase
         $otherLocation = Location::factory()->create();
 
         $item = Item::factory()->create(['location_id' => $otherLocation->id]);
-        \App\Models\AssetUnit::create([
+        AssetUnit::create([
             'item_id' => $item->id,
             'unit_inventory_number' => 'UNIT-LOC-01',
             'current_condition' => 'baik',

@@ -615,4 +615,3 @@ class DummyJurusanSeeder extends Seeder
         }
     }
 }
-

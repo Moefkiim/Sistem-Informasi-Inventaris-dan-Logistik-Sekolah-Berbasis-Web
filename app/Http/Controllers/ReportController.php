@@ -13,6 +13,7 @@ use App\Models\OutgoingItem;
 use App\Models\Submission;
 use App\Support\AssetCondition;
 use App\Support\Departments;
+use App\Support\ExcelSanitizer;
 use App\Support\ReportTypes;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Eloquent\Builder;
@@ -24,7 +25,6 @@ use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
-use App\Support\ExcelSanitizer;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\Response;
 

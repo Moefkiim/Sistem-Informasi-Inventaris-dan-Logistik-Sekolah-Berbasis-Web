@@ -5,9 +5,9 @@ namespace Tests\Feature;
 use App\Models\AssetUnit;
 use App\Models\Item;
 use App\Models\Loan;
-use App\Models\Location;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
 
 /**
@@ -50,9 +50,9 @@ class AssetUnitAvailabilityTest extends TestCase
     {
         $unit = AssetUnit::factory()->for($this->item)->create(['current_status' => 'dipinjam']);
         Loan::factory()->create([
-            'item_id'      => $this->item->id,
-            'asset_unit_id'=> $unit->id,
-            'status'       => 'dipinjam',
+            'item_id' => $this->item->id,
+            'asset_unit_id' => $unit->id,
+            'status' => 'dipinjam',
         ]);
 
         $this->assertFalse($unit->isAvailableForLoan());
@@ -93,9 +93,9 @@ class AssetUnitAvailabilityTest extends TestCase
         // Unit aktif tapi sudah dipinjam
         $unitPinjam = AssetUnit::factory()->for($this->item)->create(['current_status' => 'dipinjam']);
         Loan::factory()->create([
-            'item_id'      => $this->item->id,
-            'asset_unit_id'=> $unitPinjam->id,
-            'status'       => 'dipinjam',
+            'item_id' => $this->item->id,
+            'asset_unit_id' => $unitPinjam->id,
+            'status' => 'dipinjam',
         ]);
 
         $loanable = AssetUnit::loanable()->pluck('id');
@@ -108,16 +108,16 @@ class AssetUnitAvailabilityTest extends TestCase
     // 3. store() - blokir unit non-loanable via POST langsung
     // =========================================================================
 
-    private function postLoan(AssetUnit $unit): \Illuminate\Testing\TestResponse
+    private function postLoan(AssetUnit $unit): TestResponse
     {
         return $this->actingAs($this->sarpras)->post(route('sarpras.loans.store'), [
-            'borrower_name'  => 'Test Peminjam',
-            'item_id'        => $this->item->id,
-            'asset_unit_id'  => $unit->id,
-            'quantity'       => 1,
-            'loan_date'      => now()->toDateString(),
-            'due_date'       => now()->addDays(7)->toDateString(),
-            'purpose'        => 'Kebutuhan praktikum',
+            'borrower_name' => 'Test Peminjam',
+            'item_id' => $this->item->id,
+            'asset_unit_id' => $unit->id,
+            'quantity' => 1,
+            'loan_date' => now()->toDateString(),
+            'due_date' => now()->addDays(7)->toDateString(),
+            'purpose' => 'Kebutuhan praktikum',
         ]);
     }
 
@@ -146,9 +146,9 @@ class AssetUnitAvailabilityTest extends TestCase
     {
         $unit = AssetUnit::factory()->for($this->item)->create(['current_status' => 'dipinjam']);
         Loan::factory()->create([
-            'item_id'      => $this->item->id,
-            'asset_unit_id'=> $unit->id,
-            'status'       => 'dipinjam',
+            'item_id' => $this->item->id,
+            'asset_unit_id' => $unit->id,
+            'status' => 'dipinjam',
         ]);
 
         $this->postLoan($unit)->assertSessionHasErrors('asset_unit_id');
@@ -183,9 +183,9 @@ class AssetUnitAvailabilityTest extends TestCase
         $unit = AssetUnit::factory()->for($this->item)->create(['current_status' => 'aktif']);
 
         Loan::factory()->create([
-            'item_id'       => $this->item->id,
+            'item_id' => $this->item->id,
             'asset_unit_id' => $unit->id,
-            'status'        => 'menunggu',
+            'status' => 'menunggu',
         ]);
 
         $this->assertFalse($unit->isAvailableForLoan());
@@ -197,9 +197,9 @@ class AssetUnitAvailabilityTest extends TestCase
         $reservedUnit = AssetUnit::factory()->for($this->item)->create(['current_status' => 'aktif']);
 
         Loan::factory()->create([
-            'item_id'       => $this->item->id,
+            'item_id' => $this->item->id,
             'asset_unit_id' => $reservedUnit->id,
-            'status'        => 'menunggu',
+            'status' => 'menunggu',
         ]);
 
         $loanable = AssetUnit::loanable()->pluck('id');
@@ -213,9 +213,9 @@ class AssetUnitAvailabilityTest extends TestCase
         $unit = AssetUnit::factory()->for($this->item)->create(['current_status' => 'aktif']);
 
         Loan::factory()->create([
-            'item_id'       => $this->item->id,
+            'item_id' => $this->item->id,
             'asset_unit_id' => $unit->id,
-            'status'        => 'menunggu',
+            'status' => 'menunggu',
         ]);
 
         $this->postLoan($unit)->assertSessionHasErrors('asset_unit_id');
@@ -230,15 +230,15 @@ class AssetUnitAvailabilityTest extends TestCase
         $unit = AssetUnit::factory()->for($this->item)->create(['current_status' => 'aktif']);
 
         $loanA = Loan::factory()->create([
-            'item_id'       => $this->item->id,
+            'item_id' => $this->item->id,
             'asset_unit_id' => $unit->id,
-            'status'        => 'menunggu',
+            'status' => 'menunggu',
         ]);
 
         $loanB = Loan::factory()->create([
-            'item_id'       => $this->item->id,
+            'item_id' => $this->item->id,
             'asset_unit_id' => $unit->id,
-            'status'        => 'menunggu',
+            'status' => 'menunggu',
         ]);
 
         // Sarpras approve loanA pertama kali
@@ -260,9 +260,9 @@ class AssetUnitAvailabilityTest extends TestCase
         $unit = AssetUnit::factory()->for($this->item)->create(['current_status' => 'dalam_perbaikan']);
 
         $loan = Loan::factory()->create([
-            'item_id'       => $this->item->id,
+            'item_id' => $this->item->id,
             'asset_unit_id' => $unit->id,
-            'status'        => 'menunggu',
+            'status' => 'menunggu',
         ]);
 
         $this->actingAs($this->sarpras)
@@ -280,20 +280,20 @@ class AssetUnitAvailabilityTest extends TestCase
     public function test_return_rusak_berat_mengubah_unit_menjadi_dalam_perbaikan(): void
     {
         $unit = AssetUnit::factory()->for($this->item)->create([
-            'current_status'    => 'dipinjam',
+            'current_status' => 'dipinjam',
             'current_condition' => 'baik',
         ]);
 
         $loan = Loan::factory()->onLoan()->create([
-            'item_id'           => $this->item->id,
-            'asset_unit_id'     => $unit->id,
+            'item_id' => $this->item->id,
+            'asset_unit_id' => $unit->id,
             'condition_on_loan' => 'baik',
         ]);
 
         $this->actingAs($this->sarpras)
             ->post(route('sarpras.loans.return', $loan), [
                 'condition_on_return' => 'rusak_berat',
-                'notes'               => 'Komponen utama terbakar',
+                'notes' => 'Komponen utama terbakar',
             ])
             ->assertRedirect();
 
@@ -302,10 +302,10 @@ class AssetUnitAvailabilityTest extends TestCase
         $this->assertSame('dalam_perbaikan', $unit->fresh()->current_status);
 
         $this->assertDatabaseHas('condition_histories', [
-            'item_id'        => $this->item->id,
-            'asset_unit_id'  => $unit->id,
+            'item_id' => $this->item->id,
+            'asset_unit_id' => $unit->id,
             'from_condition' => 'baik',
-            'to_condition'   => 'rusak_berat',
+            'to_condition' => 'rusak_berat',
         ]);
     }
 
@@ -313,11 +313,11 @@ class AssetUnitAvailabilityTest extends TestCase
     {
         $item = Item::factory()->individual()->create(['stock' => 2]);
         $unit1 = AssetUnit::factory()->for($item)->create([
-            'current_status'    => 'aktif',
+            'current_status' => 'aktif',
             'current_condition' => 'baik',
         ]);
         $unit2 = AssetUnit::factory()->for($item)->create([
-            'current_status'    => 'dalam_perbaikan',
+            'current_status' => 'dalam_perbaikan',
             'current_condition' => 'rusak_berat',
         ]);
 

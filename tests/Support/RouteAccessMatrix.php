@@ -2,6 +2,8 @@
 
 namespace Tests\Support;
 
+use Illuminate\Routing\Route;
+
 /**
  * Matriks otorisasi seluruh route aplikasi berdasarkan matriks akses di AGENTS.md.
  *
@@ -110,7 +112,7 @@ class RouteAccessMatrix
      *
      * @return string|array<int, string>|null
      */
-    public static function getAccessForRoute(\Illuminate\Routing\Route $route): string|array|null
+    public static function getAccessForRoute(Route $route): string|array|null
     {
         $name = $route->getName();
         if ($name && array_key_exists($name, self::MATRIX)) {

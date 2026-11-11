@@ -1,5 +1,8 @@
 <?php
 
+use App\Http\Middleware\EnsurePasswordChanged;
+use App\Http\Middleware\EnsureUserRole;
+use App\Http\Middleware\SecurityHeaders;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -16,12 +19,12 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withCommands([__DIR__.'/../app/Console/Commands'])
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->web(append: [
-            \App\Http\Middleware\SecurityHeaders::class,
+            SecurityHeaders::class,
         ]);
 
         $middleware->alias([
-            'role' => \App\Http\Middleware\EnsureUserRole::class,
-            'password.changed' => \App\Http\Middleware\EnsurePasswordChanged::class,
+            'role' => EnsureUserRole::class,
+            'password.changed' => EnsurePasswordChanged::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

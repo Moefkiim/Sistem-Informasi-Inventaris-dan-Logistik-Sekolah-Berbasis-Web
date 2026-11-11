@@ -8,6 +8,7 @@ use App\Models\Location;
 use App\Models\OutgoingItem;
 use App\Models\Submission;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -180,7 +181,7 @@ class DashboardScopingTest extends TestCase
     {
         // Februari (28 hari) sebagai bulan berjalan membuktikan rentang tidak
         // memakai asumsi tanggal '-31' yang invalid di MySQL.
-        $this->travelTo(\Carbon\Carbon::parse('2026-02-10 08:00:00'));
+        $this->travelTo(Carbon::parse('2026-02-10 08:00:00'));
 
         $item = $this->item('RPL');
         $item->forceFill(['current_status' => 'aktif'])->save();
