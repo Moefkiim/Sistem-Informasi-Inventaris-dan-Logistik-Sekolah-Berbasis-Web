@@ -5,9 +5,12 @@ namespace Tests\Feature;
 use App\Models\IncomingItem;
 use App\Models\Item;
 use App\Models\User;
+use Illuminate\Contracts\Http\Kernel;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\IOFactory;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Tests\TestCase;
 
 /**
@@ -50,12 +53,12 @@ class ExcelFormulaInjectionTest extends TestCase
         $response->assertOk();
 
         // BinaryFileResponse: ambil path berkas temporer dari response
-        $kernel = app(\Illuminate\Contracts\Http\Kernel::class);
+        $kernel = app(Kernel::class);
         $sfResponse = $response->baseResponse;
 
         $path = tempnam(sys_get_temp_dir(), 'test-excel-').'.xlsx';
 
-        if ($sfResponse instanceof \Symfony\Component\HttpFoundation\BinaryFileResponse) {
+        if ($sfResponse instanceof BinaryFileResponse) {
             $srcPath = $sfResponse->getFile()->getPathname();
             copy($srcPath, $path);
         } else {
@@ -91,9 +94,9 @@ class ExcelFormulaInjectionTest extends TestCase
                 $formulaFound = false;
                 for ($row = 2; $row <= $highestRow; $row++) {
                     $highestCol = $sheet->getHighestDataColumn($row);
-                    $highestColIndex = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString($highestCol);
+                    $highestColIndex = Coordinate::columnIndexFromString($highestCol);
                     for ($col = 1; $col <= $highestColIndex; $col++) {
-                        $coord = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($col).$row;
+                        $coord = Coordinate::stringFromColumnIndex($col).$row;
                         $cell = $sheet->getCell($coord);
                         if ($cell->getDataType() === DataType::TYPE_FORMULA) {
                             $formulaFound = true;
@@ -142,9 +145,9 @@ class ExcelFormulaInjectionTest extends TestCase
 
             for ($row = 2; $row <= $highestRow; $row++) {
                 $highestCol = $sheet->getHighestDataColumn($row);
-                $highestColIndex = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString($highestCol);
+                $highestColIndex = Coordinate::columnIndexFromString($highestCol);
                 for ($col = 1; $col <= $highestColIndex; $col++) {
-                    $coord = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($col).$row;
+                    $coord = Coordinate::stringFromColumnIndex($col).$row;
                     $cell = $sheet->getCell($coord);
                     $this->assertNotEquals(
                         DataType::TYPE_FORMULA,

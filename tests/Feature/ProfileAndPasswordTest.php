@@ -62,8 +62,8 @@ class ProfileAndPasswordTest extends TestCase
     {
         $user = $this->makeUser();
         $response = $this->actingAs($user)->put('/profile/password', [
-            'current_password'      => 'salah-sekali',
-            'password'              => 'NewPass9x',
+            'current_password' => 'salah-sekali',
+            'password' => 'NewPass9x',
             'password_confirmation' => 'NewPass9x',
         ]);
         $response->assertSessionHasErrors('current_password');
@@ -74,8 +74,8 @@ class ProfileAndPasswordTest extends TestCase
     {
         $user = $this->makeUser();
         $response = $this->actingAs($user)->put('/profile/password', [
-            'current_password'      => 'password123',
-            'password'              => 'Abc1',
+            'current_password' => 'password123',
+            'password' => 'Abc1',
             'password_confirmation' => 'Abc1',
         ]);
         $response->assertSessionHasErrors('password');
@@ -85,8 +85,8 @@ class ProfileAndPasswordTest extends TestCase
     {
         $user = $this->makeUser();
         $response = $this->actingAs($user)->put('/profile/password', [
-            'current_password'      => 'password123',
-            'password'              => '12345678',
+            'current_password' => 'password123',
+            'password' => '12345678',
             'password_confirmation' => '12345678',
         ]);
         $response->assertSessionHasErrors('password');
@@ -96,8 +96,8 @@ class ProfileAndPasswordTest extends TestCase
     {
         $user = $this->makeUser();
         $response = $this->actingAs($user)->put('/profile/password', [
-            'current_password'      => 'password123',
-            'password'              => 'OnlyLetters',
+            'current_password' => 'password123',
+            'password' => 'OnlyLetters',
             'password_confirmation' => 'OnlyLetters',
         ]);
         $response->assertSessionHasErrors('password');
@@ -107,8 +107,8 @@ class ProfileAndPasswordTest extends TestCase
     {
         $user = $this->makeUser();
         $response = $this->actingAs($user)->put('/profile/password', [
-            'current_password'      => 'password123',
-            'password'              => 'NewPass9x',
+            'current_password' => 'password123',
+            'password' => 'NewPass9x',
             'password_confirmation' => 'DifferentPass9x',
         ]);
         $response->assertSessionHasErrors('password');
@@ -118,8 +118,8 @@ class ProfileAndPasswordTest extends TestCase
     {
         $user = $this->makeUser();
         $response = $this->actingAs($user)->put('/profile/password', [
-            'current_password'      => 'password123',
-            'password'              => 'password123',
+            'current_password' => 'password123',
+            'password' => 'password123',
             'password_confirmation' => 'password123',
         ]);
         $response->assertSessionHasErrors('password');
@@ -129,8 +129,8 @@ class ProfileAndPasswordTest extends TestCase
     {
         $user = $this->makeUser();
         $response = $this->actingAs($user)->put('/profile/password', [
-            'current_password'      => 'password123',
-            'password'              => 'BaruBanget9',
+            'current_password' => 'password123',
+            'password' => 'BaruBanget9',
             'password_confirmation' => 'BaruBanget9',
         ]);
         $response->assertRedirect(route('profile.show'));
@@ -142,8 +142,8 @@ class ProfileAndPasswordTest extends TestCase
     {
         $user = $this->makeUser(['must_change_password' => true]);
         $this->actingAs($user)->put('/profile/password', [
-            'current_password'      => 'password123',
-            'password'              => 'BaruBanget9',
+            'current_password' => 'password123',
+            'password' => 'BaruBanget9',
             'password_confirmation' => 'BaruBanget9',
         ]);
         $this->assertFalse((bool) $user->fresh()->must_change_password);
@@ -153,8 +153,8 @@ class ProfileAndPasswordTest extends TestCase
     {
         $user = $this->makeUser(['name' => 'Uji Coba Log', 'username' => 'ujicoba_log']);
         $this->actingAs($user)->put('/profile/password', [
-            'current_password'      => 'password123',
-            'password'              => 'BaruBanget9',
+            'current_password' => 'password123',
+            'password' => 'BaruBanget9',
             'password_confirmation' => 'BaruBanget9',
         ]);
         // auditable_label menyimpan username (label parameter pada ActivityLog::log)

@@ -26,7 +26,7 @@ class DocumentController extends Controller
             }
             $query->where(function ($q) use ($user) {
                 $q->whereNull('department')
-                  ->orWhere('department', $user->department);
+                    ->orWhere('department', $user->department);
             });
         }
 
@@ -96,7 +96,7 @@ class DocumentController extends Controller
             if (empty($user->department)) {
                 abort(403, 'Akses ditolak: Jurusan akun Kajur belum diatur.');
             }
-            if (!empty($document->department) && $document->department !== $user->department) {
+            if (! empty($document->department) && $document->department !== $user->department) {
                 abort(403, 'Akses ditolak: Dokumen bukan milik jurusan Anda.');
             }
         }

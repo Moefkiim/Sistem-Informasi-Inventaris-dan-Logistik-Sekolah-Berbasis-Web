@@ -8,7 +8,6 @@ use App\Models\Item;
 use App\Models\Loan;
 use App\Models\Location;
 use App\Models\Submission;
-use App\Models\SubmissionItem;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;

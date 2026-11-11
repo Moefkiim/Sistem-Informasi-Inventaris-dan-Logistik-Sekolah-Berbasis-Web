@@ -32,11 +32,10 @@ abstract class TestCase extends BaseTestCase
         }
 
         throw new RuntimeException(
-            "Test suite tidak boleh dijalankan pada database non-test. " .
-            "Koneksi aktif: '{$connection}' (database: '{$database}', env: '{$this->app->environment()}'). " .
-            "Gunakan sqlite :memory: atau pastikan APP_ENV=testing dengan database test (mis. siils_ci/siils_test). " .
+            'Test suite tidak boleh dijalankan pada database non-test. '.
+            "Koneksi aktif: '{$connection}' (database: '{$database}', env: '{$this->app->environment()}'). ".
+            'Gunakan sqlite :memory: atau pastikan APP_ENV=testing dengan database test (mis. siils_ci/siils_test). '.
             "Jika baru saja menjalankan 'php artisan optimize', bersihkan cache konfigurasi terlebih dahulu dengan 'php artisan optimize:clear'."
         );
     }
 }
-

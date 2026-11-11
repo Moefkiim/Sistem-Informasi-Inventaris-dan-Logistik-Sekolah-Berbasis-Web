@@ -17,10 +17,15 @@ class LecturerRevisionTest extends TestCase
     use RefreshDatabase;
 
     private User $sarprasUser;
+
     private User $kepsekUser;
+
     private User $kajurUser;
+
     private Item $itemA;
+
     private Item $itemB;
+
     private Location $location;
 
     protected function setUp(): void
@@ -270,6 +275,6 @@ class LecturerRevisionTest extends TestCase
         $responseHome = $this->actingAs($this->kepsekUser)
             ->get(route('home'));
         $responseHome->assertOk();
-        $responseHome->assertSee('Diajukan: ' . $sub->created_at->format('d/m/Y'));
+        $responseHome->assertSee('Diajukan: '.$sub->created_at->format('d/m/Y'));
     }
 }

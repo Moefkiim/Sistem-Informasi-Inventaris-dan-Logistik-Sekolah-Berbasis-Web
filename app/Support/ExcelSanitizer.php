@@ -42,6 +42,7 @@ class ExcelSanitizer
                     "'".$value,
                     DataType::TYPE_STRING,
                 );
+
                 return;
             }
 
@@ -50,6 +51,7 @@ class ExcelSanitizer
                 $value,
                 DataType::TYPE_STRING,
             );
+
             return;
         }
 
@@ -74,6 +76,7 @@ class ExcelSanitizer
                     "'".$value,
                     DataType::TYPE_STRING,
                 );
+
                 return;
             }
 
@@ -82,6 +85,7 @@ class ExcelSanitizer
                 $value,
                 DataType::TYPE_STRING,
             );
+
             return;
         }
 
