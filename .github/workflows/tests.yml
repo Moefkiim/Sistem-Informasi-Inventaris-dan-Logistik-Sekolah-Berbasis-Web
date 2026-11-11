@@ -41,6 +41,9 @@ jobs:
       - name: Install Composer dependencies
         run: composer install --no-progress --prefer-dist --optimize-autoloader
 
+      - name: Verify code style with Pint
+        run: vendor/bin/pint --test
+
       - name: Verify platform requirements
         run: composer check-platform-reqs
 
@@ -122,6 +125,9 @@ jobs:
 
       - name: Install Composer dependencies
         run: composer install --no-progress --prefer-dist --optimize-autoloader
+
+      - name: Verify code style with Pint
+        run: vendor/bin/pint --test
 
       - name: Verify platform requirements
         run: composer check-platform-reqs
