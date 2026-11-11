@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Sarpras;
 
 use App\Http\Controllers\Controller;
+use App\Models\ActivityLog;
 use App\Models\Distribution;
 use App\Models\IncomingItem;
 use App\Models\Item;
@@ -72,7 +73,7 @@ class LogisticsController extends Controller
         ]);
 
         DB::transaction(function () use ($validated, $request) {
-            $this->incomingStock->record([
+            $incoming = $this->incomingStock->record([
                 'item_id' => $validated['item_id'],
                 'quantity' => $validated['quantity'],
                 'source' => $validated['source'],
@@ -81,6 +82,17 @@ class LogisticsController extends Controller
                 'user_id' => $request->user()->id,
                 'notes' => $validated['notes'] ?? null,
             ]);
+
+            $item = Item::find($validated['item_id']);
+
+            ActivityLog::log(
+                'incoming_recorded',
+                "Barang masuk: {$item?->name} (x{$validated['quantity']}) dicatat [{$incoming->transaction_number}]",
+                $incoming,
+                [],
+                ['item_id' => $validated['item_id'], 'quantity' => $validated['quantity'], 'source' => $validated['source']],
+                $incoming->transaction_number,
+            );
         });
 
         return back()->with('success', 'Transaksi barang masuk berhasil dicatat dan stok telah bertambah.');
@@ -158,7 +170,7 @@ class LogisticsController extends Controller
 
             $transactionNumber = $this->generateDocumentNumber('outgoing_items', 'transaction_number', 'OUT');
 
-            OutgoingItem::create([
+            $outgoing = OutgoingItem::create([
                 'transaction_number' => $transactionNumber,
                 'item_id' => $item->id,
                 'quantity' => $validated['quantity'],
@@ -167,6 +179,15 @@ class LogisticsController extends Controller
                 'user_id' => $request->user()->id,
                 'notes' => $validated['notes'] ?? null,
             ]);
+
+            ActivityLog::log(
+                'outgoing_recorded',
+                "Barang keluar: {$item->name} (x{$validated['quantity']}) dicatat [{$transactionNumber}] - {$validated['reason']}",
+                $outgoing,
+                [],
+                ['item_id' => $item->id, 'quantity' => $validated['quantity'], 'reason' => $validated['reason']],
+                $transactionNumber,
+            );
         });
 
         return back()->with('success', 'Transaksi barang keluar berhasil dicatat dan stok telah dikurangi.');
@@ -253,7 +274,7 @@ class LogisticsController extends Controller
 
             $transactionNumber = $this->generateDocumentNumber('distributions', 'distribution_number', 'DIST');
 
-            Distribution::create([
+            $distribution = Distribution::create([
                 'distribution_number' => $transactionNumber,
                 'item_id' => $validated['item_id'],
                 'quantity' => $validated['quantity'],
@@ -279,6 +300,17 @@ class LogisticsController extends Controller
             // Untuk item individual, lokasi unit masing-masing dikelola lewat
             // alur registrasi dan pemindahan unit di modul Inventaris.
             Item::where('id', $item->id)->update(['location_id' => $validated['to_location_id']]);
+
+            $toLocation = Location::find($validated['to_location_id']);
+
+            ActivityLog::log(
+                'distribution_recorded',
+                "Distribusi barang: {$item->name} (x{$validated['quantity']}) ke ".($toLocation?->name ?? 'lokasi tujuan')." [{$transactionNumber}]",
+                $distribution,
+                [],
+                ['item_id' => $item->id, 'quantity' => $validated['quantity'], 'to_location_id' => $validated['to_location_id']],
+                $transactionNumber,
+            );
         });
 
         return back()->with('success', 'Data distribusi berhasil dicatat ke dalam log sistem dan stok telah disesuaikan.');

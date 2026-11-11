@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Sarpras;
 
 use App\Http\Controllers\Controller;
+use App\Models\ActivityLog;
 use App\Models\Location;
 use App\Support\Departments;
 use Illuminate\Http\RedirectResponse;
@@ -57,7 +58,16 @@ class LocationController extends Controller
             'description' => ['nullable', 'string'],
         ]);
 
-        Location::create($validated);
+        $location = Location::create($validated);
+
+        ActivityLog::log(
+            'location_created',
+            "Master lokasi ditambahkan: {$location->name} ({$location->code})",
+            $location,
+            [],
+            ['code' => $location->code, 'name' => $location->name],
+            $location->code,
+        );
 
         return back()->with('success', 'Master lokasi berhasil ditambahkan.');
     }
@@ -67,6 +77,15 @@ class LocationController extends Controller
         if ($location->items()->count() > 0 || $location->assetUnits()->count() > 0) {
             return back()->withErrors(['msg' => 'Lokasi tidak dapat dihapus karena masih menampung barang inventaris atau unit aset.']);
         }
+
+        ActivityLog::log(
+            'location_deleted',
+            "Master lokasi dihapus: {$location->name} ({$location->code})",
+            $location,
+            ['code' => $location->code, 'name' => $location->name],
+            [],
+            $location->code,
+        );
 
         $location->delete();
 

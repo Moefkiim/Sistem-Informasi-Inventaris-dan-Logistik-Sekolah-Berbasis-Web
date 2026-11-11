@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ActivityLog;
 use App\Models\Document;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -69,7 +70,7 @@ class DocumentController extends Controller
         // Simpan file ke storage privat (local disk)
         $path = $file->store('documents', 'local');
 
-        Document::create([
+        $document = Document::create([
             'title' => $validated['title'],
             'file_path' => $path,
             'file_name' => $originalName,
@@ -79,6 +80,15 @@ class DocumentController extends Controller
             'department' => $user->isKajur() ? $user->department : ($validated['department'] ?? null),
             'user_id' => $user->id,
         ]);
+
+        ActivityLog::log(
+            'document_uploaded',
+            "Dokumen diunggah: {$document->title} ({$document->category})",
+            $document,
+            [],
+            ['title' => $document->title, 'category' => $document->category],
+            $document->title,
+        );
 
         return redirect()->route('documents.index')
             ->with('success', 'Dokumen berhasil diunggah.');
@@ -126,6 +136,15 @@ class DocumentController extends Controller
         } elseif (Storage::disk('public')->exists($document->file_path)) {
             Storage::disk('public')->delete($document->file_path);
         }
+
+        ActivityLog::log(
+            'document_deleted',
+            "Dokumen dihapus: {$document->title} ({$document->category})",
+            $document,
+            ['title' => $document->title, 'category' => $document->category],
+            [],
+            $document->title,
+        );
 
         $document->delete();
 
