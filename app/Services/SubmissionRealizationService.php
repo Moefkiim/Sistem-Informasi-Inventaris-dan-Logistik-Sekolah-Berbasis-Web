@@ -72,6 +72,9 @@ class SubmissionRealizationService
                     'user_id' => $actor->id,
                     'submission_id' => $locked->id,
                     'notes' => 'Realisasi pengajuan '.$locked->submission_number,
+                    // Realisasi pengajuan mendaftarkan asset_units sendiri di langkah berikutnya;
+                    // pemeriksaan tipe individual dilewati agar stok tercatat via satu jalur yang sama.
+                    'allow_individual' => true,
                 ]);
 
                 $submissionItem->item_id = $item->id;
