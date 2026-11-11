@@ -265,6 +265,7 @@ class LogisticsController extends Controller
                 'notes' => $validated['notes'] ?? null,
             ]);
 
+            // F2: Catat perpindahan lokasi dengan from = lokasi SEBELUM distribusi.
             LocationHistory::create([
                 'item_id' => $item->id,
                 'from_location_id' => $item->location_id,
@@ -273,6 +274,11 @@ class LogisticsController extends Controller
                 'notes' => 'Distribusi barang: '.($validated['notes'] ?? $transactionNumber),
                 'moved_at' => now(),
             ]);
+
+            // F2: Perbarui lokasi utama item (consumable: satu lokasi utama).
+            // Untuk item individual, lokasi unit masing-masing dikelola lewat
+            // alur registrasi dan pemindahan unit di modul Inventaris.
+            Item::where('id', $item->id)->update(['location_id' => $validated['to_location_id']]);
         });
 
         return back()->with('success', 'Data distribusi berhasil dicatat ke dalam log sistem dan stok telah disesuaikan.');
