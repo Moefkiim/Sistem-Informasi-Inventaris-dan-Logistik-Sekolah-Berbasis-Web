@@ -112,10 +112,12 @@ Route::middleware(['auth', 'role', 'password.changed'])->group(function () {
         // Logistik: Barang Masuk
         Route::get('/logistics/incoming', [LogisticsController::class, 'incomingIndex'])->name('logistics.incoming');
         Route::post('/logistics/incoming', [LogisticsController::class, 'storeIncoming'])->name('logistics.incoming.store');
+        Route::post('/logistics/incoming/{incomingItem}/reverse', [LogisticsController::class, 'reverseIncoming'])->name('logistics.incoming.reverse');
 
         // Logistik: Barang Keluar
         Route::get('/logistics/outgoing', [LogisticsController::class, 'outgoingIndex'])->name('logistics.outgoing');
         Route::post('/logistics/outgoing', [LogisticsController::class, 'storeOutgoing'])->name('logistics.outgoing.store');
+        Route::post('/logistics/outgoing/{outgoingItem}/reverse', [LogisticsController::class, 'reverseOutgoing'])->name('logistics.outgoing.reverse');
 
         // Logistik: Penyaluran / Distribusi
         Route::get('/logistics/distributions', [LogisticsController::class, 'distributionIndex'])->name('logistics.distributions');

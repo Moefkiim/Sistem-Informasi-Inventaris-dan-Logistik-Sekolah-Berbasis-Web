@@ -123,21 +123,69 @@
                                 <th>Alasan</th>
                                 <th>Tanggal</th>
                                 <th>Pencatat</th>
+                                <th class="text-end">Aksi</th>
                             </tr>
                         </thead>
                         <tbody class="text-gray-600 fw-bold">
                             @forelse($outgoingLogs as $log)
                                 <tr>
                                     <td class="text-center text-muted fw-bold">{{ $outgoingLogs->firstItem() + $loop->index }}</td>
-                                    <td><span class="text-dark fw-bolder">{{ $log->transaction_number }}</span></td>
+                                    <td>
+                                        <span class="text-dark fw-bolder">{{ $log->transaction_number }}</span>
+                                        @if($log->isReversed())
+                                            <span class="badge badge-light-danger ms-1">Dikoreksi</span>
+                                        @elseif($log->isReversal())
+                                            <span class="badge badge-light-warning ms-1">Pembalik</span>
+                                        @endif
+                                    </td>
                                     <td>{{ $log->item?->name ?? 'Barang Telah Dihapus' }}</td>
-                                    <td><span class="badge badge-light-danger">-{{ $log->quantity }} {{ $log->item?->unit ?? 'Unit' }}</span></td>
+                                    <td>
+                                        @if($log->isReversal())
+                                            <span class="badge badge-light-warning">+{{ $log->quantity }} {{ $log->item?->unit ?? 'Unit' }}</span>
+                                        @else
+                                            <span class="badge badge-light-danger">-{{ $log->quantity }} {{ $log->item?->unit ?? 'Unit' }}</span>
+                                        @endif
+                                    </td>
                                     <td>{{ $log->reason }}</td>
                                     <td>{{ $log->exit_date->format('d/m/Y') }}</td>
                                     <td>{{ $log->user?->name ?? 'Sistem' }}</td>
+                                    <td class="text-end">
+                                        @if(! $log->isReversed() && ! $log->isReversal())
+                                            <button type="button" class="btn btn-sm btn-icon btn-light-danger" data-bs-toggle="modal" data-bs-target="#reverseOutgoingModal{{ $log->id }}" title="Koreksi Transaksi" aria-label="Koreksi Transaksi">
+                                                <i class="bi bi-arrow-counterclockwise"></i>
+                                            </button>
+
+                                            <div class="modal fade text-start" id="reverseOutgoingModal{{ $log->id }}" tabindex="-1" aria-hidden="true">
+                                                <div class="modal-dialog">
+                                                    <form action="{{ route('sarpras.logistics.outgoing.reverse', $log) }}" method="POST" class="modal-content">
+                                                        @csrf
+                                                        <div class="modal-header">
+                                                            <h5 class="modal-title">Koreksi Transaksi {{ $log->transaction_number }}</h5>
+                                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                        </div>
+                                                        <div class="modal-body">
+                                                            <p class="text-gray-700 fs-7">
+                                                                Koreksi akan membuat transaksi pembalik untuk mengembalikan stok <strong>{{ $log->item?->name }}</strong> sebanyak <strong>{{ $log->quantity }} {{ $log->item?->unit }}</strong>.
+                                                            </p>
+                                                            <div class="mb-3">
+                                                                <label class="form-label required fw-bold fs-7">Alasan Koreksi</label>
+                                                                <input type="text" name="reason" class="form-control form-control-sm form-control-solid" required placeholder="Contoh: Pengeluaran dibatalkan panitia / salah catat">
+                                                            </div>
+                                                        </div>
+                                                        <div class="modal-footer">
+                                                            <button type="button" class="btn btn-sm btn-light" data-bs-dismiss="modal">Batal</button>
+                                                            <button type="submit" class="btn btn-sm btn-danger">Simpan Koreksi</button>
+                                                        </div>
+                                                    </form>
+                                                </div>
+                                            </div>
+                                        @else
+                                            <span class="text-muted fs-8">-</span>
+                                        @endif
+                                    </td>
                                 </tr>
                             @empty
-                                <tr><td colspan="7" class="text-center text-muted py-6">Belum ada catatan barang keluar.</td></tr>
+                                <tr><td colspan="8" class="text-center text-muted py-6">Belum ada catatan barang keluar.</td></tr>
                             @endforelse
                         </tbody>
                     </table>

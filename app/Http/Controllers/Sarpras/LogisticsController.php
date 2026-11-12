@@ -339,4 +339,143 @@ class LogisticsController extends Controller
 
         return $fullPrefix.str_pad($next, 4, '0', STR_PAD_LEFT);
     }
+
+    /**
+     * Koreksi Transaksi Barang Masuk (Append-Only Reversal).
+     */
+    public function reverseIncoming(Request $request, IncomingItem $incomingItem): RedirectResponse
+    {
+        $validated = $request->validate([
+            'reason' => ['required', 'string', 'max:255'],
+        ]);
+
+        if ($incomingItem->isReversed()) {
+            throw ValidationException::withMessages([
+                'reason' => 'Transaksi barang masuk ini sudah pernah dikoreksi sebelumnya.',
+            ]);
+        }
+
+        if ($incomingItem->isReversal()) {
+            throw ValidationException::withMessages([
+                'reason' => 'Transaksi koreksi tidak dapat dikoreksi kembali.',
+            ]);
+        }
+
+        DB::transaction(function () use ($validated, $request, $incomingItem) {
+            $item = Item::where('id', $incomingItem->item_id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if ($item->stock < $incomingItem->quantity) {
+                throw ValidationException::withMessages([
+                    'reason' => 'Stok saat ini ('.$item->stock.') tidak mencukupi untuk melakukan koreksi barang masuk (kuantitas: '.$incomingItem->quantity.').',
+                ]);
+            }
+
+            $affected = Item::where('id', $item->id)
+                ->where('stock', '>=', $incomingItem->quantity)
+                ->decrement('stock', $incomingItem->quantity);
+
+            if ($affected === 0) {
+                throw ValidationException::withMessages([
+                    'reason' => 'Stok tidak mencukupi.',
+                ]);
+            }
+
+            $now = now();
+            $transactionNumber = $this->generateDocumentNumber('incoming_items', 'transaction_number', 'IN');
+
+            IncomingItem::create([
+                'transaction_number' => $transactionNumber,
+                'item_id' => $incomingItem->item_id,
+                'quantity' => $incomingItem->quantity,
+                'source' => $incomingItem->source,
+                'source_origin' => $incomingItem->source_origin,
+                'entry_date' => $now->toDateString(),
+                'user_id' => $request->user()->id,
+                'notes' => 'Koreksi pembalik untuk '.$incomingItem->transaction_number.': '.$validated['reason'],
+                'reverses_id' => $incomingItem->id,
+                'reversal_reason' => $validated['reason'],
+                'reversed_at' => $now,
+            ]);
+
+            $incomingItem->update([
+                'reversed_at' => $now,
+                'reversal_reason' => $validated['reason'],
+            ]);
+
+            ActivityLog::log(
+                'incoming_reversed',
+                "Koreksi barang masuk: {$item->name} (x{$incomingItem->quantity}) dibalik [{$incomingItem->transaction_number} -> {$transactionNumber}] - {$validated['reason']}",
+                $incomingItem,
+                ['reversed_at' => null],
+                ['reversed_at' => $now, 'reversal_reason' => $validated['reason'], 'reversal_transaction_number' => $transactionNumber],
+                $incomingItem->transaction_number,
+            );
+        });
+
+        return back()->with('success', 'Transaksi barang masuk berhasil dikoreksi dan stok telah disesuaikan.');
+    }
+
+    /**
+     * Koreksi Transaksi Barang Keluar (Append-Only Reversal).
+     */
+    public function reverseOutgoing(Request $request, OutgoingItem $outgoingItem): RedirectResponse
+    {
+        $validated = $request->validate([
+            'reason' => ['required', 'string', 'max:255'],
+        ]);
+
+        if ($outgoingItem->isReversed()) {
+            throw ValidationException::withMessages([
+                'reason' => 'Transaksi barang keluar ini sudah pernah dikoreksi sebelumnya.',
+            ]);
+        }
+
+        if ($outgoingItem->isReversal()) {
+            throw ValidationException::withMessages([
+                'reason' => 'Transaksi koreksi tidak dapat dikoreksi kembali.',
+            ]);
+        }
+
+        DB::transaction(function () use ($validated, $request, $outgoingItem) {
+            $item = Item::where('id', $outgoingItem->item_id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            Item::where('id', $item->id)->increment('stock', $outgoingItem->quantity);
+
+            $now = now();
+            $transactionNumber = $this->generateDocumentNumber('outgoing_items', 'transaction_number', 'OUT');
+
+            OutgoingItem::create([
+                'transaction_number' => $transactionNumber,
+                'item_id' => $outgoingItem->item_id,
+                'quantity' => $outgoingItem->quantity,
+                'exit_date' => $now->toDateString(),
+                'reason' => 'Koreksi pembalik: '.$validated['reason'],
+                'user_id' => $request->user()->id,
+                'notes' => 'Koreksi pembalik untuk '.$outgoingItem->transaction_number.': '.$validated['reason'],
+                'reverses_id' => $outgoingItem->id,
+                'reversal_reason' => $validated['reason'],
+                'reversed_at' => $now,
+            ]);
+
+            $outgoingItem->update([
+                'reversed_at' => $now,
+                'reversal_reason' => $validated['reason'],
+            ]);
+
+            ActivityLog::log(
+                'outgoing_reversed',
+                "Koreksi barang keluar: {$item->name} (x{$outgoingItem->quantity}) dibalik [{$outgoingItem->transaction_number} -> {$transactionNumber}] - {$validated['reason']}",
+                $outgoingItem,
+                ['reversed_at' => null],
+                ['reversed_at' => $now, 'reversal_reason' => $validated['reason'], 'reversal_transaction_number' => $transactionNumber],
+                $outgoingItem->transaction_number,
+            );
+        });
+
+        return back()->with('success', 'Transaksi barang keluar berhasil dikoreksi dan stok telah dikembalikan.');
+    }
 }
