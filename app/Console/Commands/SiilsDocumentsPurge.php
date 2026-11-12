@@ -92,4 +92,3 @@ class SiilsDocumentsPurge extends Command
         return $errorCount > 0 ? self::FAILURE : self::SUCCESS;
     }
 }
-

@@ -146,4 +146,3 @@ class DocumentsSafeDeleteTest extends TestCase
             ->assertSessionHasErrors('department');
     }
 }
-
