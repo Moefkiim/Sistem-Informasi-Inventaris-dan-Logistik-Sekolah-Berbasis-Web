@@ -46,7 +46,9 @@ class ActivityLog extends Model
         'inventory_imported' => 'Inventaris Diimpor',
         // Logistik
         'incoming_recorded' => 'Barang Masuk Dicatat',
+        'incoming_reversed' => 'Koreksi Barang Masuk',
         'outgoing_recorded' => 'Barang Keluar Dicatat',
+        'outgoing_reversed' => 'Koreksi Barang Keluar',
         'distribution_recorded' => 'Distribusi Dicatat',
         // Lokasi
         'location_created' => 'Lokasi Ditambahkan',
@@ -101,7 +103,9 @@ class ActivityLog extends Model
         'loan_rejected' => 'Peminjaman',
         // Logistik
         'incoming_recorded' => 'Logistik',
+        'incoming_reversed' => 'Logistik',
         'outgoing_recorded' => 'Logistik',
+        'outgoing_reversed' => 'Logistik',
         'distribution_recorded' => 'Distribusi',
         // Lokasi
         'location_created' => 'Inventaris',
