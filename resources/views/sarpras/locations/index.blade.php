@@ -131,6 +131,9 @@
                                         @endif
                                     </td>
                                     <td class="text-end">
+                                        <button type="button" class="btn btn-sm btn-icon btn-light-warning" data-bs-toggle="modal" data-bs-target="#editLocationModal{{ $loc->id }}" title="Edit Lokasi">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
                                         @if($loc->items_count === 0 && $loc->asset_units_count === 0)
                                             <form action="{{ route('sarpras.locations.destroy', $loc) }}" method="POST" class="d-inline">
                                                 @csrf
@@ -140,8 +143,55 @@
                                                 </button>
                                             </form>
                                         @else
-                                            <span class="text-muted fs-8">Sedang dipakai</span>
+                                            <span class="text-muted fs-8 ms-1">Dipakai</span>
                                         @endif
+
+                                        {{-- Modal Edit Lokasi --}}
+                                        <div class="modal fade text-start" id="editLocationModal{{ $loc->id }}" tabindex="-1" aria-hidden="true">
+                                            <div class="modal-dialog modal-dialog-centered">
+                                                <div class="modal-content">
+                                                    <form action="{{ route('sarpras.locations.update', $loc) }}" method="POST" data-disable-on-submit>
+                                                        @csrf
+                                                        @method('PUT')
+                                                        <div class="modal-header">
+                                                            <h5 class="modal-title fw-bolder">Edit Master Lokasi: {{ $loc->name }}</h5>
+                                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                        </div>
+                                                        <div class="modal-body">
+                                                            <div class="mb-4">
+                                                                <label class="form-label fw-bold">Kode Lokasi (Terkunci)</label>
+                                                                <input type="text" class="form-control form-control-solid font-monospace bg-light" value="{{ $loc->code }}" readonly>
+                                                            </div>
+                                                            <div class="mb-4">
+                                                                <label class="form-label fw-bold required">Nama Ruangan / Lokasi</label>
+                                                                <input type="text" name="name" class="form-control form-control-solid" value="{{ old('name', $loc->name) }}" required>
+                                                            </div>
+                                                            <div class="mb-4">
+                                                                <label class="form-label fw-bold">Nama Gedung</label>
+                                                                <input type="text" name="building" class="form-control form-control-solid" value="{{ old('building', $loc->building) }}" placeholder="Gedung A Lantai 2">
+                                                            </div>
+                                                            <div class="mb-4">
+                                                                <label class="form-label fw-bold">Jurusan Pemakai (Opsional)</label>
+                                                                <select name="department" class="form-select form-select-solid">
+                                                                    <option value="">-- Umum / Tidak Dikunci --</option>
+                                                                    @foreach(config('departments') as $code => $name)
+                                                                        <option value="{{ $code }}" {{ old('department', $loc->department) == $code ? 'selected' : '' }}>{{ $name }} ({{ $code }})</option>
+                                                                    @endforeach
+                                                                </select>
+                                                            </div>
+                                                            <div class="mb-4">
+                                                                <label class="form-label fw-bold">Keterangan</label>
+                                                                <textarea name="description" class="form-control form-control-solid" rows="2">{{ old('description', $loc->description) }}</textarea>
+                                                            </div>
+                                                        </div>
+                                                        <div class="modal-footer">
+                                                            <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
+                                                            <button type="submit" class="btn btn-primary">Simpan Perubahan</button>
+                                                        </div>
+                                                    </form>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </td>
                                 </tr>
                             @empty

@@ -40,6 +40,9 @@ class ActivityLog extends Model
 
     public const ACTION_LABELS = [
         'item_created' => 'Barang Ditambahkan',
+        'item_updated' => 'Barang Diubah',
+        'item_archived' => 'Barang Diarsipkan',
+        'item_restored' => 'Barang Dipulihkan',
         'item_location_updated' => 'Lokasi Barang Diubah',
         'item_condition_updated' => 'Kondisi Barang Diubah',
         'unit_status_changed' => 'Status Unit Diubah',
@@ -52,7 +55,9 @@ class ActivityLog extends Model
         'distribution_recorded' => 'Distribusi Dicatat',
         // Lokasi
         'location_created' => 'Lokasi Ditambahkan',
+        'location_updated' => 'Lokasi Diubah',
         'location_deleted' => 'Lokasi Dihapus',
+        'location_restored' => 'Lokasi Dipulihkan',
         // Dokumen
         'document_uploaded' => 'Dokumen Diunggah',
         'document_deleted' => 'Dokumen Dihapus',
@@ -88,6 +93,9 @@ class ActivityLog extends Model
      */
     public const ACTION_GROUPS = [
         'item_created' => 'Inventaris',
+        'item_updated' => 'Inventaris',
+        'item_archived' => 'Inventaris',
+        'item_restored' => 'Inventaris',
         'item_location_updated' => 'Inventaris',
         'item_condition_updated' => 'Inventaris',
         'submission_created' => 'Pengajuan',
@@ -109,7 +117,9 @@ class ActivityLog extends Model
         'distribution_recorded' => 'Distribusi',
         // Lokasi
         'location_created' => 'Inventaris',
+        'location_updated' => 'Inventaris',
         'location_deleted' => 'Inventaris',
+        'location_restored' => 'Inventaris',
         // Dokumen
         'document_uploaded' => 'Dokumen',
         'document_deleted' => 'Dokumen',

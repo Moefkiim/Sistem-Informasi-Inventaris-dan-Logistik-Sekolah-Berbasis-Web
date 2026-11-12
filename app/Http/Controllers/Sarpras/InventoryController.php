@@ -416,4 +416,86 @@ class InventoryController extends Controller
 
         return back()->with('success', 'Riwayat perubahan kondisi unit berhasil dicatat.');
     }
+
+    public function edit(Item $item): View
+    {
+        $locations = Location::all();
+
+        return view('sarpras.inventory.edit', compact('item', 'locations'));
+    }
+
+    public function update(Request $request, Item $item): RedirectResponse
+    {
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'brand' => ['nullable', 'string', 'max:100'],
+            'model' => ['nullable', 'string', 'max:100'],
+            'category' => ['nullable', 'string', 'max:100'],
+            'unit' => ['nullable', 'string', 'max:50'],
+            'description' => ['nullable', 'string'],
+            'minimum_stock' => ['nullable', 'integer', 'min:0'],
+            'acquisition_year' => ['nullable', 'integer', 'min:1900', 'max:'.(date('Y') + 1)],
+            'acquisition_price' => ['nullable', 'numeric', 'min:0'],
+            'inventory_number' => ['nullable', 'string', 'max:100'],
+            'serial_number' => ['nullable', 'string', 'max:100'],
+            'department' => ['nullable', Rule::in(Departments::codes())],
+        ]);
+
+        $fields = array_keys($validated);
+        $oldValues = $item->only($fields);
+
+        // Hanya atribut deskriptif yang diperbarui.
+        // code dan stock diabaikan / tidak dapat diubah lewat form edit master.
+        $item->update($validated);
+
+        ActivityLog::log(
+            'item_updated',
+            "Atribut master barang diperbarui: {$item->name} ({$item->code})",
+            $item,
+            $oldValues,
+            $item->only($fields),
+            $item->code
+        );
+
+        return redirect()->route('sarpras.inventory.show', $item)
+            ->with('success', 'Data barang berhasil diperbarui.');
+    }
+
+    public function destroy(Item $item): RedirectResponse
+    {
+        if ($item->activeLoans()->exists()) {
+            return back()->withErrors(['msg' => 'Barang tidak dapat diarsipkan karena masih memiliki riwayat peminjaman yang aktif/berjalan.']);
+        }
+
+        ActivityLog::log(
+            'item_archived',
+            "Master barang diarsipkan: {$item->name} ({$item->code})",
+            $item,
+            ['name' => $item->name, 'code' => $item->code],
+            [],
+            $item->code
+        );
+
+        $item->delete();
+
+        return redirect()->route('sarpras.inventory.index')
+            ->with('success', 'Barang berhasil diarsipkan.');
+    }
+
+    public function restore(int $id): RedirectResponse
+    {
+        $item = Item::onlyTrashed()->findOrFail($id);
+        $item->restore();
+
+        ActivityLog::log(
+            'item_restored',
+            "Master barang dipulihkan dari arsip: {$item->name} ({$item->code})",
+            $item,
+            [],
+            ['name' => $item->name, 'code' => $item->code],
+            $item->code
+        );
+
+        return back()->with('success', 'Barang berhasil dipulihkan dari arsip.');
+    }
 }
