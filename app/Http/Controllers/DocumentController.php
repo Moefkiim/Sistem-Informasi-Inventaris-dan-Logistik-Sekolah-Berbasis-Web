@@ -4,9 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\ActivityLog;
 use App\Models\Document;
+use App\Support\Departments;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -59,7 +61,8 @@ class DocumentController extends Controller
             'title' => ['required', 'string', 'max:255'],
             'category' => ['required', 'string', 'in:Nota,BAST,Surat Bantuan,Foto,Umum'],
             'file' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png,doc,docx,xls,xlsx', 'max:10240'], // maks 10MB
-            'department' => ['nullable', 'string', 'max:100'],
+            // Sarpras dapat memilih jurusan dari daftar kanonik, atau kosong (Umum).
+            'department' => ['nullable', Rule::in(Departments::codes())],
         ]);
 
         $file = $request->file('file');
@@ -121,7 +124,10 @@ class DocumentController extends Controller
     }
 
     /**
-     * Menghapus dokumen (Hanya Sarpras).
+     * Menghapus (mengarsipkan) dokumen via soft-delete.
+     * File fisik di storage TIDAK dihapus untuk menjaga audit trail fisik.
+     * Gunakan command `siils:documents:purge --days=30` untuk membersihkan
+     * dokumen dan file yang sudah lama dihapus.
      */
     public function destroy(Document $document): RedirectResponse
     {
@@ -131,24 +137,19 @@ class DocumentController extends Controller
             abort(403, 'Hanya pihak Sarpras yang berhak menghapus dokumen.');
         }
 
-        if (Storage::disk('local')->exists($document->file_path)) {
-            Storage::disk('local')->delete($document->file_path);
-        } elseif (Storage::disk('public')->exists($document->file_path)) {
-            Storage::disk('public')->delete($document->file_path);
-        }
-
         ActivityLog::log(
             'document_deleted',
-            "Dokumen dihapus: {$document->title} ({$document->category})",
+            "Dokumen diarsipkan: {$document->title} ({$document->category})",
             $document,
-            ['title' => $document->title, 'category' => $document->category],
+            ['title' => $document->title, 'category' => $document->category, 'file_path' => $document->file_path],
             [],
             $document->title,
         );
 
+        // Hanya soft-delete — file fisik dipertahankan untuk audit trail.
         $document->delete();
 
         return redirect()->route('documents.index')
-            ->with('success', 'Dokumen berhasil dihapus.');
+            ->with('success', 'Dokumen berhasil diarsipkan. File fisik tetap tersimpan hingga proses purge dijalankan.');
     }
 }
