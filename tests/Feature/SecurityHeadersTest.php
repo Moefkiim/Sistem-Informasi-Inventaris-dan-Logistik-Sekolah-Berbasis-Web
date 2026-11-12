@@ -166,4 +166,22 @@ class SecurityHeadersTest extends TestCase
         $this->artisan('siils:check')
             ->expectsOutputToContain('SESSION_SECURE_COOKIE aktif untuk HTTPS');
     }
+
+    public function test_flash_message_dengan_karakter_khusus_dienkode_aman_tanpa_injeksi_script(): void
+    {
+        $user = User::factory()->sarpras()->create();
+
+        $xssPayload = '</script><script>alert("XSS")</script>';
+
+        $response = $this->actingAs($user)
+            ->withSession(['success' => $xssPayload])
+            ->get(route('home'));
+
+        $response->assertOk();
+        $content = $response->getContent();
+        // Tag mentah tidak boleh muncul langsung
+        $this->assertStringNotContainsString('</script><script>alert("XSS")</script>', $content);
+        // Harus ter-escape sebagai format JSON aman
+        $this->assertStringContainsString('\u003C\/script\u003E', $content);
+    }
 }

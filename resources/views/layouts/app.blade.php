@@ -538,7 +538,7 @@
                     Swal.fire({
                         icon: 'success',
                         title: 'Berhasil!',
-                        text: {!! json_encode(session('success')) !!},
+                        text: @json(session('success')),
                         timer: 3500,
                         showConfirmButton: true,
                         confirmButtonText: 'OK',
@@ -558,7 +558,7 @@
                     Swal.fire({
                         icon: 'error',
                         title: 'Perhatian / Terjadi Kesalahan',
-                        text: {!! json_encode(session('error')) !!},
+                        text: @json(session('error')),
                         confirmButtonText: 'Tutup',
                         customClass: {
                             confirmButton: 'btn btn-danger px-5'
@@ -576,7 +576,7 @@
                     Swal.fire({
                         icon: 'warning',
                         title: 'Peringatan',
-                        text: {!! json_encode(session('warning')) !!},
+                        text: @json(session('warning')),
                         confirmButtonText: 'Mengerti',
                         customClass: {
                             confirmButton: 'btn btn-warning px-5'
