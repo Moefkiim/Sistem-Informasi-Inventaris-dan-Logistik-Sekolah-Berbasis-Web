@@ -72,6 +72,31 @@ class LocationController extends Controller
         return back()->with('success', 'Master lokasi berhasil ditambahkan.');
     }
 
+    public function update(Request $request, Location $location): RedirectResponse
+    {
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'building' => ['nullable', 'string', 'max:100'],
+            'department' => ['nullable', Rule::in(Departments::codes())],
+            'description' => ['nullable', 'string'],
+        ]);
+
+        $oldValues = $location->only(array_keys($validated));
+
+        $location->update($validated);
+
+        ActivityLog::log(
+            'location_updated',
+            "Master lokasi diperbarui: {$location->name} ({$location->code})",
+            $location,
+            $oldValues,
+            $location->only(array_keys($validated)),
+            $location->code,
+        );
+
+        return redirect()->route('sarpras.locations.index')->with('success', 'Master lokasi berhasil diperbarui.');
+    }
+
     public function destroy(Location $location): RedirectResponse
     {
         if ($location->items()->count() > 0 || $location->assetUnits()->count() > 0) {
@@ -90,5 +115,22 @@ class LocationController extends Controller
         $location->delete();
 
         return back()->with('success', 'Lokasi berhasil dihapus/diarsipkan.');
+    }
+
+    public function restore(int $id): RedirectResponse
+    {
+        $location = Location::onlyTrashed()->findOrFail($id);
+        $location->restore();
+
+        ActivityLog::log(
+            'location_restored',
+            "Master lokasi dipulihkan dari arsip: {$location->name} ({$location->code})",
+            $location,
+            [],
+            ['code' => $location->code, 'name' => $location->name],
+            $location->code,
+        );
+
+        return redirect()->route('sarpras.locations.index')->with('success', 'Master lokasi berhasil dipulihkan.');
     }
 }

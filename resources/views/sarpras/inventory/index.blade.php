@@ -168,9 +168,21 @@
                                 <x-condition-badge :condition="$item->current_condition" />
                             </td>
                             <td class="text-end">
-                                <a href="{{ route('sarpras.inventory.show', $item) }}" class="btn btn-sm btn-light btn-active-light-primary">
-                                    Kelola & Riwayat
-                                </a>
+                                <div class="d-inline-flex gap-1">
+                                    <a href="{{ route('sarpras.inventory.show', $item) }}" class="btn btn-sm btn-icon btn-light-primary" title="Kelola & Riwayat">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    <a href="{{ route('sarpras.inventory.edit', $item) }}" class="btn btn-sm btn-icon btn-light-warning" title="Edit Data Barang">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <form action="{{ route('sarpras.inventory.destroy', $item) }}" method="POST" class="d-inline">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="btn btn-sm btn-icon btn-light-danger" title="Arsipkan Barang" data-confirm-delete="Apakah Anda yakin ingin mengarsipkan barang {{ $item->name }}?">
+                                            <i class="bi bi-archive"></i>
+                                        </button>
+                                    </form>
+                                </div>
                             </td>
                         </tr>
                     @empty

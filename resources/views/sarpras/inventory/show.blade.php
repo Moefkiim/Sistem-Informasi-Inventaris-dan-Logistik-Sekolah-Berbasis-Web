@@ -8,7 +8,21 @@
     <div class="col-xl-4">
         <div class="card border-0 shadow-sm">
             <div class="card-body">
-                <h4 class="fw-bolder text-dark mb-4">{{ $item->name }}</h4>
+                <div class="d-flex justify-content-between align-items-start mb-4">
+                    <h4 class="fw-bolder text-dark mb-0">{{ $item->name }}</h4>
+                    <div class="d-flex gap-2">
+                        <a href="{{ route('sarpras.inventory.edit', $item) }}" class="btn btn-sm btn-light-warning" title="Edit Master Data">
+                            <i class="bi bi-pencil me-1"></i> Edit
+                        </a>
+                        <form action="{{ route('sarpras.inventory.destroy', $item) }}" method="POST" class="d-inline">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit" class="btn btn-sm btn-light-danger" title="Arsipkan Barang" data-confirm-delete="Apakah Anda yakin ingin mengarsipkan barang {{ $item->name }}?">
+                                <i class="bi bi-archive me-1"></i> Arsipkan
+                            </button>
+                        </form>
+                    </div>
+                </div>
                 <div class="d-flex flex-column gap-3 fs-6">
                     <div><span class="text-muted">Kode:</span> <span class="badge badge-light-dark font-monospace">{{ $item->code }}</span></div>
                     <div><span class="text-muted">Kategori:</span> <span class="fw-bold">{{ $item->category }}</span></div>

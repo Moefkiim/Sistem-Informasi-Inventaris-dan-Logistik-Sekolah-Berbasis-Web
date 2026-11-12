@@ -95,6 +95,10 @@ Route::middleware(['auth', 'role', 'password.changed'])->group(function () {
         Route::get('/inventory/import/errors/{token}', [InventoryImportController::class, 'errors'])->name('inventory.import.errors');
 
         Route::get('/inventory/{item}', [App\Http\Controllers\Sarpras\InventoryController::class, 'show'])->name('inventory.show');
+        Route::get('/inventory/{item}/edit', [App\Http\Controllers\Sarpras\InventoryController::class, 'edit'])->name('inventory.edit');
+        Route::put('/inventory/{item}', [App\Http\Controllers\Sarpras\InventoryController::class, 'update'])->name('inventory.update');
+        Route::delete('/inventory/{item}', [App\Http\Controllers\Sarpras\InventoryController::class, 'destroy'])->name('inventory.destroy');
+        Route::post('/inventory/{id}/restore', [App\Http\Controllers\Sarpras\InventoryController::class, 'restore'])->name('inventory.restore');
         Route::post('/inventory/{item}/location', [App\Http\Controllers\Sarpras\InventoryController::class, 'updateLocation'])->name('inventory.updateLocation');
         Route::post('/inventory/{item}/condition', [App\Http\Controllers\Sarpras\InventoryController::class, 'updateCondition'])->name('inventory.updateCondition');
         Route::post('/inventory/{item}/status', [App\Http\Controllers\Sarpras\InventoryController::class, 'updateStatus'])->name('inventory.updateStatus');
@@ -126,7 +130,9 @@ Route::middleware(['auth', 'role', 'password.changed'])->group(function () {
         // Master Data Lokasi
         Route::get('/locations', [LocationController::class, 'index'])->name('locations.index');
         Route::post('/locations', [LocationController::class, 'store'])->name('locations.store');
+        Route::put('/locations/{location}', [LocationController::class, 'update'])->name('locations.update');
         Route::delete('/locations/{location}', [LocationController::class, 'destroy'])->name('locations.destroy');
+        Route::post('/locations/{id}/restore', [LocationController::class, 'restore'])->name('locations.restore');
 
         // Manajemen Pengguna
         Route::get('/users', [UserController::class, 'index'])->name('users.index');
