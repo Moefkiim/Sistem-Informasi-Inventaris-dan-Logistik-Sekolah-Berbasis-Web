@@ -44,6 +44,17 @@ class ActivityLog extends Model
         'item_condition_updated' => 'Kondisi Barang Diubah',
         'unit_status_changed' => 'Status Unit Diubah',
         'inventory_imported' => 'Inventaris Diimpor',
+        // Logistik
+        'incoming_recorded' => 'Barang Masuk Dicatat',
+        'outgoing_recorded' => 'Barang Keluar Dicatat',
+        'distribution_recorded' => 'Distribusi Dicatat',
+        // Lokasi
+        'location_created' => 'Lokasi Ditambahkan',
+        'location_deleted' => 'Lokasi Dihapus',
+        // Dokumen
+        'document_uploaded' => 'Dokumen Diunggah',
+        'document_deleted' => 'Dokumen Dihapus',
+        // Pengajuan
         'submission_created' => 'Pengajuan Dibuat',
         'submission_submitted' => 'Pengajuan Dikirim',
         'submission_cancelled' => 'Pengajuan Dibatalkan',
@@ -88,6 +99,16 @@ class ActivityLog extends Model
         'loan_approved' => 'Peminjaman',
         'loan_returned' => 'Peminjaman',
         'loan_rejected' => 'Peminjaman',
+        // Logistik
+        'incoming_recorded' => 'Logistik',
+        'outgoing_recorded' => 'Logistik',
+        'distribution_recorded' => 'Distribusi',
+        // Lokasi
+        'location_created' => 'Inventaris',
+        'location_deleted' => 'Inventaris',
+        // Dokumen
+        'document_uploaded' => 'Dokumen',
+        'document_deleted' => 'Dokumen',
     ];
 
     /**
@@ -97,6 +118,7 @@ class ActivityLog extends Model
         'Inventaris' => 'primary',
         'Pengajuan' => 'info',
         'Peminjaman' => 'warning',
+        'Logistik' => 'success',
         'Distribusi' => 'success',
         'Dokumen' => 'dark',
         'Akun' => 'secondary',
@@ -104,16 +126,19 @@ class ActivityLog extends Model
     ];
 
     public const ACTION_GROUP_ORDER = [
-        'Inventaris', 'Pengajuan', 'Peminjaman', 'Distribusi', 'Dokumen', 'Akun', 'Lainnya',
+        'Inventaris', 'Pengajuan', 'Peminjaman', 'Logistik', 'Distribusi', 'Dokumen', 'Akun', 'Lainnya',
     ];
 
     private const GROUP_PREFIXES = [
         'item' => 'Inventaris',
         'inventory' => 'Inventaris',
         'unit' => 'Inventaris',
+        'location' => 'Inventaris',
         'loan' => 'Peminjaman',
         'submission' => 'Pengajuan',
         'distribution' => 'Distribusi',
+        'incoming' => 'Logistik',
+        'outgoing' => 'Logistik',
         'document' => 'Dokumen',
         'user' => 'Akun',
         'account' => 'Akun',
