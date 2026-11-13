@@ -555,6 +555,71 @@
             const palette = ['#4e73df', '#1cc88a', '#f6c23e', '#e74a3b', '#36b9cc', '#858796', '#6f42c1', '#fd7e14'];
             const data = @json($charts);
 
+            // Plugin untuk menampilkan angka/jumlah langsung pada grafik tanpa tulisan teks panjang yang menumpuk
+            const valueOnlyLabelsPlugin = {
+                id: 'valueOnlyLabelsPlugin',
+                afterDatasetsDraw(chart) {
+                    const ctx = chart.ctx;
+                    const chartType = chart.config.type;
+
+                    if (chartType === 'pie' || chartType === 'doughnut') {
+                        const meta = chart.getDatasetMeta(0);
+                        if (!meta || !meta.data) return;
+                        const dataset = chart.data.datasets[0];
+                        if (!dataset || !dataset.data) return;
+
+                        meta.data.forEach((element, index) => {
+                            const val = Number(dataset.data[index]) || 0;
+                            if (val <= 0 || element.hidden) return;
+
+                            const angleSpan = element.endAngle - element.startAngle;
+                            if (angleSpan < 0.15) return; // Lewati jika potongan terlalu tipis
+
+                            const midAngle = element.startAngle + angleSpan / 2;
+                            const innerR = element.innerRadius || 0;
+                            const outerR = element.outerRadius;
+                            const r = innerR + (outerR - innerR) * (innerR > 0 ? 0.5 : 0.6);
+                            const x = element.x + Math.cos(midAngle) * r;
+                            const y = element.y + Math.sin(midAngle) * r;
+
+                            ctx.save();
+                            ctx.font = 'bold 12px "Inter", system-ui, -apple-system, sans-serif';
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'middle';
+
+                            // Outline halus agar angka sangat kontras dan jelas di atas warna apapun
+                            ctx.lineWidth = 2.5;
+                            ctx.strokeStyle = 'rgba(0, 0, 0, 0.45)';
+                            ctx.strokeText(val, x, y);
+
+                            ctx.fillStyle = '#ffffff';
+                            ctx.fillText(val, x, y);
+                            ctx.restore();
+                        });
+                    } else if (chartType === 'line') {
+                        chart.data.datasets.forEach((dataset, dIdx) => {
+                            const meta = chart.getDatasetMeta(dIdx);
+                            if (!meta || meta.hidden) return;
+
+                            meta.data.forEach((element, index) => {
+                                const val = Number(dataset.data[index]) || 0;
+                                if (val <= 0) return;
+
+                                ctx.save();
+                                ctx.font = 'bold 11px "Inter", system-ui, sans-serif';
+                                ctx.textAlign = 'center';
+                                ctx.textBaseline = 'bottom';
+                                ctx.fillStyle = dataset.borderColor || '#333';
+                                ctx.fillText(val, element.x, element.y - 4);
+                                ctx.restore();
+                            });
+                        });
+                    }
+                }
+            };
+
+            Chart.register(valueOnlyLabelsPlugin);
+
             function makeChart(id, config) {
                 const el = document.getElementById(id);
                 if (!el) return;
