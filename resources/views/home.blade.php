@@ -504,7 +504,7 @@
                     <h3 class="fw-bolder text-dark">Kondisi Aset</h3>
                 </div>
                 <div class="card-body d-flex flex-column align-items-center justify-content-center">
-                    <div style="height: 270px; width: 100%;"><canvas id="chartKondisi"></canvas></div>
+                    <div style="height: 250px; width: 100%;"><canvas id="chartKondisi"></canvas></div>
                 </div>
             </div>
         </div>
@@ -517,7 +517,7 @@
                     <h3 class="fw-bolder text-dark">Distribusi Aset per Lokasi</h3>
                 </div>
                 <div class="card-body d-flex flex-column align-items-center justify-content-center">
-                    <div style="height: 270px; width: 100%;"><canvas id="chartLokasi"></canvas></div>
+                    <div style="height: 250px; width: 100%;"><canvas id="chartLokasi"></canvas></div>
                 </div>
             </div>
         </div>
@@ -530,7 +530,7 @@
                     <h3 class="fw-bolder text-dark">Persebaran Aset per Jurusan</h3>
                 </div>
                 <div class="card-body d-flex flex-column align-items-center justify-content-center">
-                    <div style="height: 270px; width: 100%;"><canvas id="chartJurusan"></canvas></div>
+                    <div style="height: 250px; width: 100%;"><canvas id="chartJurusan"></canvas></div>
                 </div>
             </div>
         </div>
@@ -542,7 +542,7 @@
                 <h3 class="fw-bolder text-dark">Tren Barang Masuk & Keluar</h3>
             </div>
             <div class="card-body">
-                <div style="height: 290px;"><canvas id="chartTren"></canvas></div>
+                <div style="height: 280px;"><canvas id="chartTren"></canvas></div>
             </div>
         </div>
     </div>
@@ -554,167 +554,6 @@
         document.addEventListener('DOMContentLoaded', function () {
             const palette = ['#4e73df', '#1cc88a', '#f6c23e', '#e74a3b', '#36b9cc', '#858796', '#6f42c1', '#fd7e14'];
             const data = @json($charts);
-
-            // Plugin untuk menuliskan teks dan angka langsung di atas grafik tanpa perlu di-hover
-            const directLabelsPlugin = {
-                id: 'directLabelsPlugin',
-                afterDatasetsDraw(chart) {
-                    const ctx = chart.ctx;
-                    const chartType = chart.config.type;
-
-                    if (chartType === 'pie' || chartType === 'doughnut') {
-                        const meta = chart.getDatasetMeta(0);
-                        if (!meta || !meta.data) return;
-                        const dataset = chart.data.datasets[0];
-                        if (!dataset || !dataset.data) return;
-
-                        const total = dataset.data.reduce((acc, val) => acc + (Number(val) || 0), 0);
-                        if (total === 0) return;
-
-                        meta.data.forEach((element, index) => {
-                            const val = Number(dataset.data[index]) || 0;
-                            if (val <= 0 || element.hidden) return;
-
-                            const angleSpan = element.endAngle - element.startAngle;
-                            if (angleSpan < 0.15) return; // Lewati jika potongan terlalu tipis
-
-                            const label = chart.data.labels[index] || '';
-                            const pct = Math.round((val / total) * 100);
-
-                            // Titik tengah potongan busur
-                            const midAngle = element.startAngle + angleSpan / 2;
-                            const innerR = element.innerRadius || 0;
-                            const outerR = element.outerRadius;
-                            const r = innerR + (outerR - innerR) * (innerR > 0 ? 0.52 : 0.60);
-                            const x = element.x + Math.cos(midAngle) * r;
-                            const y = element.y + Math.sin(midAngle) * r;
-
-                            ctx.save();
-                            ctx.textAlign = 'center';
-                            ctx.textBaseline = 'middle';
-
-                            if (angleSpan > 0.45) {
-                                // Tampilkan label & angka (dua baris)
-                                const shortLabel = label.length > 14 ? label.substring(0, 12) + '…' : label;
-                                const valText = `${val} (${pct}%)`;
-
-                                ctx.font = 'bold 11px system-ui, -apple-system, sans-serif';
-                                const w1 = ctx.measureText(shortLabel).width;
-                                ctx.font = 'bold 10px system-ui, -apple-system, sans-serif';
-                                const w2 = ctx.measureText(valText).width;
-                                const boxW = Math.max(w1, w2) + 12;
-                                const boxH = 32;
-
-                                // Background pill semi-transparan agar selalu terbaca jelas di warna apapun
-                                ctx.fillStyle = 'rgba(17, 24, 39, 0.82)';
-                                if (ctx.roundRect) {
-                                    ctx.beginPath();
-                                    ctx.roundRect(x - boxW / 2, y - boxH / 2, boxW, boxH, 6);
-                                    ctx.fill();
-                                } else {
-                                    ctx.fillRect(x - boxW / 2, y - boxH / 2, boxW, boxH);
-                                }
-
-                                // Teks Label
-                                ctx.font = 'bold 11px system-ui, -apple-system, sans-serif';
-                                ctx.fillStyle = '#ffffff';
-                                ctx.fillText(shortLabel, x, y - 7);
-
-                                // Teks Jumlah & Persentase
-                                ctx.font = 'bold 10px system-ui, -apple-system, sans-serif';
-                                ctx.fillStyle = '#94a3b8';
-                                ctx.fillText(valText, x, y + 7);
-                            } else {
-                                // Potongan kecil: tampilkan angka
-                                const text = `${val}`;
-                                ctx.font = 'bold 11px system-ui, -apple-system, sans-serif';
-                                const boxW = ctx.measureText(text).width + 10;
-                                const boxH = 18;
-
-                                ctx.fillStyle = 'rgba(17, 24, 39, 0.82)';
-                                if (ctx.roundRect) {
-                                    ctx.beginPath();
-                                    ctx.roundRect(x - boxW / 2, y - boxH / 2, boxW, boxH, 4);
-                                    ctx.fill();
-                                } else {
-                                    ctx.fillRect(x - boxW / 2, y - boxH / 2, boxW, boxH);
-                                }
-
-                                ctx.fillStyle = '#ffffff';
-                                ctx.fillText(text, x, y);
-                            }
-
-                            ctx.restore();
-                        });
-                    } else if (chartType === 'line') {
-                        // Tampilkan angka langsung di atas titik grafik garis
-                        chart.data.datasets.forEach((dataset, dIndex) => {
-                            const meta = chart.getDatasetMeta(dIndex);
-                            if (!meta || meta.hidden) return;
-
-                            meta.data.forEach((element, pIndex) => {
-                                const val = dataset.data[pIndex];
-                                if (val === undefined || val === null) return;
-
-                                ctx.save();
-                                ctx.font = 'bold 10px system-ui, -apple-system, sans-serif';
-                                ctx.textAlign = 'center';
-                                ctx.textBaseline = 'bottom';
-                                ctx.fillStyle = dataset.borderColor || '#333';
-                                ctx.fillText(val, element.x, element.y - 6);
-                                ctx.restore();
-                            });
-                        });
-                    }
-                }
-            };
-
-            // Daftarkan plugin secara global ke Chart.js
-            Chart.register(directLabelsPlugin);
-
-            // Konfigurasi legend yang otomatis menyertakan angka (contoh: "Tanpa Lokasi (10)")
-            function buildPieOptions() {
-                return {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'bottom',
-                            labels: {
-                                padding: 12,
-                                usePointStyle: true,
-                                boxWidth: 8,
-                                generateLabels: function (chart) {
-                                    const d = chart.data;
-                                    if (d.labels.length && d.datasets.length) {
-                                        const dataset = d.datasets[0];
-                                        return d.labels.map(function (label, i) {
-                                            const val = dataset.data[i] !== undefined ? dataset.data[i] : 0;
-                                            const meta = chart.getDatasetMeta(0);
-                                            const isHidden = meta.data[i] ? meta.data[i].hidden : false;
-                                            const fill = dataset.backgroundColor[i % dataset.backgroundColor.length];
-                                            return {
-                                                text: `${label} (${val})`,
-                                                fillStyle: fill,
-                                                strokeStyle: fill,
-                                                lineWidth: 0,
-                                                hidden: isHidden,
-                                                index: i
-                                            };
-                                        });
-                                    }
-                                    return [];
-                                }
-                            },
-                            onClick: function (e, legendItem, legend) {
-                                const ci = legend.chart;
-                                ci.toggleDataVisibility(legendItem.index);
-                                ci.update();
-                            }
-                        }
-                    }
-                };
-            }
 
             function makeChart(id, config) {
                 const el = document.getElementById(id);
@@ -732,7 +571,7 @@
                         borderWidth: 2
                     }]
                 },
-                options: buildPieOptions()
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
             });
 
             makeChart('chartLokasi', {
@@ -745,7 +584,7 @@
                         borderWidth: 2
                     }]
                 },
-                options: buildPieOptions()
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
             });
 
             if (data.departments) {
@@ -759,7 +598,7 @@
                             borderWidth: 2
                         }]
                     },
-                    options: buildPieOptions()
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
                 });
             }
 
@@ -786,19 +625,7 @@
                         }
                     ]
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { position: 'bottom' }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: { precision: 0 }
-                        }
-                    }
-                }
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
             });
         });
     </script>
