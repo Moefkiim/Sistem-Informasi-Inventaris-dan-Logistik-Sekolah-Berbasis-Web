@@ -503,8 +503,8 @@
                 <div class="card-header border-0 pt-6">
                     <h3 class="fw-bolder text-dark">Kondisi Aset</h3>
                 </div>
-                <div class="card-body d-flex flex-column align-items-center justify-content-center">
-                    <div style="height: 250px; width: 100%;"><canvas id="chartKondisi"></canvas></div>
+                <div class="card-body d-flex flex-column align-items-center justify-content-center p-4">
+                    <div style="height: 360px; width: 100%;"><canvas id="chartKondisi"></canvas></div>
                 </div>
             </div>
         </div>
@@ -516,8 +516,8 @@
                 <div class="card-header border-0 pt-6">
                     <h3 class="fw-bolder text-dark">Distribusi Aset per Lokasi</h3>
                 </div>
-                <div class="card-body d-flex flex-column align-items-center justify-content-center">
-                    <div style="height: 250px; width: 100%;"><canvas id="chartLokasi"></canvas></div>
+                <div class="card-body d-flex flex-column align-items-center justify-content-center p-4">
+                    <div style="height: 360px; width: 100%;"><canvas id="chartLokasi"></canvas></div>
                 </div>
             </div>
         </div>
@@ -529,8 +529,8 @@
                 <div class="card-header border-0 pt-6">
                     <h3 class="fw-bolder text-dark">Persebaran Aset per Jurusan</h3>
                 </div>
-                <div class="card-body d-flex flex-column align-items-center justify-content-center">
-                    <div style="height: 250px; width: 100%;"><canvas id="chartJurusan"></canvas></div>
+                <div class="card-body d-flex flex-column align-items-center justify-content-center p-4">
+                    <div style="height: 360px; width: 100%;"><canvas id="chartJurusan"></canvas></div>
                 </div>
             </div>
         </div>
@@ -626,6 +626,29 @@
                 new Chart(el, config);
             }
 
+            const pieOptions = {
+                responsive: true,
+                maintainAspectRatio: false,
+                layout: {
+                    padding: { top: 6, bottom: 6, left: 6, right: 6 }
+                },
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            boxWidth: 10,
+                            boxHeight: 10,
+                            usePointStyle: true,
+                            pointStyle: 'circle',
+                            padding: 8,
+                            font: {
+                                size: 11
+                            }
+                        }
+                    }
+                }
+            };
+
             makeChart('chartKondisi', {
                 type: 'doughnut',
                 data: {
@@ -636,7 +659,7 @@
                         borderWidth: 2
                     }]
                 },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+                options: pieOptions
             });
 
             makeChart('chartLokasi', {
@@ -649,7 +672,7 @@
                         borderWidth: 2
                     }]
                 },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+                options: pieOptions
             });
 
             if (data.departments) {
@@ -663,7 +686,7 @@
                             borderWidth: 2
                         }]
                     },
-                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+                    options: pieOptions
                 });
             }
 
@@ -690,7 +713,31 @@
                         }
                     ]
                 },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                boxWidth: 10,
+                                boxHeight: 10,
+                                usePointStyle: true,
+                                pointStyle: 'circle',
+                                padding: 10,
+                                font: {
+                                    size: 11
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { precision: 0 }
+                        }
+                    }
+                }
             });
         });
     </script>
