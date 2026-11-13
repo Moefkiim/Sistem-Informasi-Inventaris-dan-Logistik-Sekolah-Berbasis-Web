@@ -8,7 +8,6 @@
 
     $q = request()->query();
     $isKajur = auth()->user()->isKajur();
-    $showDateRange = $type !== 'inventory';
     $hasActiveFilters = (bool) (
         $filters['start_date'] || $filters['end_date'] || $filters['location_id']
         || $filters['condition'] || $filters['unit_status'] || $filters['status']
@@ -49,21 +48,20 @@
                 </select>
             </div>
 
-            @if($showDateRange)
-                <div class="col-12 col-md-6 col-lg-4">
-                    <label class="form-label fw-bold" for="filter-start">Rentang Tanggal</label>
-                    <div class="input-group">
-                        <input type="date" id="filter-start" name="start_date" class="form-control form-control-solid" value="{{ $filters['start_date'] }}">
-                        <span class="input-group-text bg-light border-0">s/d</span>
-                        <input type="date" name="end_date" class="form-control form-control-solid" value="{{ $filters['end_date'] }}" aria-label="Tanggal akhir">
-                    </div>
-                    <div class="d-flex flex-wrap gap-1 mt-2">
-                        @foreach($datePresets as $preset)
-                            <a href="{{ route('reports.index', $preset['query']) }}" class="btn btn-sm btn-light-primary py-1 px-2">{{ $preset['label'] }}</a>
-                        @endforeach
-                    </div>
+            <div class="col-12 col-md-6 col-lg-4">
+                <label class="form-label fw-bold" for="filter-daterange">Rentang Tanggal</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-light border-0"><i class="bi bi-calendar3 text-primary"></i></span>
+                    <input type="text" id="filter-daterange" class="form-control form-control-solid js-daterangepicker" placeholder="Semua tanggal..." readonly />
+                    <input type="hidden" name="start_date" value="{{ $filters['start_date'] }}">
+                    <input type="hidden" name="end_date" value="{{ $filters['end_date'] }}">
                 </div>
-            @endif
+                <div class="d-flex flex-wrap gap-1 mt-2">
+                    @foreach($datePresets as $preset)
+                        <a href="{{ route('reports.index', $preset['query']) }}" class="btn btn-sm btn-light-primary py-0 px-2" style="font-size: 0.75rem;">{{ $preset['label'] }}</a>
+                    @endforeach
+                </div>
+            </div>
 
             <div class="col-12 col-md-6 col-lg-3">
                 <label class="form-label fw-bold" for="filter-department">Filter Jurusan</label>
@@ -331,6 +329,7 @@
                     <table class="table table-hover table-row-dashed align-middle report-table fs-7 gy-3">
                         <thead class="fw-bold text-muted text-uppercase">
                             <tr>
+                                <th style="width: 50px;" class="text-center">No</th>
                                 <th>Kode Barang</th>
                                 <th>No. Unit</th>
                                 <th>No. Seri</th>
@@ -350,11 +349,20 @@
                 @elseif($type === 'incoming')
                     <table class="table table-hover table-row-dashed align-middle report-table fs-7 gy-3">
                         <thead class="fw-bold text-muted text-uppercase">
-                            <tr><th>No. Transaksi</th><th>Nama Barang</th><th class="text-end">Jumlah Masuk</th><th>Asal Sumber</th><th>Tanggal</th><th>Pencatat</th></tr>
+                            <tr>
+                                <th style="width: 50px;" class="text-center">No</th>
+                                <th>No. Transaksi</th>
+                                <th>Nama Barang</th>
+                                <th class="text-end">Jumlah Masuk</th>
+                                <th>Asal Sumber</th>
+                                <th>Tanggal</th>
+                                <th>Pencatat</th>
+                            </tr>
                         </thead>
                         <tbody class="fw-semibold text-gray-700">
                             @foreach($data as $row)
                                 <tr>
+                                    <td class="text-center text-muted fw-bold">{{ ($data instanceof \Illuminate\Pagination\LengthAwarePaginator ? $data->firstItem() : 1) + $loop->index }}</td>
                                     <td>{{ $row->transaction_number }}</td>
                                     <td>{{ $row->item->name ?? '—' }}</td>
                                     <td class="text-end"><span class="badge badge-light-success">+{{ $row->quantity }} {{ $row->item->unit ?? '' }}</span></td>
@@ -368,11 +376,20 @@
                 @elseif($type === 'outgoing')
                     <table class="table table-hover table-row-dashed align-middle report-table fs-7 gy-3">
                         <thead class="fw-bold text-muted text-uppercase">
-                            <tr><th>No. Transaksi</th><th>Nama Barang</th><th class="text-end">Jumlah Keluar</th><th>Alasan</th><th>Tanggal</th><th>Pencatat</th></tr>
+                            <tr>
+                                <th style="width: 50px;" class="text-center">No</th>
+                                <th>No. Transaksi</th>
+                                <th>Nama Barang</th>
+                                <th class="text-end">Jumlah Keluar</th>
+                                <th>Alasan</th>
+                                <th>Tanggal</th>
+                                <th>Pencatat</th>
+                            </tr>
                         </thead>
                         <tbody class="fw-semibold text-gray-700">
                             @foreach($data as $row)
                                 <tr>
+                                    <td class="text-center text-muted fw-bold">{{ ($data instanceof \Illuminate\Pagination\LengthAwarePaginator ? $data->firstItem() : 1) + $loop->index }}</td>
                                     <td>{{ $row->transaction_number }}</td>
                                     <td>{{ $row->item->name ?? '—' }}</td>
                                     <td class="text-end"><span class="badge badge-light-danger">-{{ $row->quantity }} {{ $row->item->unit ?? '' }}</span></td>
@@ -386,11 +403,20 @@
                 @elseif($type === 'distribution')
                     <table class="table table-hover table-row-dashed align-middle report-table fs-7 gy-3">
                         <thead class="fw-bold text-muted text-uppercase">
-                            <tr><th>No. Distribusi</th><th>Barang</th><th class="text-end">Jumlah</th><th>Lokasi Penempatan</th><th>Penerima</th><th>Tanggal</th></tr>
+                            <tr>
+                                <th style="width: 50px;" class="text-center">No</th>
+                                <th>No. Distribusi</th>
+                                <th>Barang</th>
+                                <th class="text-end">Jumlah</th>
+                                <th>Lokasi Penempatan</th>
+                                <th>Penerima</th>
+                                <th>Tanggal</th>
+                            </tr>
                         </thead>
                         <tbody class="fw-semibold text-gray-700">
                             @foreach($data as $row)
                                 <tr>
+                                    <td class="text-center text-muted fw-bold">{{ ($data instanceof \Illuminate\Pagination\LengthAwarePaginator ? $data->firstItem() : 1) + $loop->index }}</td>
                                     <td>{{ $row->distribution_number }}</td>
                                     <td>{{ $row->item->name ?? '—' }}</td>
                                     <td class="text-end">{{ $row->quantity }} {{ $row->item->unit ?? '' }}</td>
@@ -404,11 +430,20 @@
                 @elseif($type === 'submission')
                     <table class="table table-hover table-row-dashed align-middle report-table fs-7 gy-3">
                         <thead class="fw-bold text-muted text-uppercase">
-                            <tr><th>No. Pengajuan</th><th>Pengaju</th><th>Jurusan</th><th>Judul</th><th>Status</th><th>Tanggal</th></tr>
+                            <tr>
+                                <th style="width: 50px;" class="text-center">No</th>
+                                <th>No. Pengajuan</th>
+                                <th>Pengaju</th>
+                                <th>Jurusan</th>
+                                <th>Judul</th>
+                                <th>Status</th>
+                                <th>Tanggal</th>
+                            </tr>
                         </thead>
                         <tbody class="fw-semibold text-gray-700">
                             @foreach($data as $row)
                                 <tr>
+                                    <td class="text-center text-muted fw-bold">{{ ($data instanceof \Illuminate\Pagination\LengthAwarePaginator ? $data->firstItem() : 1) + $loop->index }}</td>
                                     <td>{{ $row->submission_number }}</td>
                                     <td>{{ $row->user->name ?? '—' }}</td>
                                     <td>{{ \App\Support\Departments::display($row->department) }}</td>
@@ -423,6 +458,7 @@
                     <table class="table table-hover table-row-dashed align-middle report-table fs-7 gy-3">
                         <thead class="fw-bold text-muted text-uppercase">
                             <tr>
+                                <th style="width: 50px;" class="text-center">No</th>
                                 <th>No. Peminjaman</th>
                                 <th>Barang</th>
                                 <th>Peminjam</th>
@@ -437,6 +473,7 @@
                         <tbody class="fw-semibold text-gray-700">
                             @foreach($data as $row)
                                 <tr>
+                                    <td class="text-center text-muted fw-bold">{{ ($data instanceof \Illuminate\Pagination\LengthAwarePaginator ? $data->firstItem() : 1) + $loop->index }}</td>
                                     <td>{{ $row->loan_number }}</td>
                                     <td>
                                         {{ $row->item->name ?? '—' }}
@@ -465,6 +502,7 @@
                     <table class="table table-hover table-row-dashed align-middle report-table fs-7 gy-3">
                         <thead class="fw-bold text-muted text-uppercase">
                             <tr>
+                                <th style="width: 50px;" class="text-center">No</th>
                                 <th>Barang / Unit</th>
                                 <th>Dari</th>
                                 <th>Ke</th>
@@ -476,6 +514,7 @@
                         <tbody class="fw-semibold text-gray-700">
                             @foreach($data as $row)
                                 <tr>
+                                    <td class="text-center text-muted fw-bold">{{ ($data instanceof \Illuminate\Pagination\LengthAwarePaginator ? $data->firstItem() : 1) + $loop->index }}</td>
                                     <td>
                                         {{ $row->item->name ?? '—' }}
                                         @if($row->assetUnit)

@@ -342,6 +342,9 @@ class ReportController extends Controller
                 if ($department) {
                     $query->where('department', $department);
                 }
+                if ($startDate || $endDate) {
+                    $this->applyDateRange($query, 'created_at', $startDate, $endDate, true);
+                }
                 if ($filters['location_id']) {
                     $locationId = $filters['location_id'];
                     $query->where(fn ($q) => $q

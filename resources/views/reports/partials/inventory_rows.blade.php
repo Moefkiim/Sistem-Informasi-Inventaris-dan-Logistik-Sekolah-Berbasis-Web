@@ -1,3 +1,6 @@
+@php
+    $rowNumber = ($data instanceof \Illuminate\Pagination\LengthAwarePaginator ? $data->firstItem() : 1);
+@endphp
 @forelse($data as $item)
     @php
         $showDisposed = isset($filters) && ($filters['unit_status'] ?? null) === 'disposed';
@@ -15,6 +18,7 @@
             $location = $unit?->location?->name ?: $item->location?->name;
         @endphp
         <tr>
+            <td class="text-center text-muted fw-bold">{{ $rowNumber++ }}</td>
             <td class="fw-bold text-gray-800">{{ $item->code }}</td>
             <td class="font-monospace">{!! $unitNo ? e($unitNo) : '<span class="empty-dash">—</span>' !!}</td>
             <td class="font-monospace">{!! $serial ? e($serial) : '<span class="empty-dash">—</span>' !!}</td>
@@ -29,6 +33,6 @@
     @endforeach
 @empty
     <tr>
-        <td colspan="10" class="text-center text-muted py-6">Tidak ada data inventaris.</td>
+        <td colspan="11" class="text-center text-muted py-6">Tidak ada data inventaris.</td>
     </tr>
 @endforelse
