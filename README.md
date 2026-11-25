@@ -63,9 +63,9 @@ Sistem Informasi Inventaris dan Logistik Sekolah (SIILS) adalah aplikasi manajem
 
 | Role | Halaman Login | Halaman Awal | Ringkasan Hak Akses |
 |---|---|---|---|
-| **Kajur (Kepala Kejuruan)** | `/login` | `/home` | Membuat & mengedit pengajuan draft, memantau pengajuan, melihat inventaris & laporan terbatas jurusannya, mengunggah dokumen. |
-| **Sarpras (Operator & Logistik)** | `/login` | `/home` | Mengelola master barang & lokasi, meninjau pengajuan Kajur, mencatat barang masuk/keluar/distribusi, manajemen dokumen, manajemen pengguna. |
-| **Kepala Sekolah** | `/login` | `/home` | Meninjau pengajuan berstatus `reviewed_sarpras`, memberikan keputusan approval/reject, memantau seluruh laporan rekapitulasi sekolah. |
+| **Kajur (Kepala Kejuruan)** | `/login` | `/home` | Membuat & mengedit pengajuan draft, memantau pengajuan, melihat inventaris & laporan terbatas jurusannya, mengunggah dokumen. Peran Kajur tidak berubah dan tidak mengakses modul KIB. |
+| **Sarpras (Operator & Logistik)** | `/login` | `/home` | Mengelola master barang & lokasi, meninjau pengajuan Kajur, mencatat barang masuk/keluar/distribusi, manajemen dokumen, manajemen pengguna, serta mengelola modul KIB A–F (dalam pengembangan). |
+| **Kepala Sekolah** | `/login` | `/home` | Meninjau pengajuan berstatus `reviewed_sarpras`, memberikan keputusan approval/reject, memantau seluruh laporan rekapitulasi sekolah (tidak mengakses modul KIB). |
 
 ### Aturan Akses & Batasan Konteks Jurusan
 - **Penyimpanan Role & Guard:** Peran pengguna disimpan pada kolom `role` di tabel `users` (`kajur`, `sarpras`, `kepala_sekolah`). Pemeriksaan otorisasi dilakukan melalui custom middleware `App\Http\Middleware\EnsureUserRole`.
@@ -667,6 +667,7 @@ Workflow memastikan regresi terdeteksi — termasuk perbedaan perilaku MySQL vs 
 | **Manajemen Dokumen & BAST** | ✅ Sudah | Upload, download, & delete Sarpras |
 | **Cetak Laporan / Print Export** | ✅ Sudah | Tampilan bebas elemen navigasi web |
 | **Manajemen User Sarpras** | ✅ Sudah | CRUD staf & toggle `is_active` |
+| **KIB A–F (Kartu Inventaris Barang)** | 🗓️ Direncanakan | Khusus Sarpras (`Create`/`Read`/`Update`/`Export` `.xlsx` sesuai `docs/kib/Format-KIB-ABCDE-dan-F.xlsx`, input form + impor Excel). Kajur dan Kepala Sekolah tidak memiliki akses. Bukan pembukuan keuangan (tanpa penyusutan atau jurnal). |
 
 ### Status Teknis
 
@@ -684,7 +685,7 @@ Sistem ini secara eksplisit **TIDAK MEMILIKI** dan **DILARANG MENAMBAHKAN** fitu
 - Barcode / QR Code Scanner
 - Notifikasi Otomatis via WhatsApp / Email
 - Aplikasi Mobile (Android / iOS)
-- Payment / Financial Accounting
+- Payment / Financial Accounting (termasuk modul KIB A–F yang direncanakan: kolom harga hanya bersifat pencatatan aset, tanpa penyusutan atau jurnal akuntansi)
 - Supplier Management Sistem
 - Integrasi Pihak Ketiga lainnya
 

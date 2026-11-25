@@ -392,10 +392,12 @@
                                         data-kt-menu-trigger="click"
                                         data-kt-menu-attach="parent"
                                         data-kt-menu-placement="bottom-end"
-                                        aria-label="Notifikasi">
-                                        <i class="bi bi-bell fs-2"></i>
+                                        data-notification-bell>
+                                        <i class="bi bi-bell fs-2" aria-hidden="true"></i>
+                                        <span class="visually-hidden">Notifikasi</span>
                                         @if(($navUnreadCount ?? 0) > 0)
                                             <span class="position-absolute top-0 start-100 translate-middle badge badge-circle badge-danger fs-8">{{ $navUnreadCount > 9 ? '9+' : $navUnreadCount }}</span>
+                                            <span class="visually-hidden">belum dibaca</span>
                                         @endif
                                     </button>
                                     <div class="menu menu-sub menu-sub-dropdown menu-column w-350px w-lg-375px" data-kt-menu="true">

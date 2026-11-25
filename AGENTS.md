@@ -49,8 +49,8 @@ Boost replaces these bootstrap instructions with guidelines tailored to the appl
 # Aturan Bisnis dan Batasan Pengembangan Proyek
 
 ## 1. Role Pengguna
-- **Kajur (Kepala Kejuruan)**: membuat dan memantau pengajuan, mengedit pengajuan berstatus draft, melihat inventaris sesuai jurusannya.
-- **Sarpras (Operator & Logistik)**: mengelola inventaris master, transaksi/logistik (barang masuk/keluar/distribusi), lokasi, dokumen, pengguna, memproses pengajuan, dan membuat laporan.
+- **Kajur (Kepala Kejuruan)**: membuat dan memantau pengajuan, mengedit pengajuan berstatus draft, melihat inventaris sesuai jurusannya. Peran Kajur tidak berubah dan tidak memiliki akses ke modul KIB.
+- **Sarpras (Operator & Logistik)**: mengelola inventaris master, transaksi/logistik (barang masuk/keluar/distribusi), lokasi, dokumen, pengguna, memproses pengajuan, membuat laporan, serta mengelola modul KIB A–F (input via form/impor Excel dan ekspor `.xlsx`).
 - **Kepala Sekolah**: melihat pengajuan dan melakukan persetujuan (approval/reject) serta monitoring laporan.
 
 ## 2. Aturan Bisnis Penting
@@ -67,6 +67,7 @@ Boost replaces these bootstrap instructions with guidelines tailored to the appl
 - Data log/history tidak boleh diedit atau dihapus bebas (audit trail terjaga).
 - Gunakan soft-delete/arsip untuk master data bila diperlukan agar histori tetap ada.
 - Hak akses wajib berbasis role dan konteks jurusan.
+- Modul **KIB A–F (Kartu Inventaris Barang)** khusus untuk role Sarpras (input melalui form/impor Excel dan output ekspor `.xlsx` mengikuti format `docs/kib/Format-KIB-ABCDE-dan-F.xlsx`). KIB bukan pembukuan keuangan: kolom harga hanya bersifat pencatatan aset, tanpa penyusutan atau jurnal akuntansi.
 
 ## 3. Matriks Akses Ringkas
 | Modul | Kajur | Sarpras | Kepala Sekolah |
@@ -75,6 +76,7 @@ Boost replaces these bootstrap instructions with guidelines tailored to the appl
 | Dashboard | Read | Read | Read |
 | Pengajuan | Create/Read/Edit Draft/Cancel | Review/Process | Approve/Reject |
 | Inventaris | Read jurusan | CRUD terbatas | Read |
+| KIB A–F (Kartu Inventaris Barang) | - | Create/Read/Update/Export | - |
 | Barang Masuk | Read sesuai akses | Create/Read/Koreksi | Read |
 | Barang Keluar | Read sesuai akses | Create/Read/Koreksi | Read |
 | Distribusi | Read sesuai akses | Create/Read | Read |
