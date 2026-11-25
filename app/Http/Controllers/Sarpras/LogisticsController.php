@@ -152,6 +152,13 @@ class LogisticsController extends Controller
                 ->lockForUpdate()
                 ->firstOrFail();
 
+            if ($item->isIndividual()) {
+                throw ValidationException::withMessages([
+                    'item_id' => 'Barang bertipe individual tidak dapat dicatat sebagai barang keluar massal. '
+                        .'Silakan ubah status unit secara terpisah melalui menu Inventaris → Detail Barang → Status Unit.',
+                ]);
+            }
+
             if ($item->stock < $validated['quantity']) {
                 throw ValidationException::withMessages([
                     'quantity' => 'Stok tidak mencukupi. Stok saat ini: '.$item->stock,
@@ -255,6 +262,13 @@ class LogisticsController extends Controller
             $item = Item::where('id', $validated['item_id'])
                 ->lockForUpdate()
                 ->firstOrFail();
+
+            if ($item->isIndividual()) {
+                throw ValidationException::withMessages([
+                    'item_id' => 'Barang bertipe individual tidak dapat didistribusikan secara massal. '
+                        .'Silakan pindahkan lokasi setiap unit secara terpisah melalui menu Inventaris → Detail Barang → Pindah Lokasi.',
+                ]);
+            }
 
             if ($item->stock < $validated['quantity']) {
                 throw ValidationException::withMessages([

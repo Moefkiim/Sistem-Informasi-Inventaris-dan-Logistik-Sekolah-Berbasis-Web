@@ -1194,7 +1194,7 @@ Test akhir: **422 test, 2143 asersi** hijau pada SQLite lokal.
 | **P1** | **Backup & restore hardening** — enkripsi nama kunci di manifest, verifikasi keberadaan manifest di arsip, penolakan arsip korup/tidak lengkap, pembersihan berkas sementara saat exception | **Selesai** | `875a4d5` + sesi sebelumnya | `BackupRestoreCommandTest` (8 test): arsip zip berisi `manifest.json` dan `database.sql`; manifest punya `driver`, `rows_per_table`, dan `checksum`; restore menolak arsip tanpa manifest; berkas sementara tidak bocor ke disk setelah exception. Reproduksi P1: lihat §18.2. |
 | **P2** | **Keamanan formula Excel** — sel ditulis sebagai string eksplisit (`DataType::TYPE_STRING`) agar rumus seperti `=CMD` tidak dieksekusi spreadsheet | **Selesai** | `670b5cf` | `ReportExportTest`: nilai `=CMD(...)` sebelumnya lolos tanpa prefiks `'` — test **gagal** sebelum patch, **hijau** sesudah. |
 | **P3** | **`env()` di luar `config/`** — semua pemanggilan `env()` di `app/` dipindahkan ke `config/siils.php`; route closure diganti controller agar `route:cache` berfungsi; `php artisan optimize` diuji dalam CI | **Selesai** | `d0de9b2`, `f0ea33d`, `0e00209` | CI job `ci: uji optimize dan konfigurasi ter-cache`: `php artisan optimize` keluar 0 → `php artisan route:list` (terhadap konfigurasi ter-cache) keluar 0 → seluruh suite lulus. Sebelumnya `php artisan route:cache` gagal dengan `Closure cannot be serialized`. Reproduksi P3: lihat §18.3. |
-| **P4** | **Header keamanan HTTP** — middleware `SecurityHeaders` global; `Cache-Control: no-store` untuk halaman terautentikasi; `SESSION_SECURE_COOKIE` di `.env.example` | **Selesai** | `875a4d5` | `SecurityHeadersTest` (8 test): `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy`, `Permissions-Policy`, `Content-Security-Policy` tersedia di setiap respons; halaman terautentikasi mendapat `no-store`; tamu tidak mendapat `no-store`; `siils:check` melaporkan HTTPS & cookie aman. |
+| **P4** | **Header keamanan HTTP** — middleware `SecurityHeaders` global; `Cache-Control: no-store` untuk halaman terautentikasi; `SESSION_SECURE_COOKIE` di `.env.example` | **Selesai** | `875a4d5` | `SecurityHeadersTest` (8 test): `X-Frame-Options: SAMEORIGIN`, `X-Content-Type-Options: nosniff`, `Referrer-Policy`, `Permissions-Policy` tersedia di setiap respons (`Content-Security-Policy` belum diterapkan); halaman terautentikasi mendapat `no-store`; tamu tidak mendapat `no-store`; `siils:check` melaporkan HTTPS & cookie aman. |
 | **P5** | **Durasi ingat-saya terbatas** — cookie `remember_me` dibatasi 7 hari di `AppServiceProvider::boot()` | **Selesai** | `423bb2d` | `SecurityHeadersTest::test_remember_me_cookie_masa_hidup_terbatas_7_hari`: cookie `remember_me` punya `max_age ≤ 604800 detik` — **gagal sebelum** patch (tanpa batas) → **hijau** sesudah. |
 | **P6** | **Matriks otorisasi rute** — `RouteAccessMatrix` memetakan tiap rute ke ekspektasi `auth`/`role`; `RouteAuthorizationMatrixTest` menggagalkan CI bila ada rute tanpa entri | **Selesai** | `f2e36f4` | `RouteAuthorizationMatrixTest`: rute guest (login) dapat 200/302 tanpa autentikasi; rute `auth`-saja tanpa token dapat 302; rute `auth+role` mendapat 403 bila peran salah. Semua rute di `routes/web.php` terdaftar — tidak ada rute tanpa entri matriks. |
 | **P7** | **Panel tindakan operasional** — `TaskOverview` mengagregasi stok menipis/habis, peminjaman terlambat, unit dalam perbaikan; dasbor menampilkan kartu per peran; filter `?stok=menipis|habis` / `?status=terlambat` bekerja di daftar | **Selesai** | bagian dari commit sebelum `f2e36f4` | `ActionPanelTest`: angka benar per peran; scoping jurusan Kajur A tidak melihat data Kajur B; filter inventaris dan peminjaman mengembalikan baris sesuai filter; `QueryBudgetTest` tidak bertambah query. |
@@ -1248,16 +1248,15 @@ tanpa entri, test **gagal dengan pesan eksplisit** menyebut nama rute yang hilan
 
 ### 18.6 Keterbatasan CSP
 
-`Content-Security-Policy` yang diterapkan bersifat **dasar dan permisif**
-(`default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'`) karena:
+`Content-Security-Policy` **belum diterapkan** karena:
 
 - Aplikasi menggunakan `<script>` inline untuk Chart.js, Select2, dan DateRangePicker yang
   diinisialisasi langsung di blade template dengan data dari server.
-- Menghapus `'unsafe-inline'` akan memecahkan semua inisialisasi JavaScript tersebut.
+- Menerapkan CSP ketat tanpa `'unsafe-inline'` akan memecahkan semua inisialisasi JavaScript tersebut.
 - Pengerasan CSP penuh (nonce-based atau hash-based) memerlukan refactor besar pada semua
   blade template — di luar scope penyempurnaan ini.
 
-**Mitigasi yang sudah ada:** `X-Frame-Options: DENY` mencegah clickjacking;
+**Mitigasi yang sudah ada:** `X-Frame-Options: SAMEORIGIN` mencegah clickjacking;
 `X-Content-Type-Options: nosniff` mencegah MIME sniffing; escaping HTML default Laravel (`{{ }}`)
 mencegah XSS; tidak ada `{!! !!}` di seluruh view yang aktif dipakai.
 
