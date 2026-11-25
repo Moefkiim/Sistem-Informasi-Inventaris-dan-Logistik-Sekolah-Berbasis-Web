@@ -392,10 +392,10 @@
                                         data-kt-menu-trigger="click"
                                         data-kt-menu-attach="parent"
                                         data-kt-menu-placement="bottom-end"
-                                        aria-label="Notifikasi">
-                                        <i class="bi bi-bell fs-2"></i>
+                                        aria-label="{{ ($navUnreadCount ?? 0) > 0 ? 'Notifikasi (' . ($navUnreadCount > 9 ? '9+' : $navUnreadCount) . ' belum dibaca)' : 'Notifikasi' }}">
+                                        <i class="bi bi-bell fs-2" aria-hidden="true"></i>
                                         @if(($navUnreadCount ?? 0) > 0)
-                                            <span class="position-absolute top-0 start-100 translate-middle badge badge-circle badge-danger fs-8">{{ $navUnreadCount > 9 ? '9+' : $navUnreadCount }}</span>
+                                            <span class="position-absolute top-0 start-100 translate-middle badge badge-circle badge-danger fs-8" aria-hidden="true">{{ $navUnreadCount > 9 ? '9+' : $navUnreadCount }}</span>
                                         @endif
                                     </button>
                                     <div class="menu menu-sub menu-sub-dropdown menu-column w-350px w-lg-375px" data-kt-menu="true">
