@@ -8,8 +8,8 @@
 @php
     $map = [
         'draft'           => ['color' => 'secondary', 'label' => 'Draft'],
-        'submitted'       => ['color' => 'warning',   'label' => 'Menunggu Review Sarpras'],
-        'reviewed_sarpras'=> ['color' => 'primary',   'label' => 'Menunggu Approval Kepala Sekolah'],
+        'submitted'       => ['color' => 'warning',   'label' => 'Menunggu Pemeriksaan Sarpras'],
+        'reviewed_sarpras'=> ['color' => 'primary',   'label' => 'Menunggu Persetujuan Kepala Sekolah'],
         'approved'        => ['color' => 'success',   'label' => 'Disetujui'],
         'realized'        => ['color' => 'dark',      'label' => 'Terealisasi'],
         'rejected'        => ['color' => 'danger',    'label' => 'Ditolak'],

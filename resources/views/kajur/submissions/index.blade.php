@@ -38,7 +38,7 @@
                     <select name="status" class="form-select form-select-solid form-select-sm">
                         <option value="">Semua Status</option>
                         <option value="draft" {{ $status === 'draft' ? 'selected' : '' }}>Draf (Belum Dikirim)</option>
-                        <option value="submitted" {{ $status === 'submitted' ? 'selected' : '' }}>Menunggu Review Sarpras</option>
+                        <option value="submitted" {{ $status === 'submitted' ? 'selected' : '' }}>Menunggu Pemeriksaan Sarpras</option>
                         <option value="reviewed_sarpras" {{ $status === 'reviewed_sarpras' ? 'selected' : '' }}>Menunggu Keputusan Kepsek</option>
                         <option value="approved" {{ $status === 'approved' ? 'selected' : '' }}>Disetujui Kepala Sekolah</option>
                         <option value="rejected" {{ $status === 'rejected' ? 'selected' : '' }}>Ditolak</option>

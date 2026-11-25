@@ -18,8 +18,17 @@
             <div class="d-flex flex-column flex-lg-row-auto w-xl-500px position-xl-relative" style="background-color: #1e1e2d">
                 <div class="d-flex flex-column position-xl-fixed top-0 bottom-0 w-xl-500px scroll-y p-10 justify-content-between">
                     <div class="text-center pt-lg-15">
+                        @php
+                            $logoPath = ltrim((string) config('siils.logo_path', 'images/logo-sekolah.png'), '/');
+                            $schoolName = (string) config('siils.school_name', 'SMKN 1 Sukatani');
+                            $hasLogo = $logoPath !== '' && ! str_contains($logoPath, '://') && file_exists(public_path($logoPath));
+                        @endphp
                         <div class="mb-5">
-                            <i class="bi bi-box-seam text-primary" style="font-size: 3.5rem;"></i>
+                            @if ($hasLogo)
+                                <img src="{{ asset($logoPath) }}" alt="Logo {{ $schoolName }}" class="img-fluid" style="max-height: 80px; width: auto;" />
+                            @else
+                                <span class="badge badge-light-primary fs-6 fw-bolder px-4 py-2">{{ $schoolName }}</span>
+                            @endif
                         </div>
                         <h1 class="fw-bolder fs-2qx text-white pb-3">Inventaris & Logistik</h1>
                         <p class="fw-normal fs-4 text-gray-400">

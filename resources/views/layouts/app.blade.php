@@ -248,7 +248,7 @@
                                 <div class="menu-item">
                                     <a class="menu-link {{ request()->routeIs('sarpras.submissions.*') ? 'active' : '' }}" href="{{ route('sarpras.submissions.index') }}">
                                         <span class="menu-icon"><i class="bi bi-clipboard-check fs-3"></i></span>
-                                        <span class="menu-title">Review Pengajuan Kajur</span>
+                                        <span class="menu-title">Pengajuan</span>
                                         @if(($sidebarBadges['review'] ?? 0) > 0)
                                             <span class="badge badge-light-warning fw-bold ms-2">{{ $sidebarBadges['review'] }}</span>
                                         @endif
