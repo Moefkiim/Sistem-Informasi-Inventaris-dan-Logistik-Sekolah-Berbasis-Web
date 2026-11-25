@@ -630,7 +630,7 @@ class SmokeTest:
 
         page.goto(self.url("/home"), wait_until="domcontentloaded", timeout=45000)
         page.wait_for_load_state("networkidle", timeout=20000)
-        bell = page.locator('button[aria-label="Notifikasi"]')
+        bell = page.locator('button[aria-label^="Notifikasi"]')
         badge = bell.locator('.badge.badge-circle.badge-danger')
         unread_before = badge.is_visible() and badge.inner_text().strip() or "0"
         if unread_before in ("", "0"):
@@ -657,7 +657,7 @@ class SmokeTest:
         # Kembali ke home, pastikan badge belum dibaca turun.
         page.goto(self.url("/home"), wait_until="domcontentloaded", timeout=45000)
         page.wait_for_load_state("networkidle", timeout=20000)
-        badge_after = page.locator('button[aria-label="Notifikasi"] .badge.badge-circle.badge-danger')
+        badge_after = page.locator('button[aria-label^="Notifikasi"] .badge.badge-circle.badge-danger')
         try:
             after_text = badge_after.inner_text().strip() if badge_after.is_visible() else "0"
         except Exception:
