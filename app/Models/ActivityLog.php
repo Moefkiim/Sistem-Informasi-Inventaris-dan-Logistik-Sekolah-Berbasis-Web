@@ -65,7 +65,7 @@ class ActivityLog extends Model
         'submission_created' => 'Pengajuan Dibuat',
         'submission_submitted' => 'Pengajuan Dikirim',
         'submission_cancelled' => 'Pengajuan Dibatalkan',
-        'submission_reviewed' => 'Pengajuan Direview Sarpras',
+        'submission_reviewed' => 'Pengajuan Diperiksa Sarpras',
         'submission_rejected_sarpras' => 'Pengajuan Ditolak Sarpras',
         'submission_approved' => 'Pengajuan Disetujui',
         'submission_rejected' => 'Pengajuan Ditolak',
@@ -83,7 +83,7 @@ class ActivityLog extends Model
         // Aksi ringkas (dipakai sebagian alur/test lama).
         'draft' => 'Disimpan sebagai Draft',
         'submit' => 'Dikirim',
-        'review' => 'Direview',
+        'review' => 'Diperiksa',
         'approve' => 'Disetujui',
         'reject' => 'Ditolak',
     ];
@@ -181,7 +181,7 @@ class ActivityLog extends Model
     public const VALUE_LABELS = [
         'draft' => 'Draft',
         'submitted' => 'Diajukan',
-        'reviewed_sarpras' => 'Direview Sarpras',
+        'reviewed_sarpras' => 'Diperiksa Sarpras',
         'approved' => 'Disetujui',
         'rejected' => 'Ditolak',
         'cancelled' => 'Dibatalkan',

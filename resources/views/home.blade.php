@@ -37,7 +37,7 @@
                     @if(auth()->user()->isKajur())
                         Anda dapat mengelola pengajuan barang untuk jurusan <strong class="text-white">{{ auth()->user()->department }}</strong> dan memantau inventaris terkait.
                     @elseif(auth()->user()->isSarpras())
-                        Anda dapat mengelola master inventaris, logistik barang masuk/keluar, dan memverifikasi pengajuan dari seluruh Kajur.
+                        Anda dapat mengelola master inventaris, logistik barang masuk/keluar, dan memeriksa pengajuan dari seluruh Kajur.
                     @else
                         Anda dapat memantau laporan keseluruhan dan menyetujui atau menolak pengajuan yang telah ditelaah oleh Sarpras.
                     @endif
@@ -270,11 +270,11 @@
                 <div class="card-body d-flex flex-column p-6">
                     <div class="d-flex align-items-center justify-content-between mb-4">
                         <div class="symbol symbol-50px"><span class="symbol-label bg-light-warning"><i class="bi bi-clipboard-check fs-2 text-warning"></i></span></div>
-                        <span class="badge badge-light-warning fw-bolder">Perlu Review</span>
+                        <span class="badge badge-light-warning fw-bolder">Perlu Diperiksa</span>
                     </div>
                     <div class="fs-2 fw-bolder text-dark mb-1">{{ $pendingSubmissions }}</div>
                     <div class="fs-7 text-muted">Pengajuan Menunggu</div>
-                    <a href="{{ route('sarpras.submissions.index') }}" class="btn btn-sm btn-light-warning mt-4 w-100">Review Sekarang</a>
+                    <a href="{{ route('sarpras.submissions.index') }}" class="btn btn-sm btn-light-warning mt-4 w-100">Periksa Sekarang</a>
                 </div>
             </div>
         </div>
@@ -448,8 +448,8 @@
                     <a href="{{ route('sarpras.submissions.index') }}" class="card border border-dashed border-warning bg-hover-light-warning text-decoration-none h-100 d-flex align-items-center justify-content-center p-6">
                         <div class="text-center">
                             <i class="bi bi-clipboard-check text-warning" style="font-size: 2.5rem;"></i>
-                            <div class="fw-bolder text-dark mt-3">Review Pengajuan</div>
-                            <div class="text-muted fs-7">Verifikasi pengajuan Kajur</div>
+                            <div class="fw-bolder text-dark mt-3">Periksa Pengajuan</div>
+                            <div class="text-muted fs-7">Periksa pengajuan Kajur</div>
                         </div>
                     </a>
                 </div>

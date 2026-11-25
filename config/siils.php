@@ -73,4 +73,18 @@ return [
 
     'remember_me_days' => (int) env('SIILS_REMEMBER_ME_DAYS', 7),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Identitas & Logo Sekolah
+    |--------------------------------------------------------------------------
+    |
+    | Lokasi berkas logo relatif terhadap public/. Jika berkas belum tersedia,
+    | halaman login akan menampilkan nama sekolah sebagai teks fallback.
+    |
+    */
+
+    'logo_path' => env('SIILS_LOGO_PATH', 'images/logo-sekolah.png'),
+
+    'school_name' => env('SIILS_SCHOOL_NAME', 'SMKN 1 Sukatani'),
+
 ];

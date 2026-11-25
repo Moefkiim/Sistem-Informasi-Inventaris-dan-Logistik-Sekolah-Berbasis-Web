@@ -97,7 +97,7 @@ class Submission extends Model
         return match ($status) {
             'draft' => 'Draft',
             'submitted' => 'Diajukan',
-            'reviewed_sarpras' => 'Diverifikasi Sarpras',
+            'reviewed_sarpras' => 'Diperiksa Sarpras',
             'approved' => 'Disetujui',
             'rejected' => 'Ditolak',
             'realized' => 'Terealisasi',

@@ -223,7 +223,7 @@ class SubmissionHistoryTest extends TestCase
             ->assertOk()
             ->assertSee('Linimasa Proses Pengajuan')
             ->assertSee('Diajukan')
-            ->assertSee('Diverifikasi Sarpras')
+            ->assertSee('Diperiksa Sarpras')
             ->assertSee('Rekomendasi disetujui.');
     }
 }

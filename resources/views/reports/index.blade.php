@@ -115,7 +115,7 @@
                     <label class="form-label fw-bold" for="filter-status">Status Pengajuan</label>
                     <select id="filter-status" name="status" class="form-select form-select-solid">
                         <option value="">Semua Status</option>
-                        @foreach(['draft' => 'Draft', 'submitted' => 'Diajukan', 'reviewed_sarpras' => 'Diverifikasi Sarpras', 'approved' => 'Disetujui', 'rejected' => 'Ditolak', 'cancelled' => 'Dibatalkan'] as $value => $label)
+                        @foreach(['draft' => 'Draft', 'submitted' => 'Diajukan', 'reviewed_sarpras' => 'Diperiksa Sarpras', 'approved' => 'Disetujui', 'rejected' => 'Ditolak', 'cancelled' => 'Dibatalkan'] as $value => $label)
                             <option value="{{ $value }}" {{ $filters['status'] === $value ? 'selected' : '' }}>{{ $label }}</option>
                         @endforeach
                     </select>

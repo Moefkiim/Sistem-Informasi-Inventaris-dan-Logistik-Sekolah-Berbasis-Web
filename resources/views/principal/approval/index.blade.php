@@ -39,7 +39,7 @@
                         <th>Judul Kebutuhan</th>
                         <th>Tgl. Pengajuan</th>
                         <th>Status</th>
-                        <th>Diverifikasi Sarpras</th>
+                        <th>Diperiksa Sarpras</th>
                         <th class="text-end">Aksi</th>
                     </tr>
                 </thead>

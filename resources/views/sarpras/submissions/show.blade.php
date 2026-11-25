@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('title', 'Proses Pengajuan - ' . $submission->submission_number)
-@section('header-title', 'Verifikasi Pengajuan Kajur')
+@section('header-title', 'Pemeriksaan Pengajuan')
 
 @section('content')
 <div class="card border-0 shadow-sm mb-5">
@@ -69,7 +69,7 @@
         @if($submission->status === 'submitted')
             <div class="separator separator-dashed my-6"></div>
             <div class="bg-light-primary p-6 rounded border border-primary">
-                <h4 class="fw-bolder text-primary mb-3">Tindakan Verifikasi Sarpras</h4>
+                <h4 class="fw-bolder text-primary mb-3">Pemeriksaan Sarpras</h4>
                 <form action="{{ route('sarpras.submissions.process', $submission) }}" method="POST" data-disable-on-submit>
                     @csrf
                     <div class="mb-4">

@@ -34,7 +34,7 @@
         <div class="alert alert-light-primary p-4 mb-5 border border-primary">
             <div class="fw-bolder text-primary">Rekomendasi & Hasil Telaah Sarpras:</div>
             <div class="mt-1">{{ $submission->sarpras_notes }}</div>
-            <div class="text-muted fs-8 mt-1">Diverifikasi oleh: {{ $submission->sarprasUser?->name }} ({{ $submission->reviewed_at?->format('d/m/Y H:i') }})</div>
+            <div class="text-muted fs-8 mt-1">Diperiksa oleh: {{ $submission->sarprasUser?->name }} ({{ $submission->reviewed_at?->format('d/m/Y H:i') }})</div>
         </div>
 
         <h4 class="fw-bolder mt-6 mb-4">Rincian Item Barang yang Diajukan</h4>
@@ -173,7 +173,7 @@
                 <strong>Belum ada keputusan.</strong>
                 Pengajuan berstatus <span class="text-uppercase fw-bold">{{ $submission->status }}</span>
                 @if($submission->status === 'draft' || $submission->status === 'submitted')
-                    , sehingga masih menunggu verifikasi Sarpras sebelum dapat diputuskan oleh Kepala Sekolah.
+                    , sehingga masih menunggu pemeriksaan Sarpras sebelum dapat diputuskan oleh Kepala Sekolah.
                 @elseif($submission->status === 'cancelled')
                     karena dibatalkan, sehingga tidak memerlukan keputusan Kepala Sekolah.
                 @endif

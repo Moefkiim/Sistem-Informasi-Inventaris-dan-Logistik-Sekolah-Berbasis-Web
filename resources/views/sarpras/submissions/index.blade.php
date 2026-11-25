@@ -7,7 +7,7 @@
 <div class="card border-0 shadow-sm">
     <div class="card-header border-0 pt-6">
         <div class="card-title">
-            <h3 class="fw-bolder">Verifikasi & Pemrosesan Pengajuan Sarana Prasarana</h3>
+            <h3 class="fw-bolder">Daftar & Pemrosesan Pengajuan Barang</h3>
         </div>
     </div>
     <div class="card-body pt-0">
@@ -32,7 +32,7 @@
                     <label class="form-label fs-7 fw-bold text-gray-700">Status Pengajuan</label>
                     <select name="status" class="form-select form-select-solid form-select-sm">
                         <option value="">Semua Status</option>
-                        <option value="submitted" {{ $status === 'submitted' ? 'selected' : '' }}>Menunggu Review Sarpras</option>
+                        <option value="submitted" {{ $status === 'submitted' ? 'selected' : '' }}>Menunggu Pemeriksaan Sarpras</option>
                         <option value="reviewed_sarpras" {{ $status === 'reviewed_sarpras' ? 'selected' : '' }}>Diteruskan ke Kepsek</option>
                         <option value="approved" {{ $status === 'approved' ? 'selected' : '' }}>Disetujui Kepala Sekolah</option>
                         <option value="rejected" {{ $status === 'rejected' ? 'selected' : '' }}>Ditolak</option>
@@ -98,7 +98,7 @@
                             <td>{{ $sub->created_at->format('d/m/Y H:i') }}</td>
                             <td class="text-end">
                                 <a href="{{ route('sarpras.submissions.show', $sub) }}" class="btn btn-sm btn-light btn-active-light-primary">
-                                    {{ $sub->status === 'submitted' ? 'Proses Review' : 'Lihat Detail' }}
+                                    {{ $sub->status === 'submitted' ? 'Periksa Pengajuan' : 'Lihat Detail' }}
                                 </a>
                             </td>
                         </tr>
